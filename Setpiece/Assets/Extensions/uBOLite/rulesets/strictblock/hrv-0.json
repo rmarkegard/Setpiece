@@ -1,34 +1,3 @@
-[
-{
- "action": {
-  "redirect": {
-   "regexSubstitution": "/strictblock.html#\\0"
-  },
-  "type": "redirect"
- },
- "condition": {
-  "regexFilter": "^https?://.*",
-  "requestDomains": [
-   "a.mabipa.com",
-   "btloader.com",
-   "eph-adsjutarnji.cdn.sysbee.net",
-   "klik-slider.morgancode.com",
-   "linker.hr",
-   "lupon.media",
-   "redakcija.alo.rs",
-   "swcs.24sata.rocks",
-   "traffic.styria.hr",
-   "unselfishugh.com",
-   "widget.admiral.hr",
-   "widget.halooglasi.com",
-   "widget.marktjagd.de",
-   "widgets.jutarnji.hr"
-  ],
-  "resourceTypes": [
-   "main_frame"
-  ]
- },
- "id": 1,
- "priority": 29
-}
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:c6029124d5eb6744d620dd4a453baee60584d75ad2a6cb75ec435ab671f5fe41
+size 601

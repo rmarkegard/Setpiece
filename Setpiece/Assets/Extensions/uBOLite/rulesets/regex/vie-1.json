@@ -1,30 +1,3 @@
-[
-{
- "action": {
-  "type": "block"
- },
- "condition": {
-  "domainType": "thirdParty",
-  "regexFilter": "^https:\\/\\/[a-z]{3,}\\.com\\/$",
-  "resourceTypes": [
-   "xmlhttprequest"
-  ]
- },
- "id": 1,
- "priority": 10
-},
-{
- "action": {
-  "type": "block"
- },
- "condition": {
-  "domainType": "thirdParty",
-  "regexFilter": "^https:\\/\\/[a-z]{8,12}\\.com\\/en\\/(?:[a-z]{2,5}\\/){0,2}[a-z]{2,}\\?(?:[a-z]+=(?:\\d+|[a-z]+)&)*?id=[12]\\d{6}",
-  "resourceTypes": [
-   "script"
-  ]
- },
- "id": 307,
- "priority": 10
-}
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:045e9e9593e983627cf426f2946652130623433f41ad646b4fdc4d12ea554197
+size 507

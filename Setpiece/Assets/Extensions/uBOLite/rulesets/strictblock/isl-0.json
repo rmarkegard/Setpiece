@@ -1,22 +1,3 @@
-[
-{
- "action": {
-  "redirect": {
-   "regexSubstitution": "/strictblock.html#\\0"
-  },
-  "type": "redirect"
- },
- "condition": {
-  "regexFilter": "^https?://.*",
-  "requestDomains": [
-   "app.pulsmedia.is",
-   "static.airserve.net"
-  ],
-  "resourceTypes": [
-   "main_frame"
-  ]
- },
- "id": 1,
- "priority": 29
-}
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:41c6b2522b9de25fb8299846c56de251c6d3024b73bc3382d8040913af7b65f3
+size 310

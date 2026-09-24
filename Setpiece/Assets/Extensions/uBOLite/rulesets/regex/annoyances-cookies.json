@@ -1,16 +1,3 @@
-[
-{
- "action": {
-  "type": "allow"
- },
- "condition": {
-  "domainType": "firstParty",
-  "regexFilter": "complianz-gdpr-premium\\/cookiebanner",
-  "resourceTypes": [
-   "script"
-  ]
- },
- "id": 1,
- "priority": 30
-}
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:113ab4d1ea6ba2b00d90b0278ba850be299cd1f39829c49d29a4ea56e17bb2f3
+size 214
