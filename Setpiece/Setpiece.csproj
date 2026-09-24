@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>Setpiece</AssemblyName>
+    <RootNamespace>Setpiece.Rebuild</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
+    <PackageReference Include="Ical.Net" Version="5.2.3" />
+    <PackageReference Include="MQTTnet" Version="5.2.0.1603" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.3.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.9" />
+    <PackageReference Include="SQLitePCLRaw.bundle_winsqlite3" Version="2.1.11" />
+    <ProjectReference Include="../Sensors/Setpiece.Sensors.csproj" ReferenceOutputAssembly="false" />
+    <Content Include="../UI/dist/browser/**/*" Link="UI/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Assets/**/*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="UseOnlyWinFormsWebView" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup><Reference Remove="@(Reference)" Condition="'%(Reference.Filename)' == 'Microsoft.Web.WebView2.Wpf'" /></ItemGroup>
+  </Target>
+  <Target Name="StampProductionBuild" AfterTargets="Build"><Touch Files="$(TargetDir)production.stamp" AlwaysCreate="true" /></Target>
+  <Target Name="CopySensorHost" AfterTargets="Build">
+    <ItemGroup><SensorOutput Include="../Sensors/bin/$(Configuration)/net10.0-windows/**/*" /></ItemGroup>
+    <Copy SourceFiles="@(SensorOutput)" DestinationFiles="@(SensorOutput->'$(TargetDir)Sensors/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+  <ItemGroup><InternalsVisibleTo Include="Setpiece.Verification" /></ItemGroup>
+</Project>

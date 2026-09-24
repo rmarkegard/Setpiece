@@ -1,0 +1,323 @@
+// Setpiece design tokens — the single source of truth for the whole UI.
+//
+// WHY THIS FILE EXISTS
+//   Component styles are authored as plain CSS strings (`styles:[...]`) with no
+//   encapsulation, so SCSS variables and mixins cannot reach them. Everything
+//   therefore must be published as CSS custom properties on `:root`. This module
+//   ONLY declares custom properties (and a couple of plain-CSS utilities). It must
+//   never be imported for its SCSS symbols.
+//
+// SCALE MODEL
+//   * `--ui-scale`   multiplies structural sizes (space, shape, chrome). Set by
+//                    applyAppearance() from the user's interface-scale preference.
+//   * `--font-scale` multiplies the `rem` root, so every `--text-*` token scales
+//                    with the user's text-scale preference.
+//   * OS/WebView2 DPI scaling multiplies CSS px into device px on top of both, so
+//                    these two knobs compose with DPI instead of replacing it.
+//
+// NAMING
+//   * `--space-N`   N is the px size at scale 1 (4px grid plus 2px half-steps).
+//   * `--shape-*` / `--radius-*`  named shape steps (mirrored aliases).
+//   * `--text-N`    N is the px size at scale 1, expressed in rem.
+//   * `--elevation-*`, `--z-*`, `--motion-*`, colour roles.
+//   Existing public token names (`--shape-*`, `--elevation-*`, `--motion-fast`,
+//   `--motion-standard`, `--ease`, `--user-radius`, `--widget-*`) are preserved so
+//   nothing silently breaks; the new scales are additive.
+
+:root {
+  /* ---- user + environment multipliers ---------------------------------- */
+  --ui-scale: 1;   /* interface scale preference (structural sizes)        */
+  --font-scale: 1; /* text scale preference (drives the rem root below)    */
+  --widget-density: 1; /* widget content-density multiplier (1 = default)   */
+
+  /* ---- spacing scale (structural, scales with --ui-scale) -------------- */
+  --space-0: 0px;
+  --space-1: calc(1px * var(--ui-scale));
+  --space-2: calc(2px * var(--ui-scale));
+  --space-3: calc(3px * var(--ui-scale));
+  --space-4: calc(4px * var(--ui-scale));
+  --space-5: calc(5px * var(--ui-scale));
+  --space-6: calc(6px * var(--ui-scale));
+  --space-7: calc(7px * var(--ui-scale));
+  --space-8: calc(8px * var(--ui-scale));
+  --space-9: calc(9px * var(--ui-scale));
+  --space-10: calc(10px * var(--ui-scale));
+  --space-11: calc(11px * var(--ui-scale));
+  --space-12: calc(12px * var(--ui-scale));
+  --space-13: calc(13px * var(--ui-scale));
+  --space-14: calc(14px * var(--ui-scale));
+  --space-15: calc(15px * var(--ui-scale));
+  --space-16: calc(16px * var(--ui-scale));
+  --space-17: calc(17px * var(--ui-scale));
+  --space-18: calc(18px * var(--ui-scale));
+  --space-19: calc(19px * var(--ui-scale));
+  --space-20: calc(20px * var(--ui-scale));
+  --space-22: calc(22px * var(--ui-scale));
+  --space-24: calc(24px * var(--ui-scale));
+  --space-26: calc(26px * var(--ui-scale));
+  --space-28: calc(28px * var(--ui-scale));
+  --space-30: calc(30px * var(--ui-scale));
+  --space-32: calc(32px * var(--ui-scale));
+  --space-36: calc(36px * var(--ui-scale));
+  --space-40: calc(40px * var(--ui-scale));
+  --space-44: calc(44px * var(--ui-scale));
+  --space-48: calc(48px * var(--ui-scale));
+  --space-56: calc(56px * var(--ui-scale));
+  --space-64: calc(64px * var(--ui-scale));
+  --space-80: calc(80px * var(--ui-scale));
+
+  /* semantic space aliases (preferred in new code) */
+  --space-3xs: var(--space-4);
+  --space-2xs: var(--space-6);
+  --space-xs: var(--space-8);
+  --space-sm: var(--space-10);
+  --space-md: var(--space-12);
+  --space-lg: var(--space-16);
+  --space-xl: var(--space-20);
+  --space-2xl: var(--space-24);
+  --space-3xl: var(--space-32);
+  --space-4xl: var(--space-48);
+
+  /* ---- shape / radius scale -------------------------------------------- */
+  --shape-xs: calc(4px * var(--ui-scale));
+  --shape-sm: calc(8px * var(--ui-scale));
+  --shape-md: calc(12px * var(--ui-scale));
+  --shape-lg: calc(16px * var(--ui-scale));
+  --shape-xl: calc(24px * var(--ui-scale));
+  --shape-2xl: calc(28px * var(--ui-scale));
+  --shape-full: 999px;
+  /* radius aliases map onto the shape scale */
+  --radius-xs: var(--shape-xs);
+  --radius-sm: var(--shape-sm);
+  --radius-md: var(--shape-md);
+  --radius-lg: var(--shape-lg);
+  --radius-xl: var(--shape-xl);
+  --radius-2xl: var(--shape-2xl);
+  --radius-full: var(--shape-full);
+  /* Numeric radius ladder — one step for EVERY px radius value present in the
+     pre-migration stylesheets (verified against
+     artifacts/widget-reflow-final/UI/styles-LXNRV23W.css). Having an exact step
+     per value means mapping a radius literal to a token is always
+     value-preserving, so removing the literals cannot shift geometry. Radii ride
+     the same calc(Npx * --ui-scale) ladder as spacing, hence the aliases. */
+  --radius-3: var(--space-3);
+  --radius-4: var(--shape-xs); /* 4px */
+  --radius-5: var(--space-5);
+  --radius-6: var(--space-6);
+  --radius-8: var(--shape-sm); /* 8px */
+  --radius-9: var(--space-9);
+  --radius-10: var(--space-10);
+  --radius-11: var(--space-11);
+  --radius-12: var(--shape-md); /* 12px */
+  --radius-13: var(--space-13);
+  --radius-14: var(--space-14);
+  --radius-15: var(--space-15);
+  --radius-16: var(--shape-lg); /* 16px */
+  --radius-17: var(--space-17);
+  --radius-18: var(--space-18);
+  --radius-19: var(--space-19);
+  --radius-20: var(--space-20);
+  --radius-22: var(--space-22);
+  --radius-24: var(--shape-xl); /* 24px */
+  --radius-28: var(--shape-2xl); /* 28px */
+  /* keyword-equivalent radii: % values carry no px, but the token keeps the
+     corner story in one place. */
+  --radius-circle: 50%;
+  --radius-round: 100%;
+  /* --user-radius is the user's corner-rounding preference; components fall back
+     to it before their own default. */
+
+  /* ---- type scale (rem, driven by --font-scale via the html root) ------ */
+  --text-9: 0.5625rem;
+  --text-10: 0.625rem;
+  --text-11: 0.6875rem;
+  --text-12: 0.75rem;
+  --text-13: 0.8125rem;
+  --text-14: 0.875rem;
+  --text-15: 0.9375rem;
+  --text-16: 1rem;
+  --text-17: 1.0625rem;
+  --text-18: 1.125rem;
+  --text-19: 1.1875rem;
+  --text-20: 1.25rem;
+  --text-22: 1.375rem;
+  --text-24: 1.5rem;
+  --text-26: 1.625rem;
+  --text-28: 1.75rem;
+  --text-30: 1.875rem;
+  --text-32: 2rem;
+  --text-34: 2.125rem;
+  --text-36: 2.25rem;
+  --text-38: 2.375rem;
+  --text-40: 2.5rem;
+  --text-42: 2.625rem;
+  --text-44: 2.75rem;
+  --text-48: 3rem;
+  --text-52: 3.25rem;
+  --text-56: 3.5rem;
+  --text-64: 4rem;
+  --text-68: 4.25rem;
+  --text-72: 4.5rem;
+  --text-76: 4.75rem;
+  --text-80: 5rem;
+  --text-96: 6rem;
+  /* semantic type aliases */
+  --text-caption: var(--text-10);
+  --text-label: var(--text-11);
+  --text-body: var(--text-13);
+  --text-body-lg: var(--text-14);
+  --text-title: var(--text-20);
+  --text-headline: var(--text-32);
+
+  /* ---- layout chrome (structure; scales with --ui-scale) --------------- */
+  --chrome-titlebar: calc(44px * var(--ui-scale));
+  --chrome-rail: clamp(72px, calc(100px * var(--ui-scale)), 120px);
+  --chrome-nav-item: calc(84px * var(--ui-scale));
+  --chrome-nav-min: calc(64px * var(--ui-scale));
+  --chrome-appbar-min: calc(86px * var(--ui-scale));
+  --chrome-control: calc(44px * var(--ui-scale));
+  --chrome-handle: calc(14px * var(--ui-scale));
+  --chrome-grip: calc(36px * var(--ui-scale));
+  --chrome-tab: calc(40px * var(--ui-scale));
+  --chrome-brand: calc(48px * var(--ui-scale));
+  --chrome-nav-symbol-w: calc(58px * var(--ui-scale));
+  --chrome-nav-symbol-h: calc(34px * var(--ui-scale));
+  --chrome-rail-compact: calc(84px * var(--ui-scale));
+  --chrome-nav-item-compact: calc(72px * var(--ui-scale));
+  --chrome-inspector: calc(272px * var(--ui-scale));
+  --chrome-display-min: calc(210px * var(--ui-scale));
+  --chrome-control-sm: calc(34px * var(--ui-scale));
+  /* Board cap: the studio canvas is bounded by a fraction of the viewport height.
+     The floor keeps the canvas usable on short windows (the 1040x680 minimum would
+     otherwise shrink it to ~286px tall / ~508px wide); tall windows keep 42vh. */
+  --board-cap: clamp(340px, 42vh, 60vh);
+
+  /* ---- elevation (all box-shadow lives here) --------------------------- */
+  /* Verified byte-identical against the pre-migration production bundle
+     artifacts/widget-reflow-final/UI/styles-LXNRV23W.css so elevated surfaces
+     cannot regress. #0003 = 20% black, #0002 = 13.33% black, #00000010 = 6.27%. */
+  --elevation-1: 0 1px 3px #0003, 0 1px 2px #0002;
+  --elevation-2: 0 2px 6px #0003, 0 1px 2px #0002;
+  --elevation-3: 0 4px 8px #0003, 0 2px 3px #0002;
+  --elevation-4: 0 6px 10px #0003, 0 2px 4px #0002;
+  --elevation-5: 0 8px 12px #0003, 0 4px 4px #0002;
+  --elevation-widget: 0 4px 18px #00000010;
+  --elevation-lifted: 0 1px 2px color-mix(in srgb, var(--mat-sys-shadow) 10%, transparent), 0 10px 28px color-mix(in srgb, var(--mat-sys-shadow) 7%, transparent);
+  --elevation-drop: 0 0 0 2px color-mix(in srgb, var(--mat-sys-surface), transparent 35%) inset;
+  --elevation-hairline: inset 0 0 0 1px color-mix(in srgb, var(--mat-sys-outline-variant) 45%, transparent);
+  --elevation-accent-inset: inset 0 0 0 2px var(--widget-accent);
+  --elevation-focus-ring: 0 0 0 5px color-mix(in srgb, var(--widget-accent) 15%, transparent);
+  --elevation-accent-ring: 0 0 0 3px color-mix(in srgb, var(--widget-accent) 15%, transparent);
+  --elevation-glow: 0 0 calc(40px * var(--glow, 0.1)) color-mix(in srgb, var(--mat-sys-primary), transparent 50%);
+
+  /* ---- z-index ladder (single ordered scale) --------------------------- */
+  --z-behind: -2;
+  --z-wallpaper: -1;
+  --z-content: 1;
+  --z-tile-meta: 2;
+  --z-grip: 3;
+  --z-handle: 5;
+  --z-handle-corner: 6;
+  --z-resize: 8;
+  --z-drop: 20;
+  --z-overlay: 50;
+  --z-modal: 80;
+
+  /* ---- motion ---------------------------------------------------------- */
+  --motion-instant: 100ms;
+  --motion-fast: 150ms;
+  --motion-control: 160ms; /* control state change (hover/press) */
+  --motion-standard: 220ms;
+  --motion-slow: 320ms;
+  --motion-ambient: 24s; /* long-running ambient scene loop (wallpaper) */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+  /* ---- semantic colour roles ------------------------------------------- */
+  /* Surface roles that depend on the active Material scheme. */
+  --surface-card: var(--mat-sys-surface-container-lowest);
+  --surface-inset: var(--mat-sys-surface-container-low);
+
+  /* Categorical widget accents (light / dark via color-scheme). */
+  --accent-mint: light-dark(#16745b, #83d9b8);
+  --accent-mint-soft: light-dark(#e0f4eb, #203c33);
+  --accent-on-mint: light-dark(#ffffff, #123528);
+  --accent-blue: light-dark(#2b6398, #9dcaff);
+  --accent-blue-soft: light-dark(#e7f0fd, #24364c);
+  --accent-violet: light-dark(#7250a4, #d4b5ff);
+  --accent-violet-soft: light-dark(#f0e7fc, #3c2e4c);
+  --accent-amber: light-dark(#946016, #f2cb7b);
+  --accent-amber-soft: light-dark(#fff0cc, #463a23);
+  --accent-rose: light-dark(#a84865, #ffaec6);
+  --accent-rose-soft: light-dark(#fce6ed, #482c37);
+  /* back-compat aliases used by widget styles */
+  --mint: var(--accent-mint);
+  --mint-soft: var(--accent-mint-soft);
+  --blue: var(--accent-blue);
+  --blue-soft: var(--accent-blue-soft);
+  --violet: var(--accent-violet);
+  --violet-soft: var(--accent-violet-soft);
+  --amber: var(--accent-amber);
+  --amber-soft: var(--accent-amber-soft);
+  --rose: var(--accent-rose);
+  --rose-soft: var(--accent-rose-soft);
+
+  /* Widget card surfaces (warm neutrals). */
+  --widget-surface: light-dark(#fffcf8, #242522);
+  --widget-surface-warm: light-dark(#fffbec, #57472d);
+
+  /* Overlays, scrims and neutrals. */
+  --color-overlay: rgb(0 0 0 / 53%);
+  --color-overlay-strong: rgb(0 0 0 / 60%);
+  --color-preview-surface: #222222;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --wallpaper-veil: rgb(0 0 0 / var(--wallpaper-dim, 0.3));
+}
+
+/* Reduced motion: zero the motion tokens instead of spraying important-overrides
+   over every element. Components that consume the motion tokens therefore stop
+   animating automatically. `prefers-reduced-motion` is honoured the same way. */
+html.reduced-motion,
+html.reduced-motion .reduced-motion {
+  --motion-instant: 0ms;
+  --motion-fast: 0ms;
+  --motion-control: 0ms;
+  --motion-standard: 0ms;
+  --motion-slow: 0ms;
+  --motion-ambient: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-instant: 0ms;
+    --motion-fast: 0ms;
+    --motion-control: 0ms;
+    --motion-standard: 0ms;
+    --motion-slow: 0ms;
+    --motion-ambient: 0s;
+  }
+}
+
+/* Dark-scheme card surfaces. */
+html[data-mode='dark'] {
+  --surface-card: var(--mat-sys-surface-container);
+  --surface-inset: var(--mat-sys-surface-container-high);
+}
+
+/* The rem root is the text-scale knob. 1rem = the browser's 16px base, so the
+   html root can safely be expressed in rem-derived px without recursion. */
+html {
+  font-size: calc(16px * var(--font-scale));
+}
+
+/* ---- app template utilities ---------------------------------------------
+   Plain-CSS helpers consumed by app.html. Each replaces a former inline
+   style= attribute; names describe the block's role, not the raw value.
+   Structural sizes ride the --ui-scale spacing tokens. */
+.dialog-field { margin-top: var(--space-20); }        /* create-profile name field */
+.app-list { margin-top: var(--space-20); }            /* open-window choices in the assign dialog */
+.app-choice { height: auto; min-height: var(--space-48); text-align: left; }
+.widget-preview { height: calc(380px * var(--ui-scale)); margin-top: var(--space-20); }
+.dialog-heading { margin-bottom: var(--space-20); }   /* game dialog header row */
+.guide-intro { margin-bottom: var(--space-20); }      /* connection guide intro copy */
