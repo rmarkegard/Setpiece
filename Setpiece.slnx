@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/Sensors/">
+    <Project Path="Sensors/Setpiece.Sensors.csproj" />
+  </Folder>
+  <Project Path="Setpiece.Tests/Setpiece.Tests.csproj" />
+  <Project Path="Setpiece/Setpiece.csproj" />
+</Solution>
