@@ -1,18 +1,18 @@
-# Setpiece — Your desktop. Composed.
+# Setpiece
 
-Arrange your Windows apps, widgets, and persistent browsers into saved workspaces. Build a layout in Studio, give it a name, and launch it when it’s time to work.
+Setpiece is a Windows workspace manager. Arrange applications, widgets, and persistent browser sessions into saved layouts, with a separate layout for each display.
 
 **[Explore Setpiece](https://rmarkegard.github.io/Setpiece/)** · [Build from source](#build-from-source) · [Report an issue](https://github.com/rmarkegard/Setpiece/issues) · [Contribute](CONTRIBUTING.md)
 
 [![Setpiece Studio showing display selection, a workspace canvas, and tile settings](docs/reveal/screenshots/luna-studio.png)](https://rmarkegard.github.io/Setpiece/)
 
-## A place for what you do
+## Features
 
 - **Arrange your apps.** Assign open Windows applications to movable, resizable tiles.
-- **Keep essentials close.** Add clocks, notes, and widgets alongside your work.
-- **Give browsing a home.** Named WebView2 browsers retain tabs across profiles, with optional fullscreen contained inside a tile.
-- **Make it yours.** Choose light or dark, an accent color, and a wallpaper for each profile.
-- **Return to your desktop.** Stop the workspace to restore original windows and taskbars.
+- **Widgets.** Add clocks, notes, and other widgets to a layout.
+- **Persistent browsers.** Named WebView2 browsers retain tabs across profiles, with optional fullscreen contained inside a tile.
+- **Appearance.** Choose light or dark, an accent color, and a wallpaper for each profile.
+- **Window restoration.** Stop the workspace to restore original windows and taskbars.
 
 Built with Angular Material, a .NET Windows host, and native window placement. The public repository currently provides source; the packaged archive is built locally using the instructions below.
 
@@ -83,4 +83,4 @@ The optional live checks use public weather/transit data and inspect local servi
 
 ## Project page
 
-The project site is live at [rmarkegard.github.io/Setpiece](https://rmarkegard.github.io/Setpiece/). Its source is [`docs/index.html`](docs/index.html), served from the `main` branch’s `/docs` folder without an external build step. The page includes the silent [20-second reveal video](docs/reveal/setpiece-reveal-20s.mp4), its poster, and the [screenshot gallery](docs/reveal/SCREENSHOTS.md).
+The project site is live at [rmarkegard.github.io/Setpiece](https://rmarkegard.github.io/Setpiece/). Its source is [`docs/index.html`](docs/index.html), served from the `main` branch’s `/docs` folder without an external build step. The page uses real application screenshots with product details and build instructions.
