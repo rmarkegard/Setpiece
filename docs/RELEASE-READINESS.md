@@ -1,6 +1,6 @@
 # Release readiness
 
-Updated 24 September 2026. The public source repository is `https://github.com/rmarkegard/Setpiece`. The project page is being published through GitHub Pages; no binary release archive has been uploaded.
+Updated 24 September 2026. The public repository `https://github.com/rmarkegard/Setpiece` has been created, but its source upload is waiting for GitHub write authorization. The project page is prepared but is not live; no binary release archive has been uploaded.
 
 ## Issue ledger
 
@@ -19,8 +19,8 @@ Updated 24 September 2026. The public source repository is `https://github.com/r
 | P2 | The shared-browser catalog could remain stale after a tab navigated until the main page was reloaded. | `BrowserSurface.Persist()` now notifies the host to emit the browser catalog; the UI refreshes the list on that event. Verified in final4: `Local preview` updated to the loopback URL without a page reload. | Resolved in the final4 source and package. |
 | P1 | No clean-machine install or second Windows build was available, so framework/runtime setup and first-run behavior on a separate account are not proven. | Documented the .NET 10 Desktop Runtime x64 and WebView2 Evergreen requirements and verified clean extraction/startup with an isolated profile on the current machine. | Open environment-dependent release check; a framework-dependent zip and documented prerequisites are ready, but this does not establish clean-machine installation or SmartScreen/signing behavior. |
 | P2 | The owner supplied a light, kinetic SaaS reveal as a loose style reference; the current 20-second MP4 is screenshot-led. | Added an optional motion direction to the reveal shot list, with native-capture and illustration guardrails. | Closed: the owner clarified that the reference is inspiration, not a required treatment; the existing 20-second reveal remains the deliverable. |
-| P2 | The working folder had no Git metadata at the start of this pass. | Initialized the local `main` repository, reviewed the intended source set, and created the public `rmarkegard/Setpiece` repository. | Resolved; source push and Pages deployment are in progress. |
-| P2 | The static reveal page needed an in-browser responsive review; direct `file://` navigation was rejected by browser policy. | Served only the local `docs/` folder on loopback and visually reviewed the page in a phone-width viewport, including its hero, embedded reveal player, integrated-browser and contained-fullscreen sections, setup, requirements, and license footer. | Local browser appearance verified with no clipping observed in reviewed sections. GitHub Pages is being configured from `main`/`docs`. |
+| P2 | The working folder had no Git metadata at the start of this pass. | Initialized the local `main` repository, reviewed the intended source set, and created the public `rmarkegard/Setpiece` repository. | Local source is ready; the source push and Pages deployment await GitHub write authorization. |
+| P2 | The static reveal page needed an in-browser responsive review; direct `file://` navigation was rejected by browser policy. | Served only the local `docs/` folder on loopback and visually reviewed the page in a phone-width viewport, including its hero, embedded reveal player, integrated-browser and contained-fullscreen sections, setup, requirements, and license footer. | Local browser appearance verified with no clipping observed in reviewed sections. The GitHub Pages site is not yet live. |
 
 ## License choice
 
@@ -48,7 +48,8 @@ The package is built locally by `tools/package-release.ps1`. Its current archive
 - [x] Prepare the static GitHub Pages source under `docs/`; validate local asset references, add sections explaining Setpiece’s integrated browser and fullscreen contained inside a workspace tile, and visually review the page at phone width through a loopback server. It embeds the reveal film and states the noncommercial license.
 - [x] Exercise selected interactive journeys listed in [verification](VERIFICATION.md) on the available Windows desktop; remaining environment-dependent journeys are listed below.
 - [x] Preview the landing page in a supported browser at phone width through loopback; responsive sections and footer were visually inspected.
-- [x] Create the public `rmarkegard/Setpiece` repository and publish the project page from `main`/`docs`.
+- [x] Create the public `rmarkegard/Setpiece` repository.
+- [ ] Push the source and publish the project page from `main`/`docs`; GitHub write authorization is pending.
 - [x] Inspect the local Git working tree and package archive for ignored data, debug symbols, logs, and developer-specific paths. The Windows release archive remains local and was not uploaded.
 
 ## Known limits
@@ -61,7 +62,7 @@ The app has been built and visually rendered in the available Windows environmen
 
 - **Prepared locally:** release zip, PolyForm Noncommercial license, contribution guide, isolated reveal profile/reset procedure, 16 reviewed screenshots, shot list, landing page, and silent 20-second reveal video.
 - **Evidence:** Windows production build passed with 0 .NET warnings/errors, 28 UI tests passed, 37 native checks passed; the final4 extracted package produced 16 screenshots with exit code 0; all 1,135 non-PDB app files match Release output; all 600 video frames decoded. Native UI verification covered profiles, browser behavior, tile assignment, app placement, workspace stop, and contained fullscreen using isolated data.
-- **Open:** clean-machine/runtime installation, multiple-profile and multi-tab restoration across restart, physical display changes, broader pointer/keyboard workflows, and external accounts/devices. The clean-machine check lacks a separate Windows environment (`WindowsSandbox.exe` is absent). The landing page passed local phone-width browser review and is published through GitHub Pages. The existing silent 20-second reveal is complete; the supplied video is reference only. The binary release archive remains local.
+- **Open:** clean-machine/runtime installation, multiple-profile and multi-tab restoration across restart, physical display changes, broader pointer/keyboard workflows, and external accounts/devices. The clean-machine check lacks a separate Windows environment (`WindowsSandbox.exe` is absent). The landing page passed local phone-width browser review; GitHub Pages publication is pending. The existing silent 20-second reveal is complete; the supplied video is reference only. The binary release archive remains local.
 - **Higher-model assignments:** none.
 
 

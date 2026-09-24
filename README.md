@@ -67,7 +67,7 @@ The optional live checks use public weather/transit data and inspect local servi
 
 ## Project page
 
-The project site is published at [rmarkegard.github.io/Setpiece](https://rmarkegard.github.io/Setpiece/). Its source is [`docs/index.html`](docs/index.html), deployed from the `main` branch’s `/docs` folder without an external build step. The page includes the silent [20-second reveal video](docs/reveal/setpiece-reveal-20s.mp4), its poster, and the [screenshot gallery](docs/reveal/SCREENSHOTS.md).
+The project site is prepared for publishing at [rmarkegard.github.io/Setpiece](https://rmarkegard.github.io/Setpiece/). Its source is [`docs/index.html`](docs/index.html), intended for deployment from the `main` branch’s `/docs` folder without an external build step. The page includes the silent [20-second reveal video](docs/reveal/setpiece-reveal-20s.mp4), its poster, and the [screenshot gallery](docs/reveal/SCREENSHOTS.md).
 
 ## Assets
 
