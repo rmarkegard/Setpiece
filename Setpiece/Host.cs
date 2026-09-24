@@ -19,6 +19,7 @@ internal sealed class Host : Form
     private JsonObject? active;
     private bool launched;
     private bool closingConfirmed;
+    private ReleaseUpdate? pendingUpdate;
     internal string? AuditOutput;
     public Host(Storage storage)
     {
@@ -101,6 +102,16 @@ internal sealed class Host : Form
             case "bootstrap":
                 var profiles=storage.Profiles();foreach(var entry in profiles.OfType<JsonObject>())if(entry["profile"] is JsonObject stored)ResolveDisplays(stored);
                 return new JsonObject { ["profiles"] = profiles, ["displays"] = Windows.Displays(), ["preferences"] = storage.Preferences(), ["connections"] = providers.PublicSettings(), ["browsers"] = BrowserCatalog(), ["executable"] = Environment.ProcessPath, ["dataRoot"] = storage.Root, ["runtime"] = environment?.BrowserVersionString, ["profile"] = active?.DeepClone() };
+            case "check-update":
+                pendingUpdate = await ReleaseUpdates.Check();
+                return new JsonObject { ["current"] = ReleaseUpdates.Current.ToString(3), ["latest"] = pendingUpdate?.Version.ToString(3), ["url"] = pendingUpdate?.Page.ToString() };
+            case "install-update":
+                if (pendingUpdate is null) throw new InvalidOperationException("Check for an update first.");
+                var update = pendingUpdate;
+                pendingUpdate = null;
+                await ReleaseUpdates.DownloadAndStart(update);
+                BeginInvoke(() => { closingConfirmed = true;Close(); });
+                return null;
             case "windows": return Windows.Visible();
             case "save": var savedProfile=Storage.Normalize(payload["profile"]!.AsObject(),false);StampDisplayNames(savedProfile);return JsonValue.Create(storage.SaveProfile(payload["key"]?.GetValue<string>(),savedProfile));
             case "delete": storage.DeleteProfile(payload["key"]!.GetValue<string>());return null;
