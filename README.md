@@ -76,7 +76,9 @@ For isolated testing, pass a separate directory with `--data-root "C:\path\to\te
 ## Verify and prepare a reveal
 
 ```powershell
-dotnet run --project Verification/Setpiece.Verification.csproj -c Release -- --live
+dotnet run --project Verification/Setpiece.Verification.csproj -c Release
+dotnet test Setpiece.Tests/Setpiece.Tests.csproj -c Release
+dotnet run --project Verification.Integration/Setpiece.Verification.Integration.csproj -c Release -- --live
 ```
 
 The optional live checks use public weather/transit data and inspect local service states; they do not authorize external accounts. For current build evidence and unverified environments, read [verification](docs/VERIFICATION.md) and [release readiness](docs/RELEASE-READINESS.md). The isolated [reveal setup and shot list](docs/reveal/SHOT-LIST.md) includes a reset procedure. [Phase 0](docs/PHASE-0.md) records the original architecture and requirements.

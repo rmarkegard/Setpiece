@@ -79,18 +79,4 @@ using var providers=new Providers(new Storage(Path.Combine(root,"services")));
 foreach(var service in new[]{"weather","ruter","google-calendar","discord","spotify","bambu-lab","email"})
 {var state=await providers.Read(service);Check(state["status"]?.GetValue<string>()=="disconnected",service+" has an explicit disconnected state without invented live data");}
 var settings=providers.PublicSettings();Check(!settings.ContainsKey("GoogleRefreshToken")&&!settings.ContainsKey("BambuAccessCode"),"Public connection settings exclude credentials");
-if(args.Contains("--brave"))
-{
-    var imported=BraveBookmarks.Import(store);var bookmarks=imported["items"]!.AsArray();
-    Check(bookmarks.Count>0&&bookmarks.All(b=>b?["url"] is not null),"Brave bookmark trees import from local profiles");
-    Check(bookmarks.All(b=>b?["icon"]?.GetValue<string>().StartsWith("data:image/",StringComparison.Ordinal)==true),"Every imported Brave bookmark has a local thumbnail");
-}
-if(args.Contains("--live"))
-{
-    Console.WriteLine("Live public-service checks (test data only):");
-    var weather=await providers.Connect(new JsonObject{["service"]="weather",["location"]="Oslo"});Check(weather["status"]?.GetValue<string>()=="ready"&&weather["data"]?["feelsLike"] is not null,"Open-Meteo location search and live forecast");
-    var stops=await providers.SearchStops("Oslo S");Check(stops.Count>0,"Entur stop search returns real stops");
-    var stop=stops[0]!;var departures=await providers.Connect(new JsonObject{["service"]="ruter",["stopId"]=stop["id"]!.DeepClone(),["stopName"]=stop["name"]!.DeepClone()});Check(departures["status"]?.GetValue<string>() is "ready" or "empty","Entur live departures return a valid state");
-    foreach(var service in new[]{"news","reddit","volume","battery","codex"}){var state=await providers.Read(service);Console.WriteLine("OBSERVED: "+service+" -> "+state["status"]+" · "+state["title"]);if(service=="codex")Console.WriteLine("OBSERVED: Codex windows="+(state["data"]?["codex"]?["windows"]?.AsArray().Count??0)+", OpenCode available="+state["data"]?["opencode"]?["available"]);}
-}
 Console.WriteLine($"{passed} native checks passed. Test files: {root}");

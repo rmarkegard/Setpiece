@@ -11,12 +11,24 @@ internal sealed class Storage
     public string ProfileFolder => Path.Combine(Root, "Profiles");
     private readonly JsonSerializerOptions formatting = new() { WriteIndented = true };
     private static readonly byte[] entropy = Encoding.UTF8.GetBytes("Setpiece.WidgetConnections.v1");
+    private static readonly object logGate = new();
     public Storage(string? dataRoot = null) => Root = Path.GetFullPath(dataRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Setpiece"));
     public void Log(string message)
     {
-        Directory.CreateDirectory(Root);
-        File.AppendAllText(Path.Combine(Root, "rebuild.log"), $"{DateTimeOffset.Now:O} {message}{Environment.NewLine}");
+        lock (logGate)
+        {
+            Directory.CreateDirectory(Root);
+            var path = Path.Combine(Root, "rebuild.log");
+            File.AppendAllText(path, $"{DateTimeOffset.Now:O} {message}{Environment.NewLine}");
+            const int limit = 256 * 1024;
+            if (new FileInfo(path).Length <= limit) return;
+            var bytes = File.ReadAllBytes(path);
+            var start = bytes.Length - limit;
+            while (start < bytes.Length && bytes[start++] != (byte)'\n') { }
+            File.WriteAllBytes(path, bytes[start..]);
+        }
     }
+    public void Log(string message, Exception error) => Log(message + ": " + error);
     public JsonArray Profiles()
     {
         var list = new JsonArray();
@@ -25,7 +37,7 @@ internal sealed class Storage
         {
             try { list.Add(new JsonObject { ["key"] = Path.GetFileNameWithoutExtension(file), ["profile"] = Normalize(ReadObject(file)) }); }
             catch (Exception error) when (error is IOException or JsonException or InvalidDataException)
-            { list.Add(new JsonObject { ["key"] = Path.GetFileNameWithoutExtension(file), ["error"] = "This profile could not be read. Its original file is preserved." }); Log($"Profile read failed ({error.GetType().Name})."); }
+            { list.Add(new JsonObject { ["key"] = Path.GetFileNameWithoutExtension(file), ["error"] = "This profile could not be read. Its original file is preserved." }); Log("Profile read failed", error); }
         }
         return list;
     }
@@ -63,6 +75,7 @@ internal sealed class Storage
             try { current = Connections(); }
             catch (Exception error) when (error is CryptographicException or JsonException or InvalidDataException)
             {
+                Log("Connection data could not be read; preserving a backup", error);
                 var backup = Path.Combine(Root, "connections.unreadable-" + DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmssfff") + ".dat");
                 File.Move(file, backup);
                 current = new JsonObject();
