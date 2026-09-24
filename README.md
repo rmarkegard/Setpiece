@@ -51,6 +51,16 @@ The source build is at `Setpiece/bin/Release/net10.0-windows/Setpiece.exe`. Keep
 
 It builds and verifies a local archive at `release/Setpiece-2.0.0-windows-x64.zip`. Use `-SkipBuild` only when the current Release output has already been built and verified. The script does not publish or upload the archive.
 
+To build the per-user Windows installer, install Inno Setup 6 and run:
+
+```powershell
+.\tools\package-installer.ps1
+```
+
+The script packages the same app and notices as the zip into `release/Setpiece-2.0.0-windows-x64-setup.exe`. Set `ISCC_PATH` if `ISCC.exe` is outside the usual install path. The installer creates Start menu and optional desktop shortcuts, and uninstall removes only the installed program files. The separate .NET Desktop and WebView2 runtimes remain prerequisites.
+
+Settings → Updates checks the latest published GitHub Release on demand. When a newer three-part version has a matching installer asset with a SHA-256 digest, Setpiece can download, verify, and launch it. A release maintainer must upload the installer under the generated filename; draft and prerelease releases are ignored. The installed app does not update silently.
+
 ## First use
 
 1. Create a profile in Studio and select a display.
