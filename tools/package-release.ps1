@@ -7,7 +7,10 @@ $releaseRoot = Join-Path $repoRoot 'release'
 $stagingParent = Join-Path $releaseRoot '.staging'
 $stageRoot = Join-Path $stagingParent 'package'
 $source = Join-Path $repoRoot 'Setpiece\bin\Release\net10.0-windows'
-$archive = Join-Path $releaseRoot 'Setpiece-2.0.0-windows-x64.zip'
+$project = [xml](Get-Content -LiteralPath (Join-Path $repoRoot 'Setpiece\Setpiece.csproj') -Raw)
+$version = [string]$project.Project.PropertyGroup.Version
+if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Setpiece.csproj must declare a three-part release version.' }
+$archive = Join-Path $releaseRoot "Setpiece-$version-windows-x64.zip"
 
 function Assert-ContainedPath([string]$Candidate, [string]$Parent) {
   $candidatePath = [IO.Path]::GetFullPath($Candidate).TrimEnd([IO.Path]::DirectorySeparatorChar)
