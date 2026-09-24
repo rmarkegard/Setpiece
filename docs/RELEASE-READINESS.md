@@ -1,8 +1,11 @@
 # Release readiness
 
-Updated 24 September 2026. The public repository `https://github.com/rmarkegard/Setpiece` has been created, but its source upload is waiting for GitHub write authorization. The project page is prepared but is not live; no binary release archive has been uploaded.
+
+Updated 24 September 2026. The public source repository is `https://github.com/rmarkegard/Setpiece`; the project page is live at `https://rmarkegard.github.io/Setpiece/` from the `main` branch’s `/docs` folder. The Windows binary release archive remains local and was not uploaded.
+
 
 ## Issue ledger
+
 
 | Priority | Symptom and evidence | Change | Status |
 |---|---|---|---|
@@ -19,22 +22,30 @@ Updated 24 September 2026. The public repository `https://github.com/rmarkegard/
 | P2 | The shared-browser catalog could remain stale after a tab navigated until the main page was reloaded. | `BrowserSurface.Persist()` now notifies the host to emit the browser catalog; the UI refreshes the list on that event. Verified in final4: `Local preview` updated to the loopback URL without a page reload. | Resolved in the final4 source and package. |
 | P1 | No clean-machine install or second Windows build was available, so framework/runtime setup and first-run behavior on a separate account are not proven. | Documented the .NET 10 Desktop Runtime x64 and WebView2 Evergreen requirements and verified clean extraction/startup with an isolated profile on the current machine. | Open environment-dependent release check; a framework-dependent zip and documented prerequisites are ready, but this does not establish clean-machine installation or SmartScreen/signing behavior. |
 | P2 | The owner supplied a light, kinetic SaaS reveal as a loose style reference; the current 20-second MP4 is screenshot-led. | Added an optional motion direction to the reveal shot list, with native-capture and illustration guardrails. | Closed: the owner clarified that the reference is inspiration, not a required treatment; the existing 20-second reveal remains the deliverable. |
-| P2 | The working folder had no Git metadata at the start of this pass. | Initialized the local `main` repository, reviewed the intended source set, and created the public `rmarkegard/Setpiece` repository. | Local source is ready; the source push and Pages deployment await GitHub write authorization. |
-| P2 | The static reveal page needed an in-browser responsive review; direct `file://` navigation was rejected by browser policy. | Served only the local `docs/` folder on loopback and visually reviewed the page in a phone-width viewport, including its hero, embedded reveal player, integrated-browser and contained-fullscreen sections, setup, requirements, and license footer. | Local browser appearance verified with no clipping observed in reviewed sections. The GitHub Pages site is not yet live. |
+| P2 | The working folder had no Git metadata at the start of this pass. | Initialized the local `main` repository, reviewed the intended source set, and created the public `rmarkegard/Setpiece` repository. | Resolved; source pushed to public `main`, and the page deployed through GitHub Pages. |
+| P2 | The static reveal page needed an in-browser responsive review; direct `file://` navigation was rejected by browser policy. | Served only the local `docs/` folder on loopback and visually reviewed the page in a phone-width viewport, including its hero, embedded reveal player, integrated-browser and contained-fullscreen sections, setup, requirements, and license footer. | Local browser appearance verified with no clipping observed in reviewed sections. The GitHub Pages deployment succeeded; the live page, reveal video, and screenshot images loaded from the public URL. |
+
 
 ## License choice
 
+
 The project source uses PolyForm Noncommercial License 1.0.0. It permits noncommercial use, modification, and distribution under its terms, but does not grant general commercial rights and is not an OSI-approved open-source license. The owner can offer a separate commercial license later. Anyone accepting contributions should keep in mind that this license is not a conventional OSI open-source license. No contributor copyright assignment or contributor license agreement is added here; see the [contribution guide](../CONTRIBUTING.md) for pull request terms.
+
 
 The license file is the canonical PolyForm text with no additional `Required Notice:` line. The project owner’s legal copyright attribution can be added later without changing the selected license. Bundled assets and libraries are separately governed by their upstream licenses; see [third-party notices](../THIRD-PARTY-NOTICES.md).
 
+
 ## Distribution contents
+
 
 The updated local package is a 46.82 MiB framework-dependent Windows x64 zip with 1,256 entries, built from `Setpiece/bin/Release/net10.0-windows` after the workspace restore-safety and feedback fixes. It includes the host, sensor helper, compiled UI and runtime assets, project license, third-party license texts, and notices. A fresh extraction of the final archive produced 16 successful WebView2 screenshots across eight curated scenes and both themes using an isolated `--offline-review` profile. A full SHA-256 comparison of the 1,135 non-PDB files in the extracted app folder found no missing, extra, or different files versus Release output. The package does not bundle .NET or WebView2 runtimes. The script excludes PDBs, `artifacts/`, `release/demo-data/`, browser profiles, build logs, caches, and developer tools.
 
+
 The package is built locally by `tools/package-release.ps1`. Its current archive is `release/Setpiece-2.0.0-windows-x64.zip`; the script verified 1,256 entries after the latest build. No installer, code-signing certificate, update service, or automatic runtime bootstrap is included.
 
+
 ## Acceptance checklist
+
 
 - [x] Windows Release build and documented automated checks pass on the available Windows 11 system.
 - [x] Current-build WebView2 screenshots were rendered from an isolated, offline review profile and inspected before copying into the public reveal folder.
@@ -49,21 +60,14 @@ The package is built locally by `tools/package-release.ps1`. Its current archive
 - [x] Exercise selected interactive journeys listed in [verification](VERIFICATION.md) on the available Windows desktop; remaining environment-dependent journeys are listed below.
 - [x] Preview the landing page in a supported browser at phone width through loopback; responsive sections and footer were visually inspected.
 - [x] Create the public `rmarkegard/Setpiece` repository.
-- [ ] Push the source and publish the project page from `main`/`docs`; GitHub write authorization is pending.
+- [x] Push the source and publish the project page from `main`/`docs`; the GitHub Pages deployment workflow completed successfully.
 - [x] Inspect the local Git working tree and package archive for ignored data, debug symbols, logs, and developer-specific paths. The Windows release archive remains local and was not uploaded.
+
 
 ## Known limits
 
+
 One saved profile and browser tab have been verified across a process restart: native UI showed My workspace and Local preview, then opened the saved URL and rendered the page in a contained browser window. A fresh profile also passed focused pointer drag/resize, keyboard movement, add/undo, and unsaved-close-prompt checks. Multiple-profile and multi-tab restoration remain unverified. The clean-machine install check is blocked by the lack of a separate Windows environment; `WindowsSandbox.exe` is not installed here.
 
-The app has been built and visually rendered in the available Windows environment. The curated eight-scene capture set succeeded from the final extracted package in both themes; the default restricted environment logged WebView2 child-process exits, while approved local execution completed capture. Native placement was exercised with a fresh Notepad window assigned to a workspace tile, launched, then stopped; an exact pre-assignment bounds baseline was not recorded. The landing page was visually reviewed in a phone-width browser viewport through loopback; it has not been published. Account integrations, printer and battery hardware, physical multi-monitor changes, mixed DPI, taskbar transitions, startup failure UI, multiple-profile and multi-tab restart persistence, and a clean-machine install remain unverified. Markets, Focus, and GitHub are previews; X/Twitter is retired. Public providers are not represented as connected in the reveal captures. See the [verification report](VERIFICATION.md) for details.
 
-## Goal checkpoint
-
-- **Prepared locally:** release zip, PolyForm Noncommercial license, contribution guide, isolated reveal profile/reset procedure, 16 reviewed screenshots, shot list, landing page, and silent 20-second reveal video.
-- **Evidence:** Windows production build passed with 0 .NET warnings/errors, 28 UI tests passed, 37 native checks passed; the final4 extracted package produced 16 screenshots with exit code 0; all 1,135 non-PDB app files match Release output; all 600 video frames decoded. Native UI verification covered profiles, browser behavior, tile assignment, app placement, workspace stop, and contained fullscreen using isolated data.
-- **Open:** clean-machine/runtime installation, multiple-profile and multi-tab restoration across restart, physical display changes, broader pointer/keyboard workflows, and external accounts/devices. The clean-machine check lacks a separate Windows environment (`WindowsSandbox.exe` is absent). The landing page passed local phone-width browser review; GitHub Pages publication is pending. The existing silent 20-second reveal is complete; the supplied video is reference only. The binary release archive remains local.
-- **Higher-model assignments:** none.
-
-
-
+The app has been built and visually rendered in the available Windows environment. The curated eight-scene capture set succeeded from the final extracted package in both themes; the default restricted environment logged WebView2 child-process exits, while approved local execution completed capture. Native placement was exercised with a fresh Notepad window assigned to a workspace tile, launched, then stopped; an exact pre-assignment bounds baseline was not recorded. The landing page was visually reviewed in a phone-width browser viewport through loopback and is now published through GitHub Pages. The live reveal video and screenshot images load from the public URL. Account integrations, printer and battery hardware, physical multi-monitor changes, mixed DPI, taskbar transitions, startup failure UI, multiple-profile and multi-tab restart persistence, and a clean-machine install remain unverified. Markets, Focus, and GitHub are previews; X/Twitter is retired. Public providers are not represented as connected in the reveal captures. See the [verification report](VERIFICATION.md) for details.
