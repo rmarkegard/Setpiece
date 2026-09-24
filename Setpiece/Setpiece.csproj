@@ -29,5 +29,5 @@
     <ItemGroup><SensorOutput Include="../Sensors/bin/$(Configuration)/net10.0-windows/**/*" /></ItemGroup>
     <Copy SourceFiles="@(SensorOutput)" DestinationFiles="@(SensorOutput->'$(TargetDir)Sensors/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
-  <ItemGroup><InternalsVisibleTo Include="Setpiece.Verification" /></ItemGroup>
+  <ItemGroup><InternalsVisibleTo Include="Setpiece.Verification" /><InternalsVisibleTo Include="Setpiece.Verification.Integration" /><InternalsVisibleTo Include="Setpiece.Tests" /></ItemGroup>
 </Project>
