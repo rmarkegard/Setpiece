@@ -85,7 +85,7 @@ internal sealed class Host : Form
                 var result = await (handler??HandleCommand)(request["command"]!.GetValue<string>(), request["payload"]?.AsObject() ?? new JsonObject());
                 if(!browser.IsDisposed)browser.CoreWebView2.PostWebMessageAsJson(new JsonObject { ["id"] = id, ["result"] = result }.ToJsonString());
             }
-            catch (Exception error) { storage.Log("Command failed: " + error.GetType().Name);if(!browser.IsDisposed)browser.CoreWebView2.PostWebMessageAsJson(new JsonObject { ["id"] = id, ["error"] = error.Message }.ToJsonString()); }
+            catch (Exception error) { storage.Log("Command failed", error);if(!browser.IsDisposed)browser.CoreWebView2.PostWebMessageAsJson(new JsonObject { ["id"] = id, ["error"] = error.Message }.ToJsonString()); }
         };
     }
     internal async Task<JsonNode?> HandleCommand(string command, JsonObject payload)
@@ -179,7 +179,7 @@ internal sealed class Host : Form
                     Windows.GetWindowThreadProcessId(handle,out var pid);using var process=Process.GetProcessById((int)pid);var title=new System.Text.StringBuilder(1024);Windows.GetWindowText(handle,title,title.Capacity);
                     tile["AssignedProcessName"]=process.ProcessName;tile["AssignedWindowTitle"]=title.ToString();windows!.Assign(tile["Id"]!.GetValue<string>(),handle.ToString(),bounds);Emit("profile",active);return;
                 }
-                catch(Exception error) when(error is ArgumentException or System.ComponentModel.Win32Exception or InvalidOperationException){windows!.ForgetPendingMove(handle);storage.Log("Automatic app assignment: "+error.GetType().Name);return;}
+                catch(Exception error) when(error is ArgumentException or System.ComponentModel.Win32Exception or InvalidOperationException){windows!.ForgetPendingMove(handle);storage.Log("Automatic app assignment",error);return;}
             }
         }
         windows!.ForgetPendingMove(handle);

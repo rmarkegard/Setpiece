@@ -26,7 +26,7 @@ internal static class Program
         }
         if (Refresh.TryStart(args, storage)) return;
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-        Application.ThreadException += (_, e) => { storage.Log(e.Exception.GetType().Name + ": " + e.Exception.Message);MessageBox.Show("Setpiece encountered a problem. Your saved files are preserved.\n" + e.Exception.Message, "Setpiece"); };
+        Application.ThreadException += (_, e) => { storage.Log("Unhandled UI exception", e.Exception);MessageBox.Show("Setpiece encountered a problem. Your saved files are preserved.\n" + e.Exception.Message, "Setpiece"); };
         using var host = new Host(storage);
         var auditIndex=Array.IndexOf(args,"--capture-suite");
         if(auditIndex>=0){if(dataIndex<0||args.Length<=auditIndex+1)throw new InvalidOperationException("Visual audit requires --data-root and an output folder.");host.AuditOutput=Path.GetFullPath(args[auditIndex+1]);}
@@ -42,7 +42,7 @@ internal static class Program
                     if (host.IsHandleCreated) host.BeginInvoke(() => { host.Show();if(host.WindowState == FormWindowState.Minimized)host.WindowState = FormWindowState.Normal;host.Activate();Windows.SetForegroundWindow(host.Handle); });
                 }
                 catch (OperationCanceledException) { break; }
-                catch (IOException error) { storage.Log("Activation pipe: " + error.GetType().Name); }
+                catch (IOException error) { storage.Log("Activation pipe", error); }
             }
         });
         Application.Run(host);
