@@ -52,18 +52,23 @@ internal static class Program
 
 internal static class Refresh
 {
+    internal static bool IsDue(string[] args, string directory, string? devFlag)
+    {
+        if (args.Contains("--skip-production-refresh")) return false;
+        var marker = Path.Combine(directory, "setpiece.dev");
+        if (devFlag != "1" && !File.Exists(marker)) return false;
+        var stamp = Path.Combine(directory, "production.stamp");
+        return devFlag == "1" || File.GetLastWriteTimeUtc(marker) > (File.Exists(stamp) ? File.GetLastWriteTimeUtc(stamp) : DateTime.MinValue);
+    }
+
     public static bool TryStart(string[] args, Storage storage)
     {
         if (args.Contains("--skip-production-refresh")) { storage.Log("Production refresh skipped by flag.");return false; }
+        if (!IsDue(args, AppContext.BaseDirectory, Environment.GetEnvironmentVariable("SETPIECE_DEV"))) return false;
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "build.ps1"))) directory = directory.Parent;
         if (directory is null) return false;
-        var root = directory.FullName;var executable = Environment.ProcessPath!;var stamp=Path.Combine(AppContext.BaseDirectory,"production.stamp");var built=File.GetLastWriteTimeUtc(File.Exists(stamp)?stamp:executable);
-        var newer = new[] { "Setpiece", "Sensors", "UI/src", "UI/public" }.SelectMany(folder => Directory.EnumerateFiles(Path.Combine(root, folder), "*", SearchOption.AllDirectories))
-            .Where(file => !file.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar) && !file.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar))
-            .Concat(new[]{"build.ps1","UI/package.json","UI/angular.json","UI/tsconfig.json","Directory.Build.targets"}.Select(file=>Path.Combine(root,file)).Where(File.Exists))
-            .Any(file => File.GetLastWriteTimeUtc(file) > built);
-        if (!newer) return false;
+        var root = directory.FullName;
         var start = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = root };
         foreach (var value in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", Path.Combine(root, "build.ps1"), "-Relaunch", "-WaitForProcess", Environment.ProcessId.ToString(), "-DataRoot", storage.Root }) start.ArgumentList.Add(value);
         Process.Start(start);storage.Log("Production rebuild requested; canonical relaunch follows a successful build.");return true;
