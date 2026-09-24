@@ -1,36 +1,3 @@
-/*******************************************************************************
-
-    uBlock Origin - a browser extension to block requests.
-    Copyright (C) 2019-present Raymond Hill
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see {http://www.gnu.org/licenses/}.
-
-    Home: https://github.com/gorhill/uBlock
-*/
-
-(function() {
-    'use strict';
-    const noopfn = function() {
-    };
-    window.cxApi = {
-        chooseVariation: function() {
-            return 0;
-        },
-        getChosenVariation: noopfn,
-        setAllowHash: noopfn,
-        setChosenVariation: noopfn,
-        setCookiePath: noopfn,
-        setDomainName: noopfn
-        };
-})();
+version https://git-lfs.github.com/spec/v1
+oid sha256:b1bdb8c30c6744be3c68bba5de49df7a2f04d3d8b295f0a26ab1ade5af738139
+size 1230

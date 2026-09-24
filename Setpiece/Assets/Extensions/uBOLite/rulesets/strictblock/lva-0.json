@@ -1,30 +1,3 @@
-[
-{
- "action": {
-  "redirect": {
-   "regexSubstitution": "/strictblock.html#\\0"
-  },
-  "type": "redirect"
- },
- "condition": {
-  "regexFilter": "^https?://.*",
-  "requestDomains": [
-   "a.draugiem.lv",
-   "admp-tc.delfi.lv",
-   "b.itvnet.lv",
-   "banners.zl.lv",
-   "ecompics.power.oho.lv",
-   "h.itvnet.lv",
-   "promo.boomtime.lv",
-   "r.inbox.lv",
-   "rembi.lv",
-   "w.ifrype.com"
-  ],
-  "resourceTypes": [
-   "main_frame"
-  ]
- },
- "id": 1,
- "priority": 29
-}
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:309f749145fd9ff76e97f7be85df803b31bd9a5276e55799f329ec717d339b86
+size 463

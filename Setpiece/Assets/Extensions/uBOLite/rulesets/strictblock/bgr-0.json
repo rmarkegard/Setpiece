@@ -1,25 +1,3 @@
-[
-{
- "action": {
-  "redirect": {
-   "regexSubstitution": "/strictblock.html#\\0"
-  },
-  "type": "redirect"
- },
- "condition": {
-  "regexFilter": "^https?://.*",
-  "requestDomains": [
-   "a.actualno.com",
-   "adsy.mail.bg",
-   "b.grabo.bg",
-   "com.nxtras.banner.imagerotator",
-   "profitshare.bg"
-  ],
-  "resourceTypes": [
-   "main_frame"
-  ]
- },
- "id": 1,
- "priority": 29
-}
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:ab2ec79af020f43737c193cdb9bcb04c24ae4c88ae182e293ee622662f00bcee
+size 376

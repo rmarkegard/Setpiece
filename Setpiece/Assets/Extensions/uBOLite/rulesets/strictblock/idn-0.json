@@ -1,29 +1,3 @@
-[
-{
- "action": {
-  "redirect": {
-   "regexSubstitution": "/strictblock.html#\\0"
-  },
-  "type": "redirect"
- },
- "condition": {
-  "regexFilter": "^https?://.*",
-  "requestDomains": [
-   "driverhugoverblown.com",
-   "earmuffpostnasalrisotto.com",
-   "investopedia.today",
-   "klik.zeus.fun",
-   "klik4.me",
-   "lockerimage.com",
-   "lolhello.com",
-   "macory.com",
-   "shortbioo.com"
-  ],
-  "resourceTypes": [
-   "main_frame"
-  ]
- },
- "id": 1,
- "priority": 29
-}
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:22d3c0f1ee85cb40563006ad2d60d2aff31cab3d124a72de50b87a01c4618626
+size 462

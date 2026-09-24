@@ -1,20 +1,3 @@
-[
- {
-  "re": "^[^:]+://(?:[^/]+\\.)?l\\.facebook\\.com/l\\.php\\?u=",
-  "steps": [
-   "?u"
-  ]
- },
- {
-  "re": "^[^:]+://(?:[^/]+\\.)?l\\.instagram\\.com/\\?u=",
-  "steps": [
-   "?u"
-  ]
- },
- {
-  "re": "^[^:]+://(?:[^/]+\\.)?urldefense\\.com/v.*?/__http",
-  "steps": [
-   "/__(.*)__;!!/"
-  ]
- }
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:1405d6768ead3629262a2ddb82ff99f94222674e82f5d65e8f1b0caaf3b08b17
+size 295

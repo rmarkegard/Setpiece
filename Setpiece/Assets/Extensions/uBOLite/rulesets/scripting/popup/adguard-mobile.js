@@ -1,31 +1,3 @@
-/*******************************************************************************
-
-    uBlock Origin Lite - a comprehensive, MV3-compliant content blocker
-    Copyright (C) 2026-present Raymond Hill
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see {http://www.gnu.org/licenses/}.
-
-    Home: https://github.com/gorhill/uBlock
-*/
-
-// Important!
-// Isolate from global scope
-(function uBOL_preventPopup() {
-
-    const details = {"id":"adguard-mobile","block":{"hostnames":[],"regexes":["hoiplay","[{\"re\":\"^[^:]+:\\\\/\\\\/([^:/]+\\\\.)?hoiplay\\\\.com\\\\/tm_popup\\\\.html\",\"f\":\"i\"}]"]},"allow":{"hostnames":[],"regexes":[]}};
-
-    self.preventPopupDetails = self.preventPopupDetails || [];
-    self.preventPopupDetails.push(details);
-
-})();
+version https://git-lfs.github.com/spec/v1
+oid sha256:e8a84a77ca16380a85b2befb1195de627d029e96c3c69859f69bb4a52d14c921
+size 1319

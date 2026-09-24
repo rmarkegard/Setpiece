@@ -1,24 +1,3 @@
-[
-{
- "action": {
-  "redirect": {
-   "extensionPath": "/web_accessible_resources/empty"
-  },
-  "type": "redirect"
- },
- "condition": {
-  "initiatorDomains": [
-   "yandex.by",
-   "yandex.kz",
-   "yandex.ru",
-   "yandex.uz"
-  ],
-  "regexFilter": "^https?:\\/\\/yastatic\\.net\\/www\\/_\\/[^\\s]{150,}",
-  "resourceTypes": [
-   "image"
-  ]
- },
- "id": 1,
- "priority": 11
-}
-]
+version https://git-lfs.github.com/spec/v1
+oid sha256:a4f8d8ccfeff840dd777e556197f2a8937ecb47d39af4152a73ed959f28506f2
+size 369

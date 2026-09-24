@@ -1,1 +1,3 @@
-{"rulesetId":"adguard-spyware-url","selectors":[".hello_from_adguard_tracking_params"],"selectorLists":["0"],"selectorListRefs":[0,0,0],"hostnames":["adguard.app","adguard.com","adguard.info"],"hasEntities":false,"regexes":[]}
+version https://git-lfs.github.com/spec/v1
+oid sha256:0de82d5dc10cf0d6d5e780d2149176fd624b499ef4fe1eac5d07fd99b1e33749
+size 226
