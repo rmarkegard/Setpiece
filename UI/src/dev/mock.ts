@@ -8,8 +8,17 @@ type Listener=(event:MessageEvent)=>void;
 
 export function installMock(){
   const query=new URLSearchParams(location.search);
-  if(!query.has('mock')||window.chrome?.webview)return;
+  // ?mock takes over even inside WebView2, so dev captures can run without the native host.
+  if(!query.has('mock'))return;
   (window as unknown as {setpieceAssetBase:string}).setpieceAssetBase='/dev-assets/';
+  // ?mockTime=10:24 starts the clock at that time of day, for repeatable screenshots.
+  const time=/^(\d{1,2}):(\d{2})$/.exec(query.get('mockTime')??'');
+  if(time){
+    const RealDate=Date,start=new RealDate();start.setHours(Number(time[1]),Number(time[2]),0,0);
+    const offset=start.getTime()-RealDate.now();
+    class ShiftedDate extends RealDate{constructor(...args:unknown[]){if(args.length)super(...(args as [number]));else super(RealDate.now()+offset);}static override now(){return RealDate.now()+offset;}}
+    window.Date=ShiftedDate as DateConstructor;
+  }
 
   const listeners=new Set<Listener>();
   const emit=(message:unknown)=>setTimeout(()=>{for(const listener of listeners)listener({data:message} as MessageEvent);},0);
@@ -18,7 +27,8 @@ export function installMock(){
   const forced=query.get('mockState');
   const saved:{key:string;profile:Profile}[]=[{key:'setpiece-reveal',profile:fixtures.sampleProfile()},{key:'deep-focus',profile:fixtures.focusProfile()}];
   let active=structuredClone(saved[0].profile);
-  let preferences={...defaultAppearance,mode:query.get('mode')==='light'?'light':'dark'};
+  const accent=query.get('accent');
+  let preferences={...defaultAppearance,mode:query.get('mode')==='light'?'light':'dark',accent:accent&&/^[0-9a-f]{6}$/i.test(accent)?'#'+accent:defaultAppearance.accent};
   let note='Pick up the new keyboard switches.\nCall Mira about the reveal.';
   let game={salvage:140,level:3,armor:1,power:2,engine:0,last:Date.now()-45*60000};
   const browserState={name:query.get('browser')??'Media',selected:'t1',tabs:[{id:'t1',title:'YouTube',url:'https://www.youtube.com/'},{id:'t2',title:'Material Design 3',url:'https://m3.material.io/'}],url:'https://www.youtube.com/',pinned:true,back:true,forward:false,extension:'uBlock Origin Lite 2025.1',runtime:'140.0.3485.54'};
@@ -59,7 +69,7 @@ export function installMock(){
     'brave-bookmarks':()=>({count:fixtures.bookmarks.length,items:fixtures.bookmarks}),'brave-bookmarks-read':()=>({items:fixtures.bookmarks})
   };
 
-  window.chrome={webview:{
+  window.chrome={...window.chrome,webview:{
     addEventListener:(_name:string,callback:Listener)=>listeners.add(callback),
     postMessage:(message:unknown)=>{
       const {id,command,payload}=message as {id:number;command:string;payload:any};

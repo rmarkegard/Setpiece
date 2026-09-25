@@ -1,20 +1,67 @@
 # Setpiece
 
-Setpiece is a Windows workspace manager. Arrange applications, widgets, and persistent browser sessions into saved layouts, with a separate layout for each display.
+Setpiece is a Windows workspace manager. It tiles your apps, live widgets and persistent browsers into saved layouts, one for each display, and launches the whole desk in one click. The interface is Material 3 Expressive, in light or dark, and colored by a single accent of your choice.
 
 **[Explore Setpiece](https://rmarkegard.github.io/Setpiece/)** · [Build from source](#build-from-source) · [Report an issue](https://github.com/rmarkegard/Setpiece/issues) · [Contribute](CONTRIBUTING.md)
 
-[![Setpiece Studio showing display selection, a workspace canvas, and tile settings](docs/reveal/screenshots/luna-studio.png)](https://rmarkegard.github.io/Setpiece/)
+<a href="https://rmarkegard.github.io/Setpiece/">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/light-studio.png">
+    <img src="docs/screenshots/dark-studio.png" alt="Setpiece Studio: a display with a code editor tile and live Clock, Weather, Spotify and System widgets, next to the tile inspector.">
+  </picture>
+</a>
+
+## A quick look
+
+<table>
+  <tr>
+    <td width="50%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/light-widgets.png"><img src="docs/screenshots/dark-widgets.png" alt="The widget library with category filters and setup status."></picture><br><b>Widgets.</b> Every widget and its connection in one library.</td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/light-dialog.png"><img src="docs/screenshots/dark-dialog.png" alt="A widget's dialog with a live preview next to its settings."></picture><br><b>Setup.</b> A live preview beside each widget's settings.</td>
+  </tr>
+  <tr>
+    <td width="50%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/light-browsers.png"><img src="docs/screenshots/dark-browsers.png" alt="The Browsers page with named browsers and Brave bookmarks."></picture><br><b>Browsers.</b> Named sessions you can open anywhere or put in a tile.</td>
+    <td width="50%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/light-appearance.png"><img src="docs/screenshots/dark-appearance.png" alt="The Appearance page with mode, accent and surface controls and a live preview."></picture><br><b>Appearance.</b> One accent, light or dark, and a wallpaper per workspace.</td>
+  </tr>
+</table>
+
+## Widgets
+
+Sixteen widgets, each colored from your accent by category, with a shape of its own: **Daily** (Clock, Calendar, Weather, Ruter, Notes), **Connected** (Spotify, Discord, Inbox, VG News, Reddit), **Device** (System, Battery, Volume, AI Usage, Bambu Lab) and **Play** (Scrapbots). Each adapts to the size of its tile, and each is set up once for every workspace.
+
+<p>
+  <picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/widgets/light-clock.png"><img src="docs/screenshots/widgets/dark-clock.png" width="24%" alt="Clock widget"></picture>
+  <picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/widgets/light-weather.png"><img src="docs/screenshots/widgets/dark-weather.png" width="24%" alt="Weather widget"></picture>
+  <picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/widgets/light-spotify.png"><img src="docs/screenshots/widgets/dark-spotify.png" width="24%" alt="Spotify widget"></picture>
+  <picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/widgets/light-system.png"><img src="docs/screenshots/widgets/dark-system.png" width="24%" alt="System widget"></picture>
+</p>
+
+## Shared browsers, and fullscreen inside a tile
+
+Put a named browser (Media, Research, Music) in any tile. Each keeps its own tabs, sign-ins and playback across every workspace, with a slim toolbar for tabs, the address and your Brave bookmarks. Web pages get no access to Setpiece, and uBlock Origin Lite is built in.
+
+Turn on **Keep fullscreen inside the tile** for a browser tile, and fullscreen video, slides or games fill that tile instead of the whole monitor, so your widgets, chat and editor stay in view.
+
+<table>
+  <tr>
+    <td width="33%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/fullscreen/fullscreen-light-tiled.png"><img src="docs/screenshots/fullscreen/fullscreen-dark-tiled.png" alt="A browser tile playing a video next to Clock and Discord widgets."></picture><br><b>Tiled.</b> A video in its browser tile.</td>
+    <td width="33%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/fullscreen/fullscreen-light-in-tile.png"><img src="docs/screenshots/fullscreen/fullscreen-dark-in-tile.png" alt="The video fullscreen, filling only its tile; the widgets remain visible."></picture><br><b>Fullscreen in the tile.</b> The rest of the desk stays.</td>
+    <td width="33%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/fullscreen/fullscreen-light-whole-monitor.png"><img src="docs/screenshots/fullscreen/fullscreen-dark-whole-monitor.png" alt="Ordinary fullscreen, covering the whole monitor."></picture><br><b>Ordinary fullscreen.</b> Everything else is covered.</td>
+  </tr>
+</table>
+
+Try it interactively on the [project page](https://rmarkegard.github.io/Setpiece/#browsers).
 
 ## Features
 
-- **Arrange your apps.** Assign open Windows applications to movable, resizable tiles.
-- **Widgets.** Add clocks, weather, media, system and other widgets, each set up once from the widget library.
-- **Persistent browsers.** Named WebView2 browsers retain tabs across profiles, with optional fullscreen contained inside a tile.
-- **Appearance.** Material 3 Expressive, in light or dark, colored by one accent, with a wallpaper per workspace.
-- **Window restoration.** Stop the workspace to restore original windows and taskbars.
+- **Arrange your apps.** Assign open Windows apps to tiles; drag, resize, split and snap them on a live board. Drop a tile on another to swap them.
+- **Every display, its own layout.** Include the displays a workspace uses, portrait ones too, each at its real aspect ratio. Start from a layout preset, preview it, then apply.
+- **Widgets.** Sixteen live widgets with one setup flow, a live preview, and clear setup status.
+- **Shared browsers.** Named WebView2 sessions with persistent tabs and fullscreen contained inside a tile.
+- **Appearance.** Material 3 Expressive. Light or dark, one accent that recolors everything, surface and corner controls, and eleven wallpapers.
+- **Workspaces.** Save several, switch in one click, and never lose unsaved changes silently.
+- **Window restoration.** Stop the workspace, or close Setpiece, to restore original windows and taskbars.
 
-Built with Angular Material, a .NET Windows host, and native window placement. The public repository currently provides source; the packaged archive is built locally using the instructions below.
+Built with Angular Material, a .NET Windows host, and native window placement. The public repository currently provides source; the packaged archive is built locally using the instructions below. Screenshots come from the development preview, which runs the real interface with sample data.
 
 ## License
 
@@ -95,4 +142,6 @@ The optional live checks use public weather/transit data and inspect local servi
 
 ## Project page
 
-The project site is live at [rmarkegard.github.io/Setpiece](https://rmarkegard.github.io/Setpiece/). Its source is [`docs/index.html`](docs/index.html), served from the `main` branch’s `/docs` folder without an external build step. The page uses real application screenshots with product details and build instructions.
+The project site is live at [rmarkegard.github.io/Setpiece](https://rmarkegard.github.io/Setpiece/). Its source is [`docs/index.html`](docs/index.html) with `site.css` and `site.js`, served from the `main` branch's `/docs` folder without a build step. It follows the reader's light or dark preference (`?theme=light` or `?theme=dark` forces one) and includes an interactive fullscreen-in-a-tile demo.
+
+Screenshots in [`docs/screenshots`](docs/screenshots) come from the development preview, which runs the real interface against sample data. Start it with `pnpm start` in `UI`, then open `http://127.0.0.1:4200/?mock=1`. Useful parameters: `route=Widgets` (with `capture=1`), `mode=light`, `accent=517c60`, `mockTime=10:24`, `mockState=disconnected`, `widget=clock&surface=1` for a single widget, and `browser=Media` for the browser toolbar. The mock is replaced by a no-op in production builds. For wallpapers in the preview, link them once from the repository root: `New-Item -ItemType Junction UI\dev-assets -Target Setpiece\Assets\Wallpapers` (the link is git-ignored).
