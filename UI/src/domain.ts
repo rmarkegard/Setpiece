@@ -44,16 +44,16 @@ export const widgets:WidgetDefinition[] = [
 ];
 export const wallpaperNames = [
   'ambient',
-  // Monumental sci-fi
-  'monsoon-arcology','tidal-relay','saffron-orbit','cloud-sanctuary',
-  // Wild frontiers
-  'rainfall-valley','basalt-shore','glacier-signal','highland-crossing',
-  // Neon cities
-  'neon-rain','amber-megalith','midnight-transit','violet-harbor',
-  // Voxel worlds
-  'voxel-sunrise','voxel-canopy','voxel-frost','voxel-mesa',
-  // Sculptural abstracts
-  'prismatic-fold','terracotta-arc','liquid-chrome','opal-bloom',
+  // Organic futurism
+  'jade-synthesis','ceramic-resonance','amber-phase','mist-lattice',
+  // Weathered matter
+  'mineral-memory','carbon-tension','glacial-diffusion','moss-imprint',
+  // Nocturnal light
+  'chromatic-echo','sodium-haze','violet-interference','spectral-drift',
+  // Modular color
+  'modular-moss','pixel-cascade','cobalt-assembly','clay-mosaic',
+  // Material flow
+  'iridescent-pleats','peach-contour','mercury-flow','opal-suspension',
 ];
 export function newTile(x=0,y=0,w=1,h=1):Tile {
   return {Id:crypto.randomUUID(),Name:'Untitled tile',X:x,Y:y,Width:w,Height:h,ContentKind:'Application',WidgetId:'',WidgetArg:'',AssignedProcessName:'',AssignedWindowTitle:'',SharedWebName:'',ConstrainFullscreenToTile:false,Web:{Tabs:[],SelectedTabId:'',ToolbarPinned:true}};

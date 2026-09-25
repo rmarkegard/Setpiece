@@ -42,7 +42,7 @@ internal static class VisualAudit
         var stops=await providers.SearchStops("Jernbanetorget");
         if(stops.FirstOrDefault() is JsonObject stop)await providers.Connect(new JsonObject{["service"]="ruter",["stopId"]=stop["id"]!.DeepClone(),["stopName"]=stop["name"]!.DeepClone()});
         }
-        var profile=Storage.Normalize(new JsonObject{["Name"]="Setpiece Reveal",["MonitorIndex"]=0,["WallpaperId"]="monsoon-arcology",["AnimatedWallpaper"]=false,["Zones"]=new JsonArray(
+        var profile=Storage.Normalize(new JsonObject{["Name"]="Setpiece Reveal",["MonitorIndex"]=0,["WallpaperId"]="jade-synthesis",["AnimatedWallpaper"]=false,["Zones"]=new JsonArray(
             new JsonObject{["X"]=0d,["Y"]=0d,["Width"]=.5,["Height"]=1d},
             new JsonObject{["X"]=.5,["Y"]=0d,["Width"]=.5,["Height"]=.5,["ContentKind"]="Widget",["WidgetId"]="clock"},
             new JsonObject{["X"]=.5,["Y"]=.5,["Width"]=.5,["Height"]=.5,["ContentKind"]="Widget",["WidgetId"]="weather"})});

@@ -7,24 +7,24 @@ internal static class ProfileRules
     internal static readonly string[] WallpaperIds =
     [
         "ambient",
-        "monsoon-arcology","tidal-relay","saffron-orbit","cloud-sanctuary",
-        "rainfall-valley","basalt-shore","glacier-signal","highland-crossing",
-        "neon-rain","amber-megalith","midnight-transit","violet-harbor",
-        "voxel-sunrise","voxel-canopy","voxel-frost","voxel-mesa",
-        "prismatic-fold","terracotta-arc","liquid-chrome","opal-bloom",
+        "jade-synthesis","ceramic-resonance","amber-phase","mist-lattice",
+        "mineral-memory","carbon-tension","glacial-diffusion","moss-imprint",
+        "chromatic-echo","sodium-haze","violet-interference","spectral-drift",
+        "modular-moss","pixel-cascade","cobalt-assembly","clay-mosaic",
+        "iridescent-pleats","peach-contour","mercury-flow","opal-suspension",
     ];
     private static readonly Dictionary<string,string> LegacyWallpapers = new()
     {
-        ["fjord-glass"]="monsoon-arcology",
-        ["paper-horizon"]="terracotta-arc",
-        ["moss-geometry"]="voxel-canopy",
-        ["blue-hour"]="glacier-signal",
-        ["ember-grid"]="neon-rain",
-        ["slate-dunes"]="basalt-shore",
-        ["orchard-mist"]="rainfall-valley",
-        ["violet-current"]="prismatic-fold",
-        ["quiet-coast"]="tidal-relay",
-        ["mono-bloom"]="liquid-chrome",
+        ["fjord-glass"]="jade-synthesis",
+        ["paper-horizon"]="peach-contour",
+        ["moss-geometry"]="modular-moss",
+        ["blue-hour"]="glacial-diffusion",
+        ["ember-grid"]="chromatic-echo",
+        ["slate-dunes"]="mineral-memory",
+        ["orchard-mist"]="moss-imprint",
+        ["violet-current"]="violet-interference",
+        ["quiet-coast"]="ceramic-resonance",
+        ["mono-bloom"]="mercury-flow",
     };
     private const double Epsilon=.000001;
     internal static double Number(JsonObject source,string key,double fallback)

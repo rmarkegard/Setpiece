@@ -38,7 +38,7 @@ if (-not (Test-Path -LiteralPath $profile)) {
   $demoProfile = [ordered]@{
     Name = 'Setpiece Reveal'
     MonitorIndex = 0
-    WallpaperId = 'monsoon-arcology'
+    WallpaperId = 'jade-synthesis'
     AnimatedWallpaper = $false
     Zones = @(
       [ordered]@{ X = 0.0; Y = 0.0; Width = 0.5; Height = 1.0; Name = 'Workspace'; ContentKind = 'Application' }

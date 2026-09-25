@@ -24,16 +24,16 @@ foreach(var id in ProfileRules.WallpaperIds)
 }
 var legacyWallpapers=new Dictionary<string,string>
 {
-    ["fjord-glass"]="monsoon-arcology",
-    ["paper-horizon"]="terracotta-arc",
-    ["moss-geometry"]="voxel-canopy",
-    ["blue-hour"]="glacier-signal",
-    ["ember-grid"]="neon-rain",
-    ["slate-dunes"]="basalt-shore",
-    ["orchard-mist"]="rainfall-valley",
-    ["violet-current"]="prismatic-fold",
-    ["quiet-coast"]="tidal-relay",
-    ["mono-bloom"]="liquid-chrome",
+    ["fjord-glass"]="jade-synthesis",
+    ["paper-horizon"]="peach-contour",
+    ["moss-geometry"]="modular-moss",
+    ["blue-hour"]="glacial-diffusion",
+    ["ember-grid"]="chromatic-echo",
+    ["slate-dunes"]="mineral-memory",
+    ["orchard-mist"]="moss-imprint",
+    ["violet-current"]="violet-interference",
+    ["quiet-coast"]="ceramic-resonance",
+    ["mono-bloom"]="mercury-flow",
 };
 foreach(var (oldId,newId) in legacyWallpapers)
 {
