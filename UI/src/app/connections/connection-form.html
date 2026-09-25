@@ -92,7 +92,7 @@
     }
     @case('codex'){
       <mat-form-field><mat-label>codex.exe location (optional)</mat-label><input matInput [(ngModel)]="form['executable']" placeholder="Found automatically"><mat-hint>Leave blank to use your installed Codex.</mat-hint></mat-form-field>
-      <p class="body-small on-surface-variant">Sign in to Codex with ChatGPT first.</p>
+      <p class="body-small on-surface-variant">Sign in to Codex with ChatGPT first. Claude limits appear once you sign in to Claude Code.</p>
     }
     @case('system'){
       <p class="body-small on-surface-variant">The collector runs separately, so the main app never needs admin rights. Enabling it opens the Windows permission prompt. Temperature needs supported hardware.</p>

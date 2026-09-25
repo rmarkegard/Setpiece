@@ -27,7 +27,7 @@ export const widgets:WidgetDefinition[] = [
   {id:'google-calendar',name:'Calendar',icon:'calendar_month',category:'Daily',description:'Make room for what comes next.'},
   {id:'discord',name:'Discord',icon:'forum',category:'Connected',description:'Your community, at a glance.'},
   {id:'spotify',name:'Spotify',icon:'music_note',category:'Connected',description:'A little space for your soundtrack.'},
-  {id:'codex',name:'AI Usage',icon:'data_usage',category:'Device',description:'Codex quota and OpenCode activity.'},
+  {id:'codex',name:'AI Usage',icon:'data_usage',category:'Device',description:'Claude and Codex quotas, and OpenCode activity.'},
   {id:'weather',name:'Weather',icon:'partly_cloudy_day',category:'Daily',description:'A window onto the day outside.'},
   {id:'bambu-lab',name:'Bambu Lab',icon:'deployed_code',category:'Device',description:'Follow your next print on the A1 Mini.'},
   {id:'ruter',name:'Ruter',icon:'directions_bus',category:'Daily',description:'Your stop. Your next departure.'},

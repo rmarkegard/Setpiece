@@ -113,12 +113,12 @@ interface QuotaWindow {name?:string;minutes?:number;used:number;}
   imports:[DecimalPipe,MatProgressBarModule],
   template:`
     <div class="providers grow">
-      @for(provider of providers;track provider.key){
+      @for(provider of shown();track provider.key){
         <section>
           <span class="eyebrow"><span>{{provider.name}}</span></span>
           @for(window of windows(provider.key).slice(0,w.contentLimit());track $index){
             <div class="meter">
-              <span class="meter-label"><span>{{w.compact()?brief(label(window)):label(window)}}</span><span class="meter-value">{{window.used|number:'1.0-0'}}%</span></span>
+              <span class="meter-label"><span>{{w.compact()||shown().length>2?brief(label(window)):label(window)}}</span><span class="meter-value">{{window.used|number:'1.0-0'}}%</span></span>
               <mat-progress-bar [value]="window.used" [attr.aria-label]="provider.name+' '+label(window)"/>
             </div>
           } @empty {<p class="muted">Limits unavailable</p>}
@@ -127,7 +127,7 @@ interface QuotaWindow {name?:string;minutes?:number;used:number;}
     </div>`,
   styleUrl:'./body.scss',
   styles:`
-    .providers{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);align-content:center}
+    .providers{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:var(--space-4);align-content:center}
     section{display:flex;flex-direction:column;gap:var(--space-3);min-width:0}
     :host-context(.compact) .providers{gap:var(--space-3)}
     :host-context(.compact) section{gap:var(--space-2)}
@@ -135,7 +135,9 @@ interface QuotaWindow {name?:string;minutes?:number;used:number;}
 })
 export class UsageBody {
   readonly w=inject(WidgetContext);
-  readonly providers=[{key:'codex',name:'Codex'},{key:'go',name:'OpenCode'}];
+  readonly providers=[{key:'claude',name:'Claude'},{key:'codex',name:'Codex'},{key:'go',name:'OpenCode'}];
+  /** Providers with limits to show; all of them when none report any, so each says why. */
+  readonly shown=computed(()=>{const active=this.providers.filter(p=>this.windows(p.key).length);return active.length?active:this.providers;});
   brief(label:string){return ({'5 hours':'5h',Weekly:'Week',Monthly:'Month'} as Record<string,string>)[label]??label;}
   label(window:QuotaWindow){const name=String(window.name??'').toLowerCase();return window.minutes===300||name==='rolling'?'5 hours':window.minutes===10080||name==='weekly'?'Weekly':(window.minutes??0)>=40320||name==='monthly'?'Monthly':window.minutes?window.minutes/60+' hours':window.name??'';}
   windows(provider:string):QuotaWindow[]{return ((this.w.state().data?.[provider] as {windows?:QuotaWindow[]})?.windows??[]).filter(w=>['5 hours','Weekly','Monthly'].includes(this.label(w)));}

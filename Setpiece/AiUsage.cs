@@ -10,12 +10,33 @@ internal static class AiUsage
 {
     public static async Task<JsonObject> Read(HttpClient http,JsonObject settings)
     {
-        var codexTask=Codex(settings);var localTask=Task.Run(LocalOpenCode);var goTask=OpenCodeGo(http);
-        await Task.WhenAll(codexTask,localTask,goTask);
-        var codex=await codexTask;var local=await localTask;var go=await goTask;
-        var data=new JsonObject{["codex"]=codex,["opencode"]=local,["go"]=go};
-        var ready=codex["windows"]?.AsArray().Count>0||local["available"]?.GetValue<bool>()==true||go["windows"]?.AsArray().Count>0;
-        return Providers.State(ready?"ready":"disconnected","Room for your next idea","Codex limits and OpenCode activity",data:data);
+        var claudeTask=Claude(http);var codexTask=Codex(settings);var localTask=Task.Run(LocalOpenCode);var goTask=OpenCodeGo(http);
+        await Task.WhenAll(claudeTask,codexTask,localTask,goTask);
+        var claude=await claudeTask;var codex=await codexTask;var local=await localTask;var go=await goTask;
+        var data=new JsonObject{["claude"]=claude,["codex"]=codex,["opencode"]=local,["go"]=go};
+        var ready=claude["windows"]?.AsArray().Count>0||codex["windows"]?.AsArray().Count>0||local["available"]?.GetValue<bool>()==true||go["windows"]?.AsArray().Count>0;
+        return Providers.State(ready?"ready":"disconnected","Room for your next idea","Claude and Codex limits, OpenCode activity",data:data);
+    }
+    private static async Task<JsonObject> Claude(HttpClient http)
+    {
+        var result=new JsonObject{["status"]="Sign in to Claude Code to show its limits.",["windows"]=new JsonArray()};
+        var configured=Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR");
+        var directory=string.IsNullOrWhiteSpace(configured)?Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".claude"):configured;
+        var file=Path.Combine(directory,".credentials.json");if(!File.Exists(file))return result;
+        try
+        {
+            using var stream=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite);var auth=(await JsonNode.ParseAsync(stream))?["claudeAiOauth"];
+            var token=auth?["accessToken"]?.GetValue<string>();if(string.IsNullOrWhiteSpace(token))return result;
+            if(auth?["expiresAt"] is JsonValue expires&&expires.TryGetValue<long>(out var expiresAt)&&expiresAt<DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()){result["status"]="Claude sign-in expired. Open Claude Code to refresh it.";return result;}
+            using var request=new HttpRequestMessage(HttpMethod.Get,"https://api.anthropic.com/api/oauth/usage");request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);request.Headers.Add("anthropic-beta","oauth-2025-04-20");
+            using var response=await http.SendAsync(request);response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync());
+            var windows=new JsonArray();
+            foreach(var (key,minutes) in new[]{("five_hour",300),("seven_day",10080)})
+                if(data?[key] is JsonObject window&&window["utilization"] is JsonValue utilization&&utilization.TryGetValue<double>(out var used))
+                    windows.Add(new JsonObject{["name"]="claude",["used"]=Math.Clamp(used,0,100),["minutes"]=minutes,["resetText"]=window["resets_at"]?.DeepClone()});
+            return new JsonObject{["status"]=windows.Count>0?"Connected through Claude Code":"No Claude quota windows returned.",["windows"]=windows};
+        }
+        catch(Exception error) when(error is IOException or JsonException or InvalidOperationException or HttpRequestException or OperationCanceledException){result["status"]="Claude limits are unavailable. Open Claude Code, sign in, and retry.";return result;}
     }
     private static string? FindCodex(JsonObject settings)
     {

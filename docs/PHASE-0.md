@@ -150,7 +150,7 @@ Connection secrets remain native-side. OAuth uses a system-browser flow with sta
 | Google Calendar | Day context, next event and agenda, feed/OAuth states and exclusions |
 | Discord | Server/call context based on granted API capabilities, connection/retry state |
 | Spotify | Track/artwork, playback progress and permitted playback actions |
-| AI Usage | Separate Codex quota windows and Opencode activity, honest source timestamps |
+| AI Usage | Separate Claude and Codex quota windows and Opencode activity, honest source timestamps |
 | Weather | Conditions, location, hourly forecast and source state |
 | Bambu Lab A1 Mini | Print progress, temperatures, remaining time, camera where available |
 | Ruter | Stop search, chosen stop and live departures |

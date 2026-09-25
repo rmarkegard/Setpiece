@@ -29,7 +29,7 @@ export const serviceInfo:Record<string,ServiceInfo>={
   reddit:{service:'reddit',intro:'Pick a community to follow.',action:'Save',canDisconnect:true,status:c=>has(c['RedditCommunity'])?'connected':'needs-setup'},
   email:{service:'email',intro:'Read unread mail from Gmail or the classic Outlook desktop app.',action:'Save',canDisconnect:true,status:c=>c['InboxProvider']==='outlook'||c['GoogleConnected']?'connected':'needs-setup'},
   'bambu-lab':{service:'bambu-lab',intro:'Connect your printer over your local network.',action:'Connect',canDisconnect:true,status:c=>has(c['BambuHost'])?'connected':'needs-setup'},
-  codex:{service:'codex',intro:'Reads Codex limits through its local app server, and OpenCode activity from its database.',action:'Save',canDisconnect:false,status:()=>'ready'},
+  codex:{service:'codex',intro:'Reads Claude limits with your Claude Code sign-in, Codex limits through its local app server, and OpenCode activity from its database.',action:'Save',canDisconnect:false,status:()=>'ready'},
   system:{service:'system',intro:'CPU and memory work right away. GPU and temperature sensors need a separate collector.',action:'Enable sensors',canDisconnect:false,status:()=>'optional'},
   volume:{service:'volume',intro:'Change output volume and mute right in the widget. Pick devices in Windows Sound settings.',action:null,canDisconnect:false,status:()=>'ready'},
   battery:{service:'battery',intro:'Uses live Windows power information. Nothing to set up.',action:null,canDisconnect:false,status:()=>'ready'},
