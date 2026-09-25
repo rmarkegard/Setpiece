@@ -109,7 +109,7 @@ class App {
   colors(seed:string,dark:boolean){const roles=colorRoles(seed,dark);return {background:roles['surface-container'],color:roles['on-surface'],'--swatch':roles['primary'],'--swatch-container':roles['primary-container'],'--swatch-on':roles['on-primary'],'--preview-card':roles['surface-container-lowest']};}
   wallpaper(id:string){this.edit(p=>p.WallpaperId=id);}
   editAnimated(value:boolean){this.edit(p=>p.AnimatedWallpaper=value);}
-  wallpaperBackground(id:string){return id==='ambient'?'':`url("https://assets.setpiece.local/Wallpapers/${id}.png")`;}
+  wallpaperBackground(id:string){return id==='ambient'?'':`url("https://assets.setpiece.local/Wallpapers/${id}.jpg")`;}
   pretty(name:string){return name.split('-').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');}
   filteredWidgets(){return widgets.filter(w=>(this.filter()==='All'||w.category===this.filter())&&(w.name+' '+w.description).toLowerCase().includes(this.search.toLowerCase()));}
   widgetCount(id:string){return this.board().Zones.filter(t=>t.ContentKind==='Widget'&&t.WidgetId===id).length;}

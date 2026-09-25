@@ -42,7 +42,19 @@ export const widgets:WidgetDefinition[] = [
   {id:'github',name:'GitHub',icon:'⑂',category:'Preview',description:'Your contributions, in view.',preview:true},
   {id:'twitter',name:'X / Twitter',icon:'×',category:'Retired',description:'This integration has been retired.',retired:true}
 ];
-export const wallpaperNames = ['ambient','fjord-glass','paper-horizon','moss-geometry','blue-hour','ember-grid','slate-dunes','orchard-mist','violet-current','quiet-coast','mono-bloom'];
+export const wallpaperNames = [
+  'ambient',
+  // Monumental sci-fi
+  'monsoon-arcology','tidal-relay','saffron-orbit','cloud-sanctuary',
+  // Wild frontiers
+  'rainfall-valley','basalt-shore','glacier-signal','highland-crossing',
+  // Neon cities
+  'neon-rain','amber-megalith','midnight-transit','violet-harbor',
+  // Voxel worlds
+  'voxel-sunrise','voxel-canopy','voxel-frost','voxel-mesa',
+  // Sculptural abstracts
+  'prismatic-fold','terracotta-arc','liquid-chrome','opal-bloom',
+];
 export function newTile(x=0,y=0,w=1,h=1):Tile {
   return {Id:crypto.randomUUID(),Name:'Untitled tile',X:x,Y:y,Width:w,Height:h,ContentKind:'Application',WidgetId:'',WidgetArg:'',AssignedProcessName:'',AssignedWindowTitle:'',SharedWebName:'',ConstrainFullscreenToTile:false,Web:{Tabs:[],SelectedTabId:'',ToolbarPinned:true}};
 }

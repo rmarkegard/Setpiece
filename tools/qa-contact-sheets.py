@@ -27,5 +27,5 @@ for theme in ['terminal', 'luna']:
         for start in range(0, len(paths), count):
             sheet(paths[start:start + count], f'{theme}-{kind}-{start // count + 1}', columns, *size)
 
-sheet(sorted((root / 'Setpiece/Assets/Wallpapers').glob('*.png')), 'wallpapers', 2, 512, 288, True)
+sheet(sorted((root / 'Setpiece/Assets/Wallpapers').glob('*.jpg')), 'wallpapers', 4, 512, 288, True)
 print(output)
