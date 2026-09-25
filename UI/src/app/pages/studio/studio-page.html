@@ -1,0 +1,65 @@
+<div class="displays" role="list" aria-label="Displays">
+  @for(display of store.displays();track display.index){
+    @let state=displayState(display.index);
+    <div class="display" role="listitem" [attr.data-state]="state">
+      <button class="display-main" [disabled]="state==='available'" [attr.aria-pressed]="state==='editing'" (click)="store.display(display.index)">
+        <sp-icon [name]="display.height>display.width?'stay_current_portrait':'desktop_windows'" [filled]="state==='editing'"/>
+        <span class="copy">
+          <span class="label-large">Display {{display.index+1}}@if(display.primary){<span class="primary">Primary</span>}</span>
+          <span class="body-small">{{display.width}} × {{display.height}}</span>
+        </span>
+      </button>
+      @if(state==='available'){
+        <button matButton="tonal" class="include" (click)="store.includeDisplay(display.index)"><sp-icon name="add"/>Include</button>
+      } @else {
+        <button matIconButton class="exclude" [disabled]="store.profile().MonitorIndices.length===1" [matTooltip]="'Leave Display '+(display.index+1)+' out'" [attr.aria-label]="'Leave Display '+(display.index+1)+' out of this workspace'" (click)="store.excludeDisplay(display.index)"><sp-icon name="close"/></button>
+      }
+    </div>
+  }
+</div>
+
+<div class="studio">
+  <div class="canvas-column">
+    <div class="toolbar">
+      <div class="heading">
+        <h1 class="headline-small emphasized">Display {{store.board().MonitorIndex+1}}</h1>
+        <span class="count label-large">{{store.tiles().length}} of 20 tiles</span>
+      </div>
+      <div class="tools">
+        <button matButton="outlined" [matMenuTriggerFor]="layouts" [disabled]="!!store.preview()"><sp-icon name="dashboard_customize"/>Layouts</button>
+        <button matButton="tonal" [disabled]="!!store.preview()||store.tiles().length>=20" (click)="store.addTile()"><sp-icon name="add"/>Add tile</button>
+      </div>
+      <mat-menu #layouts="matMenu">
+        @for(item of presets;track item.kind){<button mat-menu-item (click)="choosePreset(item.kind)"><sp-icon [name]="item.icon"/><span>{{item.name}}</span></button>}
+      </mat-menu>
+    </div>
+
+    @if(store.preview()){
+      <div class="preview-bar" role="region" aria-label="Layout preview">
+        <sp-icon name="dashboard_customize" [filled]="true"/>
+        <div class="copy">
+          <strong class="title-small">Previewing {{presetName()}}</strong>
+          <span class="body-small">{{losing()?losing()+(losing()===1?' tile':' tiles')+' and their contents will be removed.':'Your tiles keep their contents, in order.'}}</span>
+        </div>
+        <div class="stepper" role="group" aria-label="Number of tiles">
+          <button matIconButton aria-label="Fewer tiles" [disabled]="store.presetCount()<=1" (click)="store.showPreset(store.presetKind(),store.presetCount()-1)"><sp-icon name="remove"/></button>
+          <span class="label-large">{{store.presetCount()}}</span>
+          <button matIconButton aria-label="More tiles" [disabled]="store.presetCount()>=20" (click)="store.showPreset(store.presetKind(),store.presetCount()+1)"><sp-icon name="add"/></button>
+        </div>
+        <button matButton (click)="store.preview.set(null)">Cancel</button>
+        <button matButton="filled" (click)="store.commitPreset()">Apply</button>
+      </div>
+    }
+
+    <sp-board-canvas/>
+
+    <div class="quick-add">
+      <span class="label-large on-surface-variant">Add to this display</span>
+      @for(widget of quickAdd;track widget.id){
+        <button class="assist" [disabled]="!!store.preview()" (click)="store.addWidget(widget.id)"><sp-icon [name]="widget.icon"/>{{widget.name}}</button>
+      }
+      <button class="assist" (click)="store.route.set('Widgets')"><sp-icon name="widgets"/>More widgets</button>
+    </div>
+  </div>
+  <sp-inspector/>
+</div>

@@ -1,0 +1,119 @@
+<div class="status" [attr.data-status]="status()">
+  <sp-icon [name]="statusIcon()" [filled]="true"/>
+  <span class="label-large">{{statusLabel()}}</span>
+</div>
+@if(info()?.intro){<p class="body-medium on-surface-variant intro">{{info()!.intro}}</p>}
+
+<div class="fields">
+  @switch(service()){
+    @case('weather'){
+      <mat-form-field><mat-label>City or place</mat-label><input matInput [(ngModel)]="form['location']" placeholder="Oslo"><mat-hint>Forecasts from Open-Meteo.</mat-hint></mat-form-field>
+    }
+    @case('ruter'){
+      <div class="search">
+        <mat-form-field><mat-label>Find a stop</mat-label><sp-icon matPrefix name="search"/><input matInput [(ngModel)]="form['query']" placeholder="Jernbanetorget" (keydown.enter)="searchStops()"></mat-form-field>
+        <button matButton="tonal" [disabled]="!form['query']?.trim()" (click)="searchStops()">Search</button>
+      </div>
+      @if(stops().length){
+        <div class="results" role="listbox" aria-label="Stops">
+          @for(stop of stops();track stop.id){<button role="option" (click)="chooseStop(stop)"><sp-icon name="signpost"/><span>{{stop.label||stop.name}}</span><sp-icon name="add"/></button>}
+        </div>
+      }
+      @if(form['stopName']){<div class="picked"><sp-icon name="check_circle" [filled]="true"/><span>{{form['stopName']}}</span></div>}
+    }
+    @case('calendar'){
+      <mat-form-field><mat-label>Private iCal address</mat-label><input matInput type="password" [(ngModel)]="form['feed']" autocomplete="off"><mat-hint>Google Calendar: Settings, Integrate calendar, Secret address in iCal format. Leave blank to keep the saved one.</mat-hint></mat-form-field>
+      <mat-form-field><mat-label>Hide events containing</mat-label><textarea matInput [(ngModel)]="form['exclusions']" rows="3"></textarea><mat-hint>One phrase per line. Not case sensitive.</mat-hint></mat-form-field>
+    }
+    @case('google'){
+      <mat-form-field><mat-label>Desktop app client ID</mat-label><input matInput [(ngModel)]="form['clientId']" autocomplete="off"></mat-form-field>
+      <mat-form-field><mat-label>Client secret</mat-label><input matInput type="password" [(ngModel)]="form['clientSecret']" autocomplete="off"></mat-form-field>
+      <p class="body-small on-surface-variant">Your browser opens to approve read access to calendar events and Gmail. You can cancel at any time.</p>
+    }
+    @case('spotify'){
+      <mat-form-field><mat-label>Spotify app client ID</mat-label><input matInput [(ngModel)]="form['clientId']" autocomplete="off"><mat-hint>Add {{redirect}} as a redirect URI in your developer app.</mat-hint></mat-form-field>
+    }
+    @case('discord'){
+      <mat-button-toggle-group [(ngModel)]="form['discordMode']" aria-label="What Discord shows" hideSingleSelectionIndicator>
+        <mat-button-toggle value="server"><sp-icon name="groups"/>Server activity</mat-button-toggle>
+        <mat-button-toggle value="call"><sp-icon name="headset_mic"/>My voice call</mat-button-toggle>
+      </mat-button-toggle-group>
+      @if(form['discordMode']==='call'){
+        <mat-form-field><mat-label>Application client ID</mat-label><input matInput [(ngModel)]="form['clientId']" autocomplete="off"></mat-form-field>
+        <mat-form-field><mat-label>Client secret</mat-label><input matInput type="password" [(ngModel)]="form['clientSecret']" autocomplete="off"></mat-form-field>
+        <p class="body-small on-surface-variant">Use an RPC-enabled application with your account as a tester, and add {{redirect}} as its redirect URI. Discord asks to read calls and control mute and deafen.</p>
+      } @else {
+        <mat-form-field><mat-label>Server ID</mat-label><input matInput [(ngModel)]="form['serverId']"><mat-hint>In Discord, turn on Server Settings, Widget, then copy the server ID.</mat-hint></mat-form-field>
+      }
+    }
+    @case('reddit'){
+      <mat-form-field><mat-label>Community</mat-label><span matTextPrefix>r/&nbsp;</span><input matInput [(ngModel)]="form['community']"></mat-form-field>
+      <mat-form-field><mat-label>Installed-app client ID (optional)</mat-label><input matInput [(ngModel)]="form['clientId']" autocomplete="off"><mat-hint>Only needed if Reddit blocks anonymous access. Redirect URI: {{redirect}}</mat-hint></mat-form-field>
+    }
+    @case('news'){
+      <mat-form-field><mat-label>Categories</mat-label><input matInput [(ngModel)]="form['categoriesText']" placeholder="sport, nyheter"><mat-hint>Comma-separated. Leave blank for all headlines.</mat-hint></mat-form-field>
+    }
+    @case('clock'){
+      @if(form['zones'].length<4){
+        <div class="search">
+          <mat-form-field><mat-label>Add a city or place</mat-label><sp-icon matPrefix name="search"/><input matInput [(ngModel)]="form['zoneQuery']" placeholder="Guangzhou" (keydown.enter)="searchPlaces()"></mat-form-field>
+          <button matButton="tonal" [disabled]="!form['zoneQuery']?.trim()" (click)="searchPlaces()">Search</button>
+        </div>
+        @if(places().length){
+          <div class="results" role="listbox" aria-label="Places">
+            @for(place of places();track place.label){<button role="option" (click)="choosePlace(place)"><sp-icon name="location_on"/><span><strong>{{place.name}}</strong><small>{{place.label}} · {{place.timezone.replaceAll('_',' ')}}</small></span><sp-icon name="add"/></button>}
+          </div>
+        }
+      }
+      <div class="places">
+        @for(zone of form['zones'];track $index){
+          <div class="place">
+            <sp-icon name="schedule"/>
+            <span><strong>{{form['zoneLabels'][$index]}}</strong><small>{{zone.replaceAll('_',' ')}}</small></span>
+            <button matIconButton [attr.aria-label]="'Remove '+form['zoneLabels'][$index]" (click)="removePlace($index)"><sp-icon name="close"/></button>
+          </div>
+        } @empty {<p class="body-medium on-surface-variant">No places yet. Your local time always shows.</p>}
+      </div>
+    }
+    @case('email'){
+      <mat-button-toggle-group [(ngModel)]="form['provider']" aria-label="Inbox source" hideSingleSelectionIndicator>
+        <mat-button-toggle value="google"><sp-icon name="mail"/>Gmail</mat-button-toggle>
+        <mat-button-toggle value="outlook"><sp-icon name="desktop_windows"/>Outlook desktop</mat-button-toggle>
+      </mat-button-toggle-group>
+      @if(form['provider']==='google'){
+        <div class="note">
+          <sp-icon name="account_circle"/>
+          <p class="body-medium">Gmail uses your Google account. {{store.connections()['GoogleConnected']?'It is connected.':'Connect it first.'}}</p>
+          <button matButton (click)="openAccount.emit()">{{store.connections()['GoogleConnected']?'Manage':'Connect'}}</button>
+        </div>
+      } @else {
+        <p class="body-small on-surface-variant">Classic Outlook uses the account you're signed in to on this PC, and may ask you to allow access.</p>
+      }
+    }
+    @case('codex'){
+      <mat-form-field><mat-label>codex.exe location (optional)</mat-label><input matInput [(ngModel)]="form['executable']" placeholder="Found automatically"><mat-hint>Leave blank to use your installed Codex.</mat-hint></mat-form-field>
+      <p class="body-small on-surface-variant">Sign in to Codex with ChatGPT first.</p>
+    }
+    @case('system'){
+      <p class="body-small on-surface-variant">The collector runs separately, so the main app never needs admin rights. Enabling it opens the Windows permission prompt. Temperature needs supported hardware.</p>
+    }
+    @case('bambu-lab'){
+      <mat-form-field><mat-label>Printer IP address</mat-label><input matInput [(ngModel)]="form['host']" placeholder="192.168.1.40"></mat-form-field>
+      <mat-form-field><mat-label>Serial number</mat-label><input matInput [(ngModel)]="form['serial']"></mat-form-field>
+      <mat-form-field><mat-label>LAN access code</mat-label><input matInput type="password" [(ngModel)]="form['accessCode']" autocomplete="off"><mat-hint>On the printer: Settings, Network, LAN only mode.</mat-hint></mat-form-field>
+    }
+    @case('idle-game'){
+      <button matButton="filled" class="play" (click)="openGame.emit()"><sp-icon name="sports_esports"/>Play Scrapbots</button>
+    }
+  }
+</div>
+
+@if(busy()){<mat-progress-bar mode="indeterminate" aria-label="Working"/><p class="body-small on-surface-variant">Finish any sign-in in your browser.</p>}
+@if(result();as r){<div class="result" [class.error]="!r.ok" role="status"><sp-icon [name]="r.ok?'check_circle':'error'" [filled]="true"/><span>{{r.text}}</span></div>}
+
+@if(info()?.action||info()?.canDisconnect){
+  <div class="actions">
+    @if(info()?.canDisconnect&&status()==='connected'){<button matButton [disabled]="busy()" (click)="disconnect()">Disconnect</button>}
+    @if(info()?.action;as action){<button matButton="filled" [disabled]="busy()" (click)="commit()">{{action}}</button>}
+  </div>
+}

@@ -1,0 +1,110 @@
+@font-face {
+  font-family: 'Material Symbols Rounded';
+  src: url('/fonts/material-symbols-rounded.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  height: 100%;
+  font-size: calc(16px * var(--font-scale, 1));
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font: var(--mat-sys-body-medium);
+  letter-spacing: var(--mat-sys-body-medium-tracking);
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+
+// Widget windows are transparent: the card itself is the only visible shape.
+body.widget-surface, body.widget-surface html { background: transparent; }
+html:has(body.widget-surface) { background: transparent; }
+
+h1, h2, h3, h4, p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+img { display: block; max-width: 100%; }
+
+// Type roles as utility classes, so templates name the M3 role they use.
+.display-large { font: var(--mat-sys-display-large); letter-spacing: var(--mat-sys-display-large-tracking); }
+.display-medium { font: var(--mat-sys-display-medium); letter-spacing: var(--mat-sys-display-medium-tracking); }
+.display-small { font: var(--mat-sys-display-small); letter-spacing: var(--mat-sys-display-small-tracking); }
+.headline-large { font: var(--mat-sys-headline-large); }
+.headline-medium { font: var(--mat-sys-headline-medium); }
+.headline-small { font: var(--mat-sys-headline-small); }
+.title-large { font: var(--mat-sys-title-large); }
+.title-medium { font: var(--mat-sys-title-medium); letter-spacing: var(--mat-sys-title-medium-tracking); }
+.title-small { font: var(--mat-sys-title-small); letter-spacing: var(--mat-sys-title-small-tracking); }
+.body-large { font: var(--mat-sys-body-large); letter-spacing: var(--mat-sys-body-large-tracking); }
+.body-medium { font: var(--mat-sys-body-medium); letter-spacing: var(--mat-sys-body-medium-tracking); }
+.body-small { font: var(--mat-sys-body-small); letter-spacing: var(--mat-sys-body-small-tracking); }
+.label-large { font: var(--mat-sys-label-large); letter-spacing: var(--mat-sys-label-large-tracking); }
+.label-medium { font: var(--mat-sys-label-medium); letter-spacing: var(--mat-sys-label-medium-tracking); }
+.label-small { font: var(--mat-sys-label-small); letter-spacing: var(--mat-sys-label-small-tracking); }
+// Expressive emphasis: heavier, slightly wider display type for hero moments.
+.emphasized { font-weight: var(--font-emphasis-weight); font-stretch: var(--font-hero-stretch); }
+.on-surface-variant { color: var(--mat-sys-on-surface-variant); }
+
+// Material Symbols (variable). FILL is toggled per state by components.
+.material-symbols {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: var(--icon-size);
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  font-variation-settings: 'FILL' var(--icon-fill, 0), 'wght' var(--icon-weight, 400), 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+}
+
+// Focus is always visible for keyboard users, with an M3 secondary focus ring.
+:focus-visible {
+  outline: 3px solid var(--mat-sys-secondary);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+// Thin, themed scrollbars.
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mat-sys-outline-variant) transparent;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.reduced-motion *, .reduced-motion *::before, .reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+// A leading icon in a labelled button: 18dp with an 8dp gap, per M3.
+.mat-mdc-button-base:not(.mat-mdc-icon-button) sp-icon:first-child {
+  margin: 0 var(--space-2) 0 calc(var(--space-1) * -1);
+  font-size: calc(18px * var(--ui-scale, 1));
+}

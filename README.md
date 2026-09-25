@@ -9,9 +9,9 @@ Setpiece is a Windows workspace manager. Arrange applications, widgets, and pers
 ## Features
 
 - **Arrange your apps.** Assign open Windows applications to movable, resizable tiles.
-- **Widgets.** Add clocks, notes, and other widgets to a layout.
+- **Widgets.** Add clocks, weather, media, system and other widgets, each set up once from the widget library.
 - **Persistent browsers.** Named WebView2 browsers retain tabs across profiles, with optional fullscreen contained inside a tile.
-- **Appearance.** Choose light or dark, an accent color, and a wallpaper for each profile.
+- **Appearance.** Material 3 Expressive, in light or dark, colored by one accent, with a wallpaper per workspace.
 - **Window restoration.** Stop the workspace to restore original windows and taskbars.
 
 Built with Angular Material, a .NET Windows host, and native window placement. The public repository currently provides source; the packaged archive is built locally using the instructions below.
@@ -63,17 +63,17 @@ Settings → Updates checks the latest published GitHub Release on demand. When 
 
 ## First use
 
-1. Create a profile in Studio and select a display.
-2. Choose a preset, preview it, and apply it. The preview follows that display’s resolution and aspect ratio. Drag tile headers to move; use the selected tile’s edge and corner handles to resize. Tiles stop at neighbors, and removed tiles leave empty space. Add a tile to fill available space, or split an existing tile. Hold Alt to ignore snapping.
-3. Assign an open application through Apps, add a widget through Widgets, or link a named browser through Browsers.
-4. Save the profile and launch the workspace. Dragging an assigned application’s own frame detaches it without changing the layout.
-5. Use Settings → Stop workspace & restore applications to restore original windows and taskbars. Closing Setpiece also restores them.
+1. Create a workspace from the workspace menu at the top of Studio, and pick a display.
+2. Start from Layouts, preview it, and apply it. The board follows that display's resolution and aspect ratio. Drag tiles to move them (widgets move by the grip on their top edge), and use the selected tile's edge and corner handles to resize. Tiles stop at neighbors, and removed tiles leave empty space. Add a tile to fill available space, or split an existing tile. Hold Alt to ignore snapping.
+3. Choose an open app for a tile, add a widget from Widgets, or put a named browser in a tile from Browsers.
+4. Save the workspace and launch it. Dragging an assigned application's own frame detaches it without changing the layout.
+5. Use Settings → Stop the workspace to restore original windows and taskbars. Closing Setpiece also restores them.
 
-Ctrl+S saves. Ctrl+Z and Ctrl+Shift+Z undo and redo layout edits while Setpiece has focus. Closing or switching profiles prompts when there are unsaved changes. Notes save as you type.
+Ctrl+S saves. Ctrl+Z and Ctrl+Shift+Z undo and redo layout edits while Setpiece has focus. Closing or switching workspaces prompts when there are unsaved changes. Notes save as you type.
 
-Appearance preferences apply immediately across open surfaces. Wallpapers belong to profiles. Setpiece supports light and dark themes and a global accent picker. Surface details (opacity, dimming, glow, corners, and reduced motion) are expandable. Previous color themes migrate to corresponding accent colors; an existing custom accent takes priority. Very narrow tiles reduce the effective gap to keep their content area positive.
+Appearance preferences apply immediately across open surfaces. Wallpapers belong to workspaces. Setpiece uses Material 3 with light and dark modes and a single accent color that drives every surface; widgets take their colors from their category (Daily, Connected, Device, Play). Surfaces (opacity, dimming, glow and corners) live on the Appearance page; interface size, text size and reduced motion live in Settings. Previous color themes migrate to corresponding accent colors; an existing custom accent takes priority. Very narrow tiles reduce the effective gap to keep their content area positive.
 
-Named browsers retain their running tabs when switching profiles. Use the diamond control to collapse or expand the toolbar. Diagnostics shows the WebView2 runtime and bundled uBlock Origin Lite status. External webpages have no Setpiece host bridge.
+Named browsers retain their running tabs when switching workspaces. Use the arrow control to collapse or expand the toolbar. Browser information shows the WebView2 runtime and bundled uBlock Origin Lite status. External webpages have no Setpiece host bridge.
 
 ## Data and integrations
 

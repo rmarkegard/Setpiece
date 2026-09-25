@@ -38,7 +38,7 @@ internal static class PrinterService
     }
     public static async Task<JsonObject> Read(JsonObject settings)
     {
-        if(Field(settings,"BambuHost").Length==0||Field(settings,"BambuAccessCode").Length==0)return Providers.State("disconnected","Meet your next creation","Add the printer IP, serial and LAN access code in Connections.");
+        if(Field(settings,"BambuHost").Length==0||Field(settings,"BambuAccessCode").Length==0)return Providers.State("disconnected","Meet your next creation","Add the printer IP, serial and LAN access code in the widget settings.");
         if(Field(settings,"BambuCertificateSha256").Length==0)return Providers.State("disconnected","Verify your printer connection","Reconnect once to save this printer's certificate. Existing credentials are preserved.");
         using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(10));var print=await Status(settings,timeout.Token);
         var stage=Field(print,"gcode_state");var title=stage switch{"RUNNING"=>"Making something good","PAUSE"=>"Print paused","FINISH"=>"Ready to collect","FAILED"=>"The print needs attention","IDLE"=>"Ready when you are",_=>"Printer connected"};

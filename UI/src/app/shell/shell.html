@@ -1,0 +1,81 @@
+<header class="titlebar">
+  <div class="drag" (pointerdown)="store.windowAction('drag')" (dblclick)="store.windowAction('maximize')">
+    <sp-icon class="logo" name="space_dashboard" [filled]="true"/>
+    <span class="label-large">Setpiece</span>
+  </div>
+  <button class="window-control" aria-label="Minimize" (click)="store.windowAction('minimize')"><sp-icon name="remove"/></button>
+  <button class="window-control" aria-label="Maximize or restore" (click)="store.windowAction('maximize')"><sp-icon name="crop_square"/></button>
+  <button class="window-control close" aria-label="Close Setpiece" (click)="store.windowAction('close')"><sp-icon name="close"/></button>
+</header>
+
+<div class="frame">
+  <nav class="rail" [class.expanded]="expanded()" aria-label="Main navigation">
+    <button class="menu" matIconButton [attr.aria-label]="expanded()?'Collapse navigation':'Expand navigation'" [attr.aria-expanded]="expanded()" [matTooltip]="expanded()?'Collapse':'Expand'" matTooltipPosition="right" (click)="toggleRail()">
+      <sp-icon [name]="expanded()?'menu_open':'menu'"/>
+    </button>
+
+    <button class="launch" [disabled]="store.busy()" [attr.aria-label]="'Launch '+store.profile().Name" [matTooltip]="expanded()?'':'Launch workspace'" matTooltipPosition="right" (click)="store.launch()">
+      @if(store.busy()){<mat-spinner diameter="24" strokeWidth="3"/>}@else{<sp-icon name="play_arrow" [filled]="true"/>}
+      <span class="launch-label label-large">Launch workspace</span>
+    </button>
+
+    <div class="destinations">
+      @for(item of routes;track item.name){
+        <button class="destination" [class.active]="store.route()===item.name" [attr.aria-current]="store.route()===item.name?'page':null" (click)="store.route.set(item.name)">
+          <span class="indicator"><sp-icon [name]="item.icon" [filled]="store.route()===item.name"/></span>
+          <span class="destination-label">{{item.label}}</span>
+        </button>
+      }
+    </div>
+  </nav>
+
+  <main class="pane">
+    <div class="topbar">
+      <button class="profile" [matMenuTriggerFor]="profileMenu" aria-label="Switch workspace">
+        <span class="overline label-medium on-surface-variant">Workspace</span>
+        <span class="name title-large">{{store.profile().Name}}<sp-icon name="arrow_drop_down"/></span>
+      </button>
+      <span class="save-state label-large" [attr.data-state]="!store.key()?'new':store.dirty()?'dirty':'saved'" role="status">
+        <sp-icon [name]="!store.key()?'draft':store.dirty()?'edit':'cloud_done'" [filled]="true"/>
+        {{!store.key()?'Not saved yet':store.dirty()?'Unsaved changes':'Saved'}}
+      </span>
+      <span class="grow"></span>
+      <button matIconButton aria-label="Undo" matTooltip="Undo (Ctrl+Z)" [disabled]="!store.canUndo()" (click)="store.undo()"><sp-icon name="undo"/></button>
+      <button matIconButton aria-label="Redo" matTooltip="Redo (Ctrl+Shift+Z)" [disabled]="!store.canRedo()" (click)="store.redo()"><sp-icon name="redo"/></button>
+      <button matButton="tonal" [disabled]="store.busy()" (click)="store.save()"><sp-icon name="save"/>Save</button>
+    </div>
+    <mat-menu #profileMenu="matMenu" class="profile-menu">
+      @for(item of store.savedProfiles();track item.key){
+        <button mat-menu-item (click)="dialogs.switchProfile(item.key)">
+          <sp-icon [name]="item.key===store.key()?'check':'space_dashboard'"/><span>{{item.profile!.Name}}</span>
+        </button>
+      }
+      @if(!store.key()){<button mat-menu-item disabled><sp-icon name="check"/><span>{{store.profile().Name}}</span></button>}
+      <div class="menu-divider"></div>
+      <button mat-menu-item (click)="dialogs.createProfile()"><sp-icon name="add"/><span>New workspace</span></button>
+      <button mat-menu-item (click)="dialogs.rename()"><sp-icon name="edit"/><span>Rename</span></button>
+      @if(store.key()){<button mat-menu-item (click)="dialogs.deleteProfile()"><sp-icon name="delete"/><span>Delete</span></button>}
+    </mat-menu>
+    <div class="progress">@if(store.busy()){<mat-progress-bar mode="indeterminate" aria-label="Working"/>}</div>
+
+    <div class="page">
+      @if(store.error()){
+        <div class="banner" role="alert">
+          <sp-icon name="error" [filled]="true"/>
+          <p class="body-medium">{{store.error()}}</p>
+          <button matButton (click)="store.error.set('')">Dismiss</button>
+        </div>
+      }
+      @if(store.profile()['NormalizationNotice']){
+        <div class="banner info" role="status"><sp-icon name="info" [filled]="true"/><p class="body-medium">{{store.profile()['NormalizationNotice']}}</p></div>
+      }
+      @switch(store.route()){
+        @case('Studio'){<sp-studio-page/>}
+        @case('Widgets'){<sp-widgets-page/>}
+        @case('Browsers'){<sp-browsers-page/>}
+        @case('Appearance'){<sp-appearance-page/>}
+        @case('Settings'){<sp-settings-page/>}
+      }
+    </div>
+  </main>
+</div>

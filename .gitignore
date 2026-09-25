@@ -12,3 +12,5 @@
 *.user
 *.tmp
 *.log
+# Dev-only junction to Setpiece/Assets/Wallpapers (see UI/angular.json, development).
+/UI/dev-assets

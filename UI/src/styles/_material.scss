@@ -1,0 +1,87 @@
+@use '@angular/material' as mat;
+
+// The mixin emits the full --mat-sys-* token set (type, elevation, motion). Its colors are
+// only a first-paint fallback: theme.ts overwrites every color role from the user's accent.
+html {
+  @include mat.theme((
+    color: (primary: mat.$violet-palette, theme-type: dark),
+    typography: (plain-family: 'Roboto Flex Variable', brand-family: 'Roboto Flex Variable', bold-weight: 600, medium-weight: 500, regular-weight: 400),
+    density: 0
+  ));
+  @include mat.elevation-classes();
+}
+
+// Component tokens. Values track the Expressive shape scale so the Corners preference
+// reshapes controls as well as cards and widgets.
+:root {
+  --mat-sys-corner-extra-small: var(--shape-xs);
+  --mat-sys-corner-small: var(--shape-sm);
+  --mat-sys-corner-medium: var(--shape-md);
+  --mat-sys-corner-large: var(--shape-lg);
+  --mat-sys-corner-extra-large: var(--shape-xl);
+
+  // Buttons: Expressive "round" buttons, 40dp, label-large.
+  --mat-button-filled-container-shape: var(--shape-full);
+  --mat-button-tonal-container-shape: var(--shape-full);
+  --mat-button-outlined-container-shape: var(--shape-full);
+  --mat-button-text-container-shape: var(--shape-full);
+  --mat-button-protected-container-shape: var(--shape-full);
+  --mat-button-filled-container-height: var(--control-height);
+  --mat-button-tonal-container-height: var(--control-height);
+  --mat-button-outlined-container-height: var(--control-height);
+  --mat-button-text-container-height: var(--control-height);
+  --mat-button-filled-horizontal-padding: var(--space-4);
+  --mat-button-tonal-horizontal-padding: var(--space-4);
+  --mat-button-outlined-horizontal-padding: var(--space-4);
+  --mat-icon-button-container-shape: var(--shape-full);
+  --mat-fab-container-shape: var(--shape-lg);
+  --mat-fab-small-container-shape: var(--shape-md);
+  --mat-fab-extended-container-shape: var(--shape-lg);
+
+  // Segmented buttons, chips and fields.
+  --mat-button-toggle-shape: var(--shape-full);
+  --mat-chip-container-shape: var(--shape-sm);
+  --mat-chip-container-height: calc(32px * var(--ui-scale, 1));
+  --mat-form-field-outlined-container-shape: var(--shape-xs);
+  --mat-form-field-filled-container-shape: var(--shape-xs);
+
+  // Containers.
+  --mat-dialog-container-shape: var(--shape-xl);
+  --mat-menu-container-shape: var(--shape-lg);
+  --mat-autocomplete-container-shape: var(--shape-lg);
+  --mat-snack-bar-container-shape: var(--shape-sm);
+  --mat-tooltip-container-shape: var(--shape-xs);
+  --mat-card-filled-container-shape: var(--shape-lg);
+  --mat-card-outlined-container-shape: var(--shape-lg);
+  --mat-card-elevated-container-shape: var(--shape-lg);
+  --mat-progress-bar-track-shape: var(--shape-full);
+
+  // Menus and select panels sit on surface-container, per M3.
+  --mat-menu-container-color: var(--mat-sys-surface-container);
+  --mat-select-panel-background-color: var(--mat-sys-surface-container);
+  --mat-autocomplete-background-color: var(--mat-sys-surface-container);
+  --mat-dialog-container-color: var(--mat-sys-surface-container-high);
+}
+
+// Expressive progress bars are thicker, with a rounded track.
+.mat-mdc-progress-bar {
+  --mat-progress-bar-active-indicator-height: calc(6px * var(--ui-scale, 1));
+  --mat-progress-bar-track-height: calc(6px * var(--ui-scale, 1));
+  border-radius: var(--shape-full);
+}
+
+// Dialog panels: a roomier Expressive default with a scrim that follows the theme.
+.cdk-overlay-dark-backdrop {
+  background: color-mix(in srgb, var(--mat-sys-scrim) 40%, transparent);
+}
+.sp-dialog .mat-mdc-dialog-surface {
+  padding: 0;
+}
+
+// Leading icons in menu items.
+.mat-mdc-menu-item sp-icon {
+  margin-right: var(--space-3);
+  font-size: var(--icon-size-sm);
+  color: var(--mat-sys-on-surface-variant);
+}
+.mat-mdc-menu-panel { min-width: calc(220px * var(--ui-scale, 1)) !important; }

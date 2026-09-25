@@ -1,0 +1,72 @@
+<sp-page-header headline="Appearance" supporting="One accent colors everything: Studio, widgets and your workspace."/>
+
+<div class="layout">
+  <div class="controls">
+    <sp-section headline="Color" icon="palette">
+      <div class="field">
+        <span class="label-large">Mode</span>
+        <mat-button-toggle-group [value]="store.appearance().mode" (change)="set('mode',$event.value)" aria-label="Color mode" hideSingleSelectionIndicator>
+          <mat-button-toggle value="light"><sp-icon name="light_mode"/>Light</mat-button-toggle>
+          <mat-button-toggle value="dark"><sp-icon name="dark_mode"/>Dark</mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+      <div class="field">
+        <div class="field-head">
+          <span class="label-large">Accent</span>
+          @if(store.appearance().accent!==defaultAccent){<button matButton (click)="set('accent',defaultAccent)">Reset</button>}
+        </div>
+        <div class="swatches" role="radiogroup" aria-label="Accent color">
+          @for(accent of accents;track accent.color){
+            <button class="swatch" role="radio" [style.--swatch]="accent.color" [attr.aria-checked]="store.appearance().accent===accent.color" [attr.aria-label]="accent.name" [matTooltip]="accent.name" (click)="set('accent',accent.color)">
+              @if(store.appearance().accent===accent.color){<sp-icon name="check"/>}
+            </button>
+          }
+          <label class="swatch custom" role="radio" [attr.aria-checked]="custom()" [style.--swatch]="custom()?store.appearance().accent:null" matTooltip="Custom color">
+            <input type="color" aria-label="Custom accent color" [value]="store.appearance().accent" (change)="set('accent',$any($event.target).value)">
+            <sp-icon [name]="custom()?'check':'colorize'"/>
+          </label>
+        </div>
+        <span class="body-small on-surface-variant">{{store.appearance().accent|uppercase}} · colors adapt to each mode for comfortable contrast.</span>
+      </div>
+    </sp-section>
+
+    <sp-section headline="Surfaces" icon="layers">
+      @for(item of surfaces;track item.key){
+        <label class="slider">
+          <span class="slider-head"><span class="body-large">{{item.label}}</span><span class="value label-large">{{value(item.key)*100|number:'1.0-0'}}%</span></span>
+          <span class="body-small on-surface-variant">{{item.supporting}}</span>
+          <mat-slider min="0" max="1" step="0.05"><input matSliderThumb [attr.aria-label]="item.label" [value]="value(item.key)" (valueChange)="set(item.key,$event)"></mat-slider>
+        </label>
+      }
+      <label class="slider">
+        <span class="slider-head"><span class="body-large">Corners</span><span class="value label-large">{{store.appearance().radius}} px</span></span>
+        <span class="body-small on-surface-variant">From crisp to soft. Reshapes cards, widgets and controls.</span>
+        <mat-slider min="4" max="32" step="4" discrete><input matSliderThumb aria-label="Corner radius" [value]="store.appearance().radius" (valueChange)="set('radius',$event)"></mat-slider>
+      </label>
+    </sp-section>
+  </div>
+
+  <aside class="preview" aria-label="Live preview">
+    <div class="desk">
+      <sp-wallpaper [id]="store.profile().WallpaperId" [moving]="false"/>
+      <div class="sample daily"><span class="label-medium">Friday 24 Oct</span><strong class="hero">10:24</strong></div>
+      <div class="sample device"><span class="label-medium">CPU</span><strong class="hero small">18%</strong><i class="bar"><b></b></i></div>
+      <div class="sample connected"><span class="label-medium">Now playing</span><strong class="title-medium">Night Drive</strong><span class="play"><sp-icon name="pause" [filled]="true"/></span></div>
+      <div class="sample app"><sp-icon name="web_asset"/><span class="label-medium">Your app</span></div>
+    </div>
+    <p class="body-small on-surface-variant">Live preview with your wallpaper, accent and surfaces.</p>
+  </aside>
+</div>
+
+<sp-section class="wallpaper-section" headline="Wallpaper" [supporting]="'Saved with '+store.profile().Name+'.'" icon="wallpaper">
+  <mat-slide-toggle section-action [checked]="store.profile().AnimatedWallpaper" (change)="store.editAnimated($event.checked)">Motion</mat-slide-toggle>
+  <div class="wallpapers" role="radiogroup" aria-label="Wallpaper">
+    @for(id of wallpapers;track id){
+      <button class="wallpaper" role="radio" [attr.aria-checked]="store.profile().WallpaperId===id" (click)="store.wallpaper(id)">
+        <sp-wallpaper [id]="id" [moving]="id===store.profile().WallpaperId&&store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion"/>
+        @if(store.profile().WallpaperId===id){<span class="selected"><sp-icon name="check" [filled]="true"/></span>}
+        <span class="name label-large">{{pretty(id)}}</span>
+      </button>
+    }
+  </div>
+</sp-section>

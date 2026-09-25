@@ -27,7 +27,7 @@ internal static class AiUsage
     }
     private static async Task<JsonObject> Codex(JsonObject settings)
     {
-        var path=FindCodex(settings);if(path is null)return new JsonObject{["status"]="Install Codex or choose its executable in Connections.", ["windows"]=new JsonArray()};
+        var path=FindCodex(settings);if(path is null)return new JsonObject{["status"]="Install Codex, or choose where it is in the widget settings.", ["windows"]=new JsonArray()};
         using var process=new Process{StartInfo=new ProcessStartInfo(path){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true}};
         process.StartInfo.ArgumentList.Add("app-server");using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(18));
         try

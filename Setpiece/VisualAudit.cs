@@ -50,8 +50,8 @@ internal static class VisualAudit
         storage.SaveProfile("visual-review",profile);
         await host.HandleCommand("profile",new JsonObject{["profile"]=profile.DeepClone()});
         var scenes=new List<Scene>();
-        foreach(var route in new[]{"Studio","Apps","Widgets","Connections","Appearance","Browsers","Settings"})
-            scenes.Add(new(route.ToLowerInvariant(),"route="+route,1440,route=="Widgets"?2200:route=="Appearance"?2100:route=="Connections"?1600:1250));
+        foreach(var route in new[]{"Studio","Widgets","Browsers","Appearance","Settings"})
+            scenes.Add(new(route.ToLowerInvariant(),"route="+route,1440,route=="Widgets"?1500:route=="Appearance"?1500:route=="Settings"?1400:1000));
         var widgets=new[]{"clock","system","google-calendar","discord","spotify","codex","weather","bambu-lab","ruter","news","notes","email","battery","volume","reddit","idle-game","market","focus","github","twitter"};
         foreach(var widget in widgets)scenes.Add(new("widget-"+widget,"widget="+widget,440,440,widget));
         foreach(var widget in widgets)

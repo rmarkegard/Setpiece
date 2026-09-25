@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {newTile,preset,splitTile,removeTile,moveBoundary,swapTiles,transform,assertLayout,History,fittingGap,moveTile,resizeTile,vacantTile,vacantRegionAt,dropTile,tilePercentBounds} from '../src/domain.ts';
+import {newTile,preset,splitTile,removeTile,swapTiles,assertLayout,History,fittingGap,moveTile,resizeTile,vacantTile,vacantRegionAt,dropTile,tilePercentBounds} from '../src/domain.ts';
 
 test('large gaps adapt to narrow tiles on a smaller display',()=>{
   const tiles=preset('columns',3);tiles[0].Width=.475;tiles[1].X=.475;tiles[1].Width=.025;tiles[2].X=.5;tiles[2].Width=.5;
@@ -16,15 +16,8 @@ test('invalid split target produces an actionable error without mutation',()=>{
   const tiles=[newTile()];const before=structuredClone(tiles);
   assert.throws(()=>splitTile(tiles,'missing',true),/Select a tile/);assert.deepEqual(tiles,before);
 });
-test('shared boundary resizes both neighbors',()=>{
-  const tiles=preset('columns',3);const result=moveBoundary(tiles,'x',1/3,.11,0);
-  assert.ok(Math.abs(result[0].Width-(1/3+.11))<1e-6);
-  assert.ok(Math.abs(result[1].X-(1/3+.11))<1e-6);assert.equal(result[2].Width,tiles[2].Width);assertLayout(result);
-});
-test('layout transforms are reversible',()=>{
+test('tile swaps are reversible',()=>{
   const tiles=preset('main-third',7);
-  let rotated=tiles;for(let i=0;i<4;i++)rotated=transform(rotated,'rotate');
-  for(let i=0;i<tiles.length;i++)for(const key of ['X','Y','Width','Height'] as const)assert.ok(Math.abs(rotated[i][key]-tiles[i][key])<1e-6);
   assert.deepEqual(swapTiles(swapTiles(tiles,tiles[0].Id,tiles[1].Id),tiles[0].Id,tiles[1].Id),tiles);
 });
 test('generated edit sequences stay bounded, non-overlapping and preserve content',()=>{
@@ -35,8 +28,8 @@ test('generated edit sequences stay bounded, non-overlapping and preserve conten
       const chosen=tiles[Math.floor(random()*tiles.length)];const operation=Math.floor(random()*4);
       if(operation===0&&tiles.length<20&&(chosen.Width>.1||chosen.Height>.1))tiles=splitTile(tiles,chosen.Id,chosen.Width>=chosen.Height);
       else if(operation===1&&tiles.length>1){const ids=tiles.filter(t=>t.Id!==chosen.Id).map(t=>t.Id).sort();tiles=removeTile(tiles,chosen.Id);assert.deepEqual(tiles.map(t=>t.Id).sort(),ids);}
-      else if(operation===2)tiles=transform(tiles,'rotate');
-      else if(operation===3&&chosen.X>0)tiles=moveBoundary(tiles,'x',chosen.X,(random()-.5)*.05,0);
+      else if(operation===2)tiles=moveTile(tiles,chosen.Id,(random()-.5)*.1,(random()-.5)*.1);
+      else if(operation===3)tiles=resizeTile(tiles,chosen.Id,'se',(random()-.5)*.05,(random()-.5)*.05);
       assertLayout(tiles);
     }
   }
@@ -45,14 +38,6 @@ test('history caps at 60 and new edits invalidate redo',()=>{
   const history=new History<number>();for(let i=0;i<70;i++)history.commit(i);
   let current=70;let count=0;while(history.canUndo){current=history.undo(current);count++;}
   assert.equal(count,60);assert.equal(current,10);assert.equal(history.redo(current),11);history.commit(100);assert.equal(history.canRedo,false);
-});
-
-test('disconnected aligned edges move independently and a shared corner moves both arms',()=>{
-  const tiles=preset('balanced',4);
-  const top=moveBoundary(tiles,'x',.5,.1,0,.25);
-  assert.equal(top[0].Width,.6);assert.equal(top[2].Width,.5);assertLayout(top);
-  const corner=moveBoundary(moveBoundary(tiles,'x',.5,.1,0,.5),'y',.5,-.1,0,.6);
-  assert.equal(corner[0].Width,.6);assert.equal(corner[2].Width,.6);assert.equal(corner[0].Height,.4);assertLayout(corner);
 });
 
 test('free placement preserves contents, empty space and unrelated tile geometry',()=>{

@@ -1,0 +1,15 @@
+:host { display: block; max-width: calc(880px * var(--ui-scale)); margin-inline: auto; }
+.sections { display: flex; flex-direction: column; gap: var(--space-4); }
+.value { color: var(--mat-sys-primary); font-variant-numeric: tabular-nums; }
+mat-slider { width: calc(100% - var(--space-10) + 16px); margin: 0 -8px 0 calc(var(--space-10) - 8px); }
+.current { padding: var(--space-1) var(--space-2); border-radius: var(--shape-xs); background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); }
+.keys { display: flex; gap: var(--space-1); }
+kbd {
+  min-width: calc(32px * var(--ui-scale));
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--shape-sm);
+  background: var(--mat-sys-surface-container-highest);
+  border-bottom: 2px solid var(--mat-sys-outline-variant);
+  text-align: center;
+  font-family: inherit;
+}

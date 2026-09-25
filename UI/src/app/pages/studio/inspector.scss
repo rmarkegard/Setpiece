@@ -1,0 +1,58 @@
+:host { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--shape-xl);
+  background: var(--mat-sys-surface-container);
+}
+
+header { display: flex; align-items: flex-start; gap: var(--space-3); }
+.copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.copy h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mark {
+  display: grid;
+  place-items: center;
+  width: calc(48px * var(--ui-scale));
+  height: calc(48px * var(--ui-scale));
+  flex-shrink: 0;
+  border-radius: var(--shape-lg);
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+  &[data-kind='Web'] { background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); }
+  &[data-category='Daily'] { background: var(--mat-sys-primary-container); color: var(--mat-sys-on-primary-container); }
+  &[data-category='Connected'] { background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); border-bottom-left-radius: var(--shape-xs); }
+  &[data-category='Device'] { background: var(--mat-sys-tertiary-container); color: var(--mat-sys-on-tertiary-container); border-top-right-radius: var(--shape-xs); }
+  &[data-category='Play'] { background: var(--mat-sys-play-container); color: var(--mat-sys-on-play-container); }
+}
+.assigned { margin-top: calc(var(--space-2) * -1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.group { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding-top: var(--space-4); border-top: 1px solid var(--mat-sys-outline-variant); }
+// A connected button group, as in M3 Expressive.
+.split {
+  display: flex;
+  gap: 2px;
+  button {
+    border-radius: var(--shape-xs);
+    background: var(--mat-sys-surface-container-highest);
+    --mat-icon-button-state-layer-size: calc(40px * var(--ui-scale));
+    transition: border-radius var(--motion-spatial-fast);
+    &:first-child { border-radius: var(--shape-full) var(--shape-xs) var(--shape-xs) var(--shape-full); }
+    &:last-child { border-radius: var(--shape-xs) var(--shape-full) var(--shape-full) var(--shape-xs); }
+    &:active { border-radius: var(--shape-md); }
+  }
+  sp-icon { font-size: var(--icon-size-sm); }
+}
+.ratio { font: var(--mat-sys-title-medium); }
+.remove { align-self: flex-start; --mat-button-text-label-text-color: var(--mat-sys-error); }
+
+.slider { display: flex; flex-direction: column; gap: 0; }
+.slider-label { display: flex; justify-content: space-between; align-items: baseline; }
+.value { color: var(--mat-sys-primary); font-variant-numeric: tabular-nums; }
+mat-slider { width: calc(100% + 16px); margin: 0 -8px; }
+.snap { display: flex; flex-direction: column; gap: var(--space-2); }
+mat-button-toggle-group { align-self: stretch; }
+mat-button-toggle { flex: 1; }
