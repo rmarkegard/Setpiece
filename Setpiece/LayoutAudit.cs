@@ -26,6 +26,17 @@ internal static class LayoutAudit
             var x=point["x"]!.GetValue<double>();var y=point["y"]!.GetValue<double>();
             await Mouse("mousePressed",x,y);await Mouse("mouseMoved",x+dx,y+dy);await Mouse("mouseReleased",x+dx,y+dy);await Task.Delay(150);
         }
+        async Task<(double Left,double Top,double Right,double Bottom)> Rect(string expression)
+        {
+            var r=await Read("(()=>{const r=("+expression+").getBoundingClientRect();return {l:r.left,t:r.top,r:r.right,b:r.bottom}})()");
+            return (r["l"]!.GetValue<double>(),r["t"]!.GetValue<double>(),r["r"]!.GetValue<double>(),r["b"]!.GetValue<double>());
+        }
+        async Task DragTo(string selector,double x,double y)
+        {
+            var from=await Rect("document.querySelector("+System.Text.Json.JsonSerializer.Serialize(selector)+")");
+            await Drag(selector,x-(from.Left+from.Right)/2,y-(from.Top+from.Bottom)/2);
+        }
+        const string App="document.querySelectorAll('.board .tile')[0]",Clock="document.querySelectorAll('.board .tile')[1]";
         async Task Check(bool condition,string name){if(!condition)throw new InvalidOperationException("Layout audit failed: "+name);results.Add(new JsonObject{["check"]=name,["passed"]=true});File.WriteAllText(Path.Combine(output,"layout-checks.json"),results.ToJsonString(new(){WriteIndented=true}));await Task.CompletedTask;}
         foreach(var scene in new[]{("landscape",1920,1080,1440,1000),("ultrawide",3440,1440,1440,1000),("portrait",1080,1920,1440,1000),("4k",3840,2160,1440,1000),("small-window",1920,1080,1040,680)})
         {
@@ -47,12 +58,22 @@ internal static class LayoutAudit
             await Check(smaller.GetValue<double>()<40,scene.Item1+": pointer resize creates empty space");
             await Drag(".selected .tile-heading",.08*width,.1*height);
             await Check((await Read("parseFloat(document.querySelector('.board .tile').style.left)")).GetValue<double>()>5,scene.Item1+": pointer drag moves application tile freely");
-            await Drag(".selected .tile-heading",width,0);
-            await Check((await Read("(()=>{const a=document.querySelector('.board .tile').getBoundingClientRect(),b=document.querySelectorAll('.board .tile')[1].getBoundingClientRect();return a.right<=b.left})()")).GetValue<bool>(),scene.Item1+": fast drag stops at neighboring widget");
-            await Read("document.querySelectorAll('.board .tile')[1].click()");await Task.Delay(100);
+            // Release over empty space just short of the widget: one pointer jump far enough to overshoot it must sweep-clamp against it.
+            // Releasing over the widget itself would swap the tiles instead (see dropTile), which is checked separately below.
+            var app=await Rect(App);var clock=await Rect(Clock);var heading=await Rect("document.querySelector('.selected .tile-heading')");
+            await DragTo(".selected .tile-heading",clock.Left-.03*width,(heading.Top+heading.Bottom)/2);
+            var swept=await Rect(App);
+            await Check(swept.Right>app.Right&&swept.Right<=clock.Left&&clock.Left-swept.Right<.02*width,scene.Item1+": fast drag stops at neighboring widget");
+            app=swept;
+            await DragTo(".selected .tile-heading",(clock.Left+clock.Right)/2,(clock.Top+clock.Bottom)/2);
+            var swappedApp=await Rect(App);var swappedClock=await Rect(Clock);
+            await Check(Math.Abs(swappedApp.Left-clock.Left)<2&&Math.Abs(swappedApp.Right-clock.Right)<2&&Math.Abs(swappedClock.Left-app.Left)<2&&Math.Abs(swappedClock.Right-app.Right)<2,scene.Item1+": dropping onto neighboring widget swaps positions");
+            await Read(Clock+".click()");await Task.Delay(100);
             await Drag(".selected .resize-se",-.12*width,-.4*height);
+            var resized=await Rect(Clock);
             await Drag(".selected .widget-grip",.04*width,.15*height);
-            await Check((await Read("parseFloat(document.querySelectorAll('.board .tile')[1].style.top)")).GetValue<double>()>10,scene.Item1+": widget resizes and moves independently");
+            var moved=await Rect(Clock);
+            await Check(resized.Right-resized.Left<swappedClock.Right-swappedClock.Left-1&&moved.Top>resized.Top+1&&moved.Left>resized.Left+1,scene.Item1+": widget resizes and moves independently");
             await using var stream=File.Create(Path.Combine(output,scene.Item1+".png"));await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
         }
     }
