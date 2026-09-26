@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&amp;display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;icon_names=add,bookmarks,check,content_copy,dark_mode,dashboard_customize,desktop_windows,drag_pan,fullscreen,fullscreen_exit,language,light_mode,lock,monitor,open_in_new,palette,pause,play_arrow,restart_alt,settings,shield,space_dashboard,sports_esports,swap_horiz,tab,tune,widgets&amp;display=block">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;icon_names=add,bookmarks,check,check_circle,content_copy,dark_mode,dashboard_customize,desktop_windows,drag_pan,fullscreen,fullscreen_exit,language,light_mode,lock,monitor,more_horiz,open_in_new,palette,pause,play_arrow,restart_alt,settings,share,shield,skip_next,space_dashboard,sports_esports,subtitles,swap_horiz,tab,thumb_down,thumb_up,tune,volume_up,widgets&amp;display=block">
   <link rel="stylesheet" href="site.css">
   <script>
     // Apply ?theme=, or a saved choice, before paint. The page follows the system otherwise.
@@ -129,30 +129,69 @@
       </div>
 
       <figure class="demo" id="fullscreen-demo" data-fullscreen="false" data-contained="true">
-        <div class="monitor" aria-hidden="true">
-          <div class="desk"></div>
-          <div class="tile t-browser"><img class="toolbar only-dark" src="screenshots/dark-toolbar.png" alt=""><img class="toolbar only-light" src="screenshots/light-toolbar.png" alt=""></div>
-          <div class="tile t-clock"><img class="only-dark" src="screenshots/widgets/dark-clock.png" alt="" loading="lazy"><img class="only-light" src="screenshots/widgets/light-clock.png" alt="" loading="lazy"></div>
-          <div class="tile t-chat"><img class="only-dark" src="screenshots/widgets/dark-discord.png" alt="" loading="lazy"><img class="only-light" src="screenshots/widgets/light-discord.png" alt="" loading="lazy"></div>
-          <div class="video">
-            <div class="frame"></div>
-            <div class="video-ui">
-              <span class="video-title">Blue hour, live</span>
-              <span class="video-bar"><i></i></span>
-              <span class="video-controls"><span class="ms filled">pause</span><span class="ms video-fs">fullscreen</span></span>
+        <div class="monitor">
+          <!-- A 1920 × 1080 desktop at real pixel sizes, scaled to fit by site.js. Setpiece defaults: 16px margin, 12px gaps. -->
+          <div class="stage" aria-hidden="true">
+            <div class="desk"></div>
+            <div class="win browser">
+              <img class="toolbar only-dark" src="screenshots/demo/dark-toolbar.png" width="1352" height="124" alt="">
+              <img class="toolbar only-light" src="screenshots/demo/light-toolbar.png" width="1352" height="124" alt="">
+              <div class="watch">
+                <div class="primary">
+                  <div class="player-slot"></div>
+                  <h4 class="watch-title">Blue hour over the fjord, live in 4K</h4>
+                  <div class="channel-row">
+                    <img class="avatar" src="assets/thumb-quiet-coast.jpg" alt="">
+                    <div class="channel"><strong>Northern Skies <span class="ms filled verified">check_circle</span></strong><span>412K subscribers</span></div>
+                    <span class="pill solid">Subscribe</span>
+                    <span class="spacer"></span>
+                    <span class="pill"><span class="ms">thumb_up</span>18K<i></i><span class="ms">thumb_down</span></span>
+                    <span class="pill"><span class="ms">share</span>Share</span>
+                    <span class="pill round"><span class="ms">more_horiz</span></span>
+                  </div>
+                  <div class="description"><strong>38K watching now · Started streaming 2 hours ago</strong><p>The last light over the fjord, filmed from the ridge above the village. Stay for the stars.</p></div>
+                </div>
+                <div class="up-next">
+                  <div class="chips-row"><span class="pill active">All</span><span class="pill">Northern Skies</span><span class="pill">Live</span></div>
+                  <div class="rec"><img src="assets/thumb-moss-geometry.jpg" alt=""><div><strong>Moss and granite: a slow hike to the plateau</strong><span>Trail Notes</span><span>1.2M views · 3 weeks ago</span></div></div>
+                  <div class="rec"><img src="assets/thumb-violet-current.jpg" alt=""><div><strong>Northern lights, uncut, all night</strong><span>Northern Skies</span><span>884K views · 1 year ago</span></div></div>
+                  <div class="rec"><img src="assets/thumb-ember-grid.jpg" alt=""><div><strong>Lo-fi for deep work, three hours</strong><span>Quiet Hours</span><span>2.4M views · 5 months ago</span></div></div>
+                  <div class="rec"><img src="assets/thumb-paper-horizon.jpg" alt=""><div><strong>Desert light at golden hour</strong><span>Wide Open</span><span>412K views · 2 weeks ago</span></div></div>
+                  <div class="rec"><img src="assets/thumb-quiet-coast.jpg" alt=""><div><strong>A quiet coast, sunrise to noon</strong><span>Northern Skies</span><span>96K views · 4 days ago</span></div></div>
+                </div>
+              </div>
+            </div>
+            <img class="win w-clock only-dark" src="screenshots/demo/dark-clock.png" width="524" height="341" alt="">
+            <img class="win w-clock only-light" src="screenshots/demo/light-clock.png" width="524" height="341" alt="">
+            <img class="win w-chat only-dark" src="screenshots/demo/dark-discord.png" width="524" height="341" alt="">
+            <img class="win w-chat only-light" src="screenshots/demo/light-discord.png" width="524" height="341" alt="">
+            <img class="win w-system only-dark" src="screenshots/demo/dark-system.png" width="524" height="342" alt="">
+            <img class="win w-system only-light" src="screenshots/demo/light-system.png" width="524" height="342" alt="">
+            <div class="player">
+              <img class="video" src="assets/video-blue-hour.jpg" alt="">
+              <div class="player-top"><strong>Blue hour over the fjord, live in 4K</strong><span>Northern Skies</span></div>
+              <div class="player-bottom">
+                <div class="scrub"><i></i></div>
+                <div class="controls">
+                  <span class="ms filled">pause</span><span class="ms filled">skip_next</span><span class="ms filled">volume_up</span>
+                  <span class="live"><i></i>LIVE</span>
+                  <span class="spacer"></span>
+                  <span class="ms">subtitles</span><span class="ms">settings</span><span class="ms fs-icon">fullscreen</span>
+                </div>
+              </div>
             </div>
           </div>
           <span class="tag tag-tile">Browser tile · Media</span>
           <span class="tag tag-widgets">Widgets keep running</span>
         </div>
         <figcaption class="demo-controls">
-          <button class="button filled" id="demo-play" type="button" aria-pressed="false"><span class="ms" aria-hidden="true">fullscreen</span><span class="label">Play fullscreen</span></button>
+          <button class="button filled" id="demo-play" type="button" aria-pressed="false"><span class="ms" aria-hidden="true">fullscreen</span><span class="label">Go fullscreen</span></button>
           <label class="switch">
             <input type="checkbox" id="demo-contain" role="switch" checked>
             <span class="track" aria-hidden="true"><span class="handle"><span class="ms">check</span></span></span>
             Keep fullscreen inside the tile
           </label>
-          <p class="demo-status" id="demo-status" aria-live="polite">Press play to go fullscreen. The video stays inside its tile.</p>
+          <p class="demo-status" id="demo-status" aria-live="polite">A live stream in a browser tile on a 1080p display. Go fullscreen: it stays inside its tile.</p>
         </figcaption>
       </figure>
     </section>

@@ -43,8 +43,8 @@ Turn on **Keep fullscreen inside the tile** for a browser tile, and fullscreen v
 
 <table>
   <tr>
-    <td width="33%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/fullscreen/fullscreen-light-tiled.png"><img src="docs/screenshots/fullscreen/fullscreen-dark-tiled.png" alt="A browser tile playing a video next to Clock and Discord widgets."></picture><br><b>Tiled.</b> A video in its browser tile.</td>
-    <td width="33%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/fullscreen/fullscreen-light-in-tile.png"><img src="docs/screenshots/fullscreen/fullscreen-dark-in-tile.png" alt="The video fullscreen, filling only its tile; the widgets remain visible."></picture><br><b>Fullscreen in the tile.</b> The rest of the desk stays.</td>
+    <td width="33%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/fullscreen/fullscreen-light-tiled.png"><img src="docs/screenshots/fullscreen/fullscreen-dark-tiled.png" alt="A 1080p desktop: a browser tile showing a video watch page, next to Clock, Discord and System widgets."></picture><br><b>Tiled.</b> A live stream in its browser tile on a 1080p display.</td>
+    <td width="33%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/fullscreen/fullscreen-light-in-tile.png"><img src="docs/screenshots/fullscreen/fullscreen-dark-in-tile.png" alt="The video fullscreen, filling only its tile; the three widgets remain visible."></picture><br><b>Fullscreen in the tile.</b> The rest of the desk stays.</td>
     <td width="33%"><picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/fullscreen/fullscreen-light-whole-monitor.png"><img src="docs/screenshots/fullscreen/fullscreen-dark-whole-monitor.png" alt="Ordinary fullscreen, covering the whole monitor."></picture><br><b>Ordinary fullscreen.</b> Everything else is covered.</td>
   </tr>
 </table>

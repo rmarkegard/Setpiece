@@ -178,48 +178,97 @@ section { position: relative; }
 .checks strong { color: var(--on-surface); }
 .checks .ms { flex-shrink: 0; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--shape-md); background: var(--secondary-container); color: var(--on-secondary-container); font-size: 20px; }
 
-/* The fullscreen demo. Geometry is in % of a 16:10 monitor; see site.js for the states. */
+/* The fullscreen demo: a 1920 x 1080 desktop laid out in real pixels (so the toolbar,
+   widgets and page are all at true 1080p size) and scaled as one piece by site.js. */
 .demo { margin: 0; }
 .monitor {
-  position: relative; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 20px;
-  background: var(--surface-lowest); box-shadow: var(--shadow), var(--glow), 0 0 0 10px var(--surface-high), 0 0 0 11px var(--outline-variant);
-  margin: 11px;
-  container-type: inline-size;
+  --scale: .34;
+  position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 14px; margin: 11px;
+  background: #000;
+  box-shadow: var(--shadow), var(--glow), 0 0 0 10px var(--surface-high), 0 0 0 11px var(--outline-variant);
 }
-.desk { position: absolute; inset: 0; background: url('assets/fjord-glass.jpg') center / cover; }
-.desk::after { content: ''; position: absolute; inset: 0; background: rgb(0 0 0 / .28); }
-.tile { position: absolute; overflow: hidden; }
-.t-browser { left: 1.5%; top: 2.4%; width: 60.7%; height: 95.2%; border-radius: 3cqi; background: var(--surface-container); }
-.t-browser .toolbar { width: 100%; }
-.t-clock, .t-chat { left: 63.7%; width: 34.8%; height: 46.4%; display: grid; place-items: center; }
-.t-clock { top: 2.4%; }
-.t-chat { top: 51.2%; }
-.t-clock img, .t-chat img { width: 100%; height: 100%; object-fit: contain; }
-.video {
-  --top: 11.8%; --left: 1.5%; --width: 60.7%; --height: 85.8%; --radius: 0 0 3cqi 3cqi;
-  position: absolute; top: var(--top); left: var(--left); width: var(--width); height: var(--height); z-index: 5;
-  overflow: hidden; border-radius: var(--radius); background: #000;
-  transition: top .65s var(--spatial), left .65s var(--spatial), width .65s var(--spatial), height .65s var(--spatial), border-radius .65s var(--spatial);
+.stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform: scale(var(--scale)); transform-origin: 0 0; font-family: Roboto, var(--font); }
+.desk { position: absolute; inset: 0; background: url('assets/desk-fjord-glass.jpg') center / cover; }
+.desk::after { content: ''; position: absolute; inset: 0; background: rgb(0 0 0 / .3); }
+.win { position: absolute; display: block; max-width: none; }
+.browser { left: 16px; top: 16px; width: 1352px; height: 1048px; overflow: hidden; background: #0f0f0f; color: #f1f1f1; }
+.browser .toolbar { width: 1352px; height: 124px; max-width: none; }
+.w-clock, .w-chat, .w-system { left: 1380px; width: 524px; }
+.w-clock { top: 16px; height: 341px; }
+.w-chat { top: 369px; height: 341px; }
+.w-system { top: 722px; height: 342px; }
+
+/* A video site watch page, in the style people know from YouTube. */
+.watch { display: flex; gap: 24px; padding: 24px 24px 0; height: 924px; overflow: hidden; }
+.primary { width: 896px; flex-shrink: 0; }
+.player-slot { width: 896px; height: 504px; border-radius: 12px; background: #000; }
+.watch-title { margin: 12px 0 8px; font-size: 20px; line-height: 28px; font-weight: 700; }
+.channel-row { display: flex; align-items: center; gap: 12px; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; max-width: none; }
+.channel { display: flex; flex-direction: column; line-height: 1.3; }
+.channel strong { font-size: 16px; display: flex; align-items: center; gap: 4px; }
+.channel span { font-size: 12px; color: #aaa; }
+.verified { font-size: 14px; color: #aaa; }
+.spacer { flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 16px; border-radius: 18px; background: rgb(255 255 255 / .1); font-size: 14px; font-weight: 500; white-space: nowrap; }
+.pill .ms { font-size: 22px; }
+.pill i { width: 1px; height: 24px; margin: 0 6px; background: rgb(255 255 255 / .2); }
+.pill.solid, .pill.active { background: #f1f1f1; color: #0f0f0f; }
+.pill.round { width: 36px; padding: 0; justify-content: center; }
+.description { margin-top: 12px; padding: 12px; border-radius: 12px; background: rgb(255 255 255 / .1); font-size: 14px; line-height: 20px; }
+.up-next { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.chips-row { display: flex; gap: 12px; margin-bottom: 4px; }
+.chips-row .pill { height: 32px; padding: 0 12px; border-radius: 8px; }
+.rec { display: flex; gap: 8px; }
+.rec img { width: 168px; height: 94px; border-radius: 8px; object-fit: cover; flex-shrink: 0; max-width: none; }
+.rec div { display: flex; flex-direction: column; min-width: 0; font-size: 12px; line-height: 18px; color: #aaa; }
+.rec strong { margin-bottom: 4px; color: #f1f1f1; font-size: 14px; line-height: 20px; font-weight: 500; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* Light theme for the page, whether chosen by the toggle or by the system. */
+:root[data-theme='light'] .browser { background: #fff; color: #0f0f0f; }
+:root[data-theme='light'] .pill, :root[data-theme='light'] .description { background: rgb(0 0 0 / .05); }
+:root[data-theme='light'] .pill.solid, :root[data-theme='light'] .pill.active { background: #0f0f0f; color: #fff; }
+:root[data-theme='light'] .rec strong { color: #0f0f0f; }
+:root[data-theme='light'] .rec div, :root[data-theme='light'] .channel span { color: #606060; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .browser { background: #fff; color: #0f0f0f; }
+  :root:not([data-theme='dark']) .pill, :root:not([data-theme='dark']) .description { background: rgb(0 0 0 / .05); }
+  :root:not([data-theme='dark']) .pill.solid, :root:not([data-theme='dark']) .pill.active { background: #0f0f0f; color: #fff; }
+  :root:not([data-theme='dark']) .rec strong { color: #0f0f0f; }
+  :root:not([data-theme='dark']) .rec div, :root:not([data-theme='dark']) .channel span { color: #606060; }
 }
-.demo[data-fullscreen='true'][data-contained='true'] .video { --top: 2.4%; --height: 95.2%; --radius: 3cqi; }
-.demo[data-fullscreen='true'][data-contained='false'] .video { --top: 0%; --left: 0%; --width: 100%; --height: 100%; --radius: 0; }
-.frame { position: absolute; inset: 0; background: url('assets/blue-hour.jpg') center / cover; transform: scale(1.02); }
-.demo[data-fullscreen='true'] .frame { animation: drift 16s ease-in-out infinite alternate; }
-@keyframes drift { from { transform: scale(1.02) translateX(0); } to { transform: scale(1.12) translateX(-3%); } }
-.video-ui { position: absolute; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr auto; gap: .8cqi 2cqi; align-items: center; padding: 5cqi 3cqi 2.4cqi; background: linear-gradient(transparent, rgb(0 0 0 / .65)); color: #fff; }
-.video-title { font-size: 2.1cqi; font-weight: 600; }
-.video-bar { grid-column: 1 / -1; grid-row: 2; height: .55cqi; border-radius: 1cqi; background: rgb(255 255 255 / .3); overflow: hidden; }
-.video-bar i { display: block; width: 38%; height: 100%; background: #fff; }
-.demo[data-fullscreen='true'] .video-bar i { animation: progress 16s linear infinite; }
-@keyframes progress { from { width: 38%; } to { width: 72%; } }
-.video-controls { display: flex; gap: 1.6cqi; grid-row: 1; grid-column: 2; }
-.video-controls .ms { font-size: 2.8cqi; }
-.tag { position: absolute; z-index: 6; padding: .7cqi 1.6cqi; border-radius: 99px; background: var(--surface-highest); color: var(--on-surface); font-size: 1.6cqi; font-weight: 600; box-shadow: 0 2px 8px rgb(0 0 0 / .25); transition: opacity .3s var(--effects), transform .5s var(--spatial-fast); }
-.tag-tile { left: 3%; top: 14%; }
-.tag-widgets { right: 3%; bottom: 5%; background: var(--primary); color: var(--on-primary); opacity: 0; transform: scale(.8); }
+
+/* The player moves between three rectangles: in the page, the tile, and the whole display. */
+.player {
+  --x: 40px; --y: 164px; --w: 896px; --h: 504px; --r: 12px;
+  position: absolute; left: var(--x); top: var(--y); width: var(--w); height: var(--h); z-index: 5;
+  overflow: hidden; border-radius: var(--r); background: #000; color: #fff;
+  transition: left .7s var(--spatial), top .7s var(--spatial), width .7s var(--spatial), height .7s var(--spatial), border-radius .7s var(--spatial);
+}
+.demo[data-fullscreen='true'][data-contained='true'] .player { --x: 16px; --y: 16px; --w: 1352px; --h: 1048px; --r: 0px; }
+.demo[data-fullscreen='true'][data-contained='false'] .player { --x: 0px; --y: 0px; --w: 1920px; --h: 1080px; --r: 0px; }
+.player .video { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: contain; }
+.demo[data-fullscreen='true'] .player .video { animation: drift 20s ease-in-out infinite alternate; }
+@keyframes drift { from { transform: scale(1); } to { transform: scale(1.06); } }
+.player-top { position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column; gap: 2px; padding: 24px 28px 48px; background: linear-gradient(rgb(0 0 0 / .6), transparent); opacity: 0; transition: opacity .3s var(--effects); }
+.player-top strong { font-size: 22px; font-weight: 500; }
+.player-top span { font-size: 15px; color: rgb(255 255 255 / .75); }
+.demo[data-fullscreen='true'] .player-top { opacity: 1; }
+.player-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 16px 4px; background: linear-gradient(transparent, rgb(0 0 0 / .7)); }
+.scrub { height: 4px; margin: 0 4px; background: rgb(255 255 255 / .3); }
+.scrub i { display: block; width: 100%; height: 100%; background: #f03; }
+.controls { display: flex; align-items: center; gap: 22px; height: 48px; padding: 0 8px; }
+.controls .ms { font-size: 30px; }
+.demo[data-fullscreen='true'] .controls .ms { font-size: 34px; }
+.live { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: #f03; }
+
+/* Labels sit outside the scaled stage so they stay readable. */
+.tag { position: absolute; z-index: 6; padding: 4px 10px; border-radius: 99px; background: var(--surface-highest); color: var(--on-surface); font-size: 11px; font-weight: 600; box-shadow: 0 2px 8px rgb(0 0 0 / .25); white-space: nowrap; transition: opacity .3s var(--effects), transform .5s var(--spatial-fast); }
+.tag-tile { left: 2%; bottom: 3.5%; }
+.tag-widgets { right: 2%; bottom: 3.5%; background: var(--primary); color: var(--on-primary); opacity: 0; transform: scale(.8); }
 .demo[data-fullscreen='true'][data-contained='true'] .tag-widgets { opacity: 1; transform: none; }
 .demo[data-fullscreen='true'] .tag-tile { opacity: 0; }
-.demo[data-contained='false'] .tag { opacity: 0; }
+.demo[data-contained='false'][data-fullscreen='true'] .tag { opacity: 0; }
 
 .demo-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; margin-top: 28px; padding-inline: 11px; }
 .demo-status { flex-basis: 100%; color: var(--on-surface-variant); min-height: 1.6em; }

@@ -5,6 +5,7 @@ Captured from the development preview (`?mock=1`), which runs the real Setpiece 
 - `dark-*.png`, `light-*.png`: the Studio, Widgets, widget setup dialog, Browsers, Appearance and Settings pages, the browser toolbar, and Scrapbots.
 - `accent-*.png`: Studio in the Sage, Ocean and Rose accents.
 - `widgets/`: each widget as its own transparent window, in both modes.
-- `fullscreen/`: the project page's fullscreen demo in three states: tiled, fullscreen inside the tile, and ordinary fullscreen.
+- `demo/`: the toolbar and three widgets captured at their exact tile sizes on a 1920 × 1080 display, used by the fullscreen demo.
+- `fullscreen/`: that demo in three states: tiled, fullscreen inside the tile, and ordinary fullscreen.
 
 See "Project page" in the repository README for the preview parameters.

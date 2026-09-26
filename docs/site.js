@@ -83,11 +83,11 @@ function paintDemo() {
   demo.dataset.contained = String(contained);
   play.setAttribute('aria-pressed', String(full));
   play.querySelector('.ms').textContent = full ? 'fullscreen_exit' : 'fullscreen';
-  play.querySelector('.label').textContent = full ? 'Exit fullscreen' : 'Play fullscreen';
-  demo.querySelector('.video-fs').textContent = full ? 'fullscreen_exit' : 'fullscreen';
+  play.querySelector('.label').textContent = full ? 'Exit fullscreen' : 'Go fullscreen';
+  demo.querySelector('.fs-icon').textContent = full ? 'fullscreen_exit' : 'fullscreen';
   status.textContent = !full
-    ? (contained ? 'Press play to go fullscreen. The video stays inside its tile.' : 'Press play to see ordinary fullscreen, which takes over the whole monitor.')
-    : (contained ? 'Fullscreen, inside the tile. The clock and your chat are still right there.' : 'Ordinary fullscreen: the video covers every tile on the monitor.');
+    ? (contained ? 'A live stream in a browser tile on a 1080p display. Go fullscreen: it stays inside its tile.' : 'With the switch off, fullscreen works as usual and takes over the whole display.')
+    : (contained ? 'Fullscreen inside the tile. The toolbar and page make way for the video, and your clock, chat and system stats stay in view.' : 'Ordinary fullscreen: the video covers every tile on the display.');
 }
 play.addEventListener('click', () => { demo.dataset.fullscreen = String(demo.dataset.fullscreen !== 'true'); paintDemo(); });
 contain.addEventListener('change', paintDemo);
@@ -95,6 +95,9 @@ contain.addEventListener('change', paintDemo);
 const start = new URLSearchParams(location.search).get('demo');
 if (start === 'full' || start === 'free') { demo.dataset.fullscreen = 'true'; contain.checked = start === 'full'; }
 paintDemo();
+// The stage is a real 1920 x 1080 desktop; scale it to whatever width the monitor frame has.
+const monitor = demo.querySelector('.monitor');
+new ResizeObserver(() => monitor.style.setProperty('--scale', String(monitor.clientWidth / 1920))).observe(monitor);
 
 /* Accent preview */
 const swatches = [...document.querySelectorAll('[data-accent]')];

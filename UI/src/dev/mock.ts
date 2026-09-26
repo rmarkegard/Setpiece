@@ -31,7 +31,7 @@ export function installMock(){
   let preferences={...defaultAppearance,mode:query.get('mode')==='light'?'light':'dark',accent:accent&&/^[0-9a-f]{6}$/i.test(accent)?'#'+accent:defaultAppearance.accent};
   let note='Pick up the new keyboard switches.\nCall Mira about the reveal.';
   let game={salvage:140,level:3,armor:1,power:2,engine:0,last:Date.now()-45*60000};
-  const browserState={name:query.get('browser')??'Media',selected:'t1',tabs:[{id:'t1',title:'YouTube',url:'https://www.youtube.com/'},{id:'t2',title:'Material Design 3',url:'https://m3.material.io/'}],url:'https://www.youtube.com/',pinned:true,back:true,forward:false,extension:'uBlock Origin Lite 2025.1',runtime:'140.0.3485.54'};
+  const browserState={name:query.get('browser')??'Media',selected:'t1',tabs:[{id:'t1',title:'Blue hour over the fjord, live - YouTube',url:'https://www.youtube.com/watch?v=blue-hour'},{id:'t2',title:'Material Design 3',url:'https://m3.material.io/'}],url:'https://www.youtube.com/watch?v=blue-hour',pinned:true,back:true,forward:false,extension:'uBlock Origin Lite 2025.1',runtime:'140.0.3485.54'};
   const services=structuredClone(fixtures.services);
 
   const handlers:Record<string,(payload:any)=>unknown>={
