@@ -14,6 +14,36 @@ Check(tiles[0]!["ConstrainFullscreenToTile"]!.GetValue<bool>(),"Tiled fullscreen
 Check(tiles[1]!["AssignedProcessName"]!.GetValue<string>()==""&&tiles[1]!["WidgetId"]!.GetValue<string>()=="google-calendar","Widget identity survives and application assignment is cleared");
 Check(profile["CustomLegacyField"]!.GetValue<string>()=="retained","Unknown legacy properties survive normalization");
 var normalizedAgain=Storage.Normalize(profile.DeepClone().AsObject());Check(JsonNode.DeepEquals(profile,normalizedAgain),"Normalization is idempotent");
+foreach(var id in ProfileRules.WallpaperIds)
+{
+    var wallpaperProfile=Profile();wallpaperProfile["WallpaperId"]=id;wallpaperProfile["AnimatedWallpaper"]=false;
+    var wallpaperKey=store.SaveProfile(null,wallpaperProfile);
+    var savedWallpaper=store.Profiles().OfType<JsonObject>().Single(p=>p["key"]!.GetValue<string>()==wallpaperKey)["profile"]!;
+    Check(savedWallpaper["WallpaperId"]!.GetValue<string>()==id&&!savedWallpaper["AnimatedWallpaper"]!.GetValue<bool>(),"Wallpaper and static preference survive save/load: "+id);
+    store.DeleteProfile(wallpaperKey);
+}
+var legacyWallpapers=new Dictionary<string,string>
+{
+    ["fjord-glass"]="jade-synthesis",
+    ["paper-horizon"]="peach-contour",
+    ["moss-geometry"]="modular-moss",
+    ["blue-hour"]="glacial-diffusion",
+    ["ember-grid"]="chromatic-echo",
+    ["slate-dunes"]="mineral-memory",
+    ["orchard-mist"]="moss-imprint",
+    ["violet-current"]="violet-interference",
+    ["quiet-coast"]="ceramic-resonance",
+    ["mono-bloom"]="mercury-flow",
+};
+foreach(var (oldId,newId) in legacyWallpapers)
+{
+    var oldProfile=Profile();oldProfile["WallpaperId"]=oldId;oldProfile["AnimatedWallpaper"]=true;
+    var migrated=Storage.Normalize(oldProfile);
+    Check(migrated["WallpaperId"]!.GetValue<string>()==newId&&migrated["AnimatedWallpaper"]!.GetValue<bool>()&&migrated["CustomLegacyField"]!.GetValue<string>()=="retained","Legacy wallpaper migrates without losing preferences: "+oldId);
+    Check(JsonNode.DeepEquals(migrated,Storage.Normalize(migrated.DeepClone().AsObject())),"Wallpaper migration is idempotent: "+oldId);
+}
+var unknownWallpaper=Profile();unknownWallpaper["WallpaperId"]="../unknown";
+Check(Storage.Normalize(unknownWallpaper)["WallpaperId"]!.GetValue<string>()=="ambient","Unknown wallpaper safely falls back to Ambient");
 var narrow=Storage.Normalize(new JsonObject{["Name"]="Narrow tiles",["Gap"]=40d,["OuterMargin"]=16d,["Zones"]=new JsonArray(
     new JsonObject{["X"]=0d,["Y"]=0d,["Width"]=.475,["Height"]=1d},
     new JsonObject{["X"]=.475,["Y"]=0d,["Width"]=.025,["Height"]=1d},
