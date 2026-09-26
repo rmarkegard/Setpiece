@@ -2,7 +2,7 @@
 
 Captured from the development preview (`?mock=1`), which runs the real Setpiece interface against sample data, rendered in WebView2 like the app. Clocks are pinned to 10:24 with `mockTime`. Connected states are sample data, not signed-in services.
 
-- `dark-*.png`, `light-*.png`: the Studio, Widgets, widget setup dialog, Browsers, Appearance and Settings pages, the browser toolbar, and Scrapbots.
+- `dark-*.png`, `light-*.png`: the Studio, Widgets, widget setup dialog, Browsers, Appearance and Settings pages, and Scrapbots.
 - `accent-*.png`: Studio in the Sage, Ocean and Rose accents.
 - `widgets/`: each widget as its own transparent window, in both modes.
 - `demo/`: the toolbar and three widgets captured at their exact tile sizes on a 1920 × 1080 display, used by the fullscreen demo.
