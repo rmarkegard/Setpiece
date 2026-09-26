@@ -1,0 +1,38 @@
+// M3 basic dialog layout, shared by the small dialogs.
+.basic {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: var(--space-6) 0 var(--space-5);
+  min-width: min(calc(360px * var(--ui-scale, 1)), 90vw);
+  max-width: calc(560px * var(--ui-scale, 1));
+}
+.hero-icon {
+  align-self: center;
+  margin-bottom: var(--space-4);
+  color: var(--mat-sys-secondary);
+}
+h2[mat-dialog-title] {
+  text-align: center;
+  padding: 0 var(--space-6);
+  margin: 0 0 var(--space-4);
+  &::before { display: none; }
+}
+mat-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: 0 var(--space-6) !important;
+}
+mat-dialog-actions {
+  padding: var(--space-6) var(--space-6) 0 !important;
+  gap: var(--space-2);
+}
+mat-form-field { width: 100%; margin-top: var(--space-2); }
+.note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  sp-icon { font-size: 18px; }
+}
+.danger { --mat-button-text-label-text-color: var(--mat-sys-error); --mat-button-filled-container-color: var(--mat-sys-error); --mat-button-filled-label-text-color: var(--mat-sys-on-error); }

@@ -27,6 +27,6 @@ if (args.Contains("--live"))
     var stops = await providers.SearchStops("Oslo S"); Check(stops.Count > 0, "Entur stop search returns real stops");
     var stop = stops[0]!; var departures = await providers.Connect(new JsonObject { ["service"] = "ruter", ["stopId"] = stop["id"]!.DeepClone(), ["stopName"] = stop["name"]!.DeepClone() });
     Check(departures["status"]?.GetValue<string>() is "ready" or "empty", "Entur live departures return a valid state");
-    foreach (var service in new[] { "news", "reddit", "volume", "battery", "codex" }) { var state = await providers.Read(service); Console.WriteLine("OBSERVED: " + service + " -> " + state["status"] + " · " + state["title"]); if (service == "codex") Console.WriteLine("OBSERVED: Codex windows=" + (state["data"]?["codex"]?["windows"]?.AsArray().Count ?? 0) + ", OpenCode available=" + state["data"]?["opencode"]?["available"]); }
+    foreach (var service in new[] { "news", "reddit", "volume", "battery", "codex" }) { var state = await providers.Read(service); Console.WriteLine("OBSERVED: " + service + " -> " + state["status"] + " · " + state["title"]); if (service == "codex") Console.WriteLine("OBSERVED: Claude windows=" + (state["data"]?["claude"]?["windows"]?.AsArray().Count ?? 0) + ", Codex windows=" + (state["data"]?["codex"]?["windows"]?.AsArray().Count ?? 0) + ", OpenCode available=" + state["data"]?["opencode"]?["available"]); }
 }
 Console.WriteLine($"{passed} opt-in integration checks passed. Test files: {root}");

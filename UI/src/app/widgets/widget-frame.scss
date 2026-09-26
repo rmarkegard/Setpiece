@@ -1,0 +1,133 @@
+// The Expressive widget card. Bodies use only the --w-* variables below, so every
+// widget follows its category color (from the accent) and the user's surface opacity.
+:host {
+  display: block;
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+
+.widget {
+  // --w-container / --w-on are set per category by the frame.
+  --w-bg: color-mix(in srgb, var(--w-container) calc(var(--surface-opacity, 1) * 100%), transparent);
+  --w-fg: var(--w-on);
+  --w-muted: color-mix(in srgb, var(--w-on) 74%, transparent);
+  --w-inset: color-mix(in srgb, var(--w-on) 9%, transparent);
+  --w-inset-strong: color-mix(in srgb, var(--w-on) 16%, transparent);
+  --w-track: color-mix(in srgb, var(--w-on) 20%, transparent);
+  --w-pad: var(--space-5);
+
+  // Material components inside a widget speak the widget's colors.
+  --mat-progress-bar-active-indicator-color: var(--w-fg);
+  --mat-progress-bar-track-color: var(--w-track);
+  --mat-progress-spinner-active-indicator-color: var(--w-fg);
+  --mat-slider-active-track-color: var(--w-fg);
+  --mat-slider-inactive-track-color: var(--w-track);
+  --mat-slider-handle-color: var(--w-fg);
+  --mat-slider-focus-handle-color: var(--w-fg);
+  --mat-slider-hover-handle-color: var(--w-fg);
+  --mat-slider-ripple-color: var(--w-fg);
+  --mat-button-filled-container-color: var(--w-fg);
+  --mat-button-filled-label-text-color: var(--w-container);
+  --mat-button-tonal-container-color: var(--w-inset-strong);
+  --mat-button-tonal-label-text-color: var(--w-fg);
+  --mat-button-text-label-text-color: var(--w-fg);
+  --mat-button-outlined-label-text-color: var(--w-fg);
+  --mat-button-outlined-outline-color: var(--w-track);
+  --mat-icon-button-icon-color: var(--w-fg);
+
+  position: relative;
+  isolation: isolate;
+  height: 100%;
+  overflow: hidden;
+  background: var(--w-bg);
+  color: var(--w-fg);
+  box-shadow: var(--accent-glow);
+  transition: border-radius var(--motion-spatial), background-color var(--motion-effects);
+}
+
+.fit-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.fit-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: var(--body-height, 100%);
+  padding: var(--w-pad);
+  font: var(--mat-sys-body-medium);
+}
+.compact .fit-content { --w-pad: var(--space-4); gap: var(--space-2); }
+.spacious .fit-content { --w-pad: var(--space-6); gap: var(--space-4); }
+
+// Hover and focus reveal the widget's own actions, floating over the content.
+.actions {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: var(--z-overlay);
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--shape-full);
+  background: color-mix(in srgb, var(--w-container) 88%, transparent);
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity var(--motion-effects), transform var(--motion-spatial-fast);
+  pointer-events: none;
+}
+.actions:empty { display: none; }
+.widget:hover .actions,
+.widget:focus-within .actions {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.actions button {
+  --mat-icon-button-state-layer-size: calc(36px * var(--ui-scale, 1));
+  width: calc(36px * var(--ui-scale, 1));
+  height: calc(36px * var(--ui-scale, 1));
+  padding: 0;
+}
+.actions sp-icon { font-size: var(--icon-size-sm); }
+
+// Loading, empty, disconnected, offline and error share one quiet layout.
+.widget-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 0;
+  p { color: var(--w-muted); max-width: 36ch; }
+  button { margin-top: var(--space-2); }
+  &.loading { align-items: center; text-align: center; }
+}
+.blob {
+  display: grid;
+  place-items: center;
+  width: calc(56px * var(--ui-scale, 1));
+  height: calc(56px * var(--ui-scale, 1));
+  margin-bottom: var(--space-1);
+  border-radius: 42% 58% 55% 45% / 48% 42% 58% 52%;
+  background: var(--w-inset-strong);
+  sp-icon { font-size: var(--icon-size-lg); }
+}
+.compact .widget-state {
+  gap: var(--space-1);
+  .blob { width: calc(40px * var(--ui-scale, 1)); height: calc(40px * var(--ui-scale, 1)); sp-icon { font-size: var(--icon-size); } }
+  h3 { font: var(--mat-sys-title-medium); }
+  button { margin-top: var(--space-1); }
+}
+
+.control-error {
+  margin-top: auto;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--shape-sm);
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}

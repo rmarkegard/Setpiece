@@ -1,24 +1,135 @@
 'use strict';
-const desktop = document.querySelector('.desktop');
-const descriptions = { focus: 'A little focus. A few essentials.', balanced: 'A different balance. The same essentials.', wide: 'Spread out. Give each part some room.' };
-document.querySelectorAll('[data-preset]').forEach(button => button.addEventListener('click', () => {
-  desktop.dataset.layout = button.dataset.preset;
-  document.querySelectorAll('[data-preset]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-  document.querySelector('#layout-description').textContent = descriptions[button.dataset.preset];
-}));
-const screens = {
-  studio: ['luna-studio.png', 'Setpiece Studio with display selection, a three-tile canvas, and tile settings.', 'Studio — shape a workspace, tile by tile.', 1250],
-  widgets: ['terminal-widgets.png', 'Setpiece widget library in dark mode with daily, device, connected, and preview categories.', 'Widgets — find the essentials for your day.', 2200],
-  appearance: ['luna-appearance.png', 'Setpiece Appearance settings with modes, accent colors, and wallpaper choices.', 'Appearance — choose your color, light, and wallpaper.', 2100],
-  browsers: ['luna-browsers.png', 'Setpiece Browsers screen with named browser creation and an empty shared-browser collection.', 'Browsers — give each session a name and a home.', 1250]
+const root = document.documentElement;
+const systemLight = matchMedia('(prefers-color-scheme: light)');
+const theme = () => root.dataset.theme || (systemLight.matches ? 'light' : 'dark');
+
+/* Theme toggle. Themed screenshots follow via CSS (.only-dark / .only-light) and refreshThemed(). */
+const toggle = document.querySelector('#theme-toggle');
+function paintToggle() {
+  const next = theme() === 'dark' ? 'light' : 'dark';
+  toggle.querySelector('.ms').textContent = next + '_mode';
+  toggle.setAttribute('aria-label', 'Switch to ' + next + ' theme');
+}
+toggle.addEventListener('click', () => {
+  root.dataset.theme = theme() === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem('setpiece-site-theme', root.dataset.theme); } catch {}
+  paintToggle(); refreshThemed();
+});
+systemLight.addEventListener('change', () => { if (!root.dataset.theme) { paintToggle(); refreshThemed(); } });
+paintToggle();
+
+/* Tour */
+const shots = {
+  studio: ['Studio. Pick a display, start from a layout, then drag, resize and split tiles on a live board. Widgets render for real while you arrange them.', 'Setpiece Studio: displays, the layout board with live widgets, and the tile inspector.', 960],
+  widgets: ['Widgets. The library shows what each widget needs, what’s connected, and how many are on this display. Add one in a click.', 'The Setpiece widget library with category filters, setup status and Add buttons.', 1320],
+  dialog: ['Setup. Every widget opens the same way: a live preview on the left, its settings and connection on the right.', 'The Spotify widget dialog, with a live preview next to its connection settings.', 780],
+  browsers: ['Browsers. Name a browser once, open it anywhere, or put it in the selected tile. Brave bookmarks come along.', 'The Browsers page with two named browsers, the edit form and Brave bookmarks.', 760],
+  appearance: ['Appearance. Light or dark, your accent, surfaces and corners, and a wallpaper per workspace, with a live preview.', 'The Appearance page with mode, accent swatches, surface sliders and a live preview.', 1180],
+  settings: ['Settings. Interface and text size, reduced motion, workspaces, updates and shortcuts, as plain rows.', 'The Settings page with comfort, workspaces, updates and keyboard sections.', 1260]
 };
-document.querySelectorAll('[data-screen]').forEach(button => button.addEventListener('click', () => {
-  const [file, alt, caption, height] = screens[button.dataset.screen];
-  const image = document.querySelector('#app-screen');
-  image.src = 'reveal/screenshots/' + file;
-  image.alt = alt;
-  image.height = height;
-  document.querySelector('#screen-link').href = image.src;
-  document.querySelector('#screen-caption').textContent = caption;
-  document.querySelectorAll('[data-screen]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-}));
+const tabs = [...document.querySelectorAll('[data-shot]')];
+const tourImage = document.querySelector('#tour-image');
+function showShot(tab) {
+  const name = tab.dataset.shot, [caption, alt, height] = shots[name];
+  tourImage.dataset.name = name;
+  tourImage.alt = alt;
+  tourImage.height = height;
+  document.querySelector('#tour-caption').textContent = caption;
+  document.querySelector('#tour-panel').setAttribute('aria-labelledby', tab.id);
+  tabs.forEach(t => { t.setAttribute('aria-selected', String(t === tab)); t.tabIndex = t === tab ? 0 : -1; });
+  refreshThemed();
+}
+tabs.forEach((tab, i) => {
+  tab.addEventListener('click', () => showShot(tab));
+  tab.addEventListener('keydown', e => {
+    const next = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i + tabs.length - 1) % tabs.length, Home: 0, End: tabs.length - 1 }[e.key];
+    if (next !== undefined) { e.preventDefault(); showShot(tabs[next]); tabs[next].focus(); }
+  });
+});
+
+/* Widget wall: every widget in both themes. */
+const widgets = [
+  ['clock', 'Clock', 300], ['google-calendar', 'Calendar', 420], ['spotify', 'Spotify', 300], ['system', 'System', 300],
+  ['weather', 'Weather', 300], ['discord', 'Discord', 300], ['bambu-lab', 'Bambu Lab', 420], ['ruter', 'Ruter', 300],
+  ['email', 'Inbox', 300], ['codex', 'AI Usage', 300], ['idle-game', 'Scrapbots', 300], ['news', 'VG News', 300],
+  ['volume', 'Volume', 300], ['notes', 'Notes', 300], ['reddit', 'Reddit', 300], ['battery', 'Battery', 300]
+];
+const wall = document.querySelector('#widget-wall');
+wall.innerHTML = '';
+for (const [id, name, height] of widgets) {
+  const figure = document.createElement('figure');
+  const width = id === 'news' ? 420 : id === 'battery' ? 300 : 360;
+  for (const mode of ['dark', 'light']) {
+    const img = document.createElement('img');
+    img.className = 'only-' + mode;
+    img.src = `screenshots/widgets/${mode}-${id}.png`;
+    img.width = width; img.height = height; img.loading = 'lazy';
+    img.alt = `The ${name} widget in ${mode} mode.`;
+    figure.append(img);
+  }
+  const caption = document.createElement('figcaption');
+  caption.textContent = name;
+  figure.append(caption);
+  wall.append(figure);
+}
+
+/* Fullscreen demo */
+const demo = document.querySelector('#fullscreen-demo');
+const play = document.querySelector('#demo-play');
+const contain = document.querySelector('#demo-contain');
+const status = document.querySelector('#demo-status');
+function paintDemo() {
+  const full = demo.dataset.fullscreen === 'true', contained = contain.checked;
+  demo.dataset.contained = String(contained);
+  play.setAttribute('aria-pressed', String(full));
+  play.querySelector('.ms').textContent = full ? 'fullscreen_exit' : 'fullscreen';
+  play.querySelector('.label').textContent = full ? 'Exit fullscreen' : 'Go fullscreen';
+  demo.querySelector('.fs-icon').textContent = full ? 'fullscreen_exit' : 'fullscreen';
+  status.textContent = !full
+    ? (contained ? 'A live stream in a browser tile on a 1080p display. Go fullscreen: it stays inside its tile.' : 'With the switch off, fullscreen works as usual and takes over the whole display.')
+    : (contained ? 'Fullscreen inside the tile. The toolbar and page make way for the video, and your clock, chat and system stats stay in view.' : 'Ordinary fullscreen: the video covers every tile on the display.');
+}
+play.addEventListener('click', () => { demo.dataset.fullscreen = String(demo.dataset.fullscreen !== 'true'); paintDemo(); });
+contain.addEventListener('change', paintDemo);
+// ?demo=full or ?demo=free opens the demo in fullscreen, inside the tile or across the monitor.
+const start = new URLSearchParams(location.search).get('demo');
+if (start === 'full' || start === 'free') { demo.dataset.fullscreen = 'true'; contain.checked = start === 'full'; }
+paintDemo();
+// The stage is a real 1920 x 1080 desktop; scale it to whatever width the monitor frame has.
+const monitor = demo.querySelector('.monitor');
+new ResizeObserver(() => monitor.style.setProperty('--scale', String(monitor.clientWidth / 1920))).observe(monitor);
+
+/* Accent preview */
+const swatches = [...document.querySelectorAll('[data-accent]')];
+const accentImage = document.querySelector('#accent-image');
+function pickAccent(button) {
+  const name = button.dataset.accent;
+  accentImage.src = name === 'iris' ? 'screenshots/dark-studio.png' : `screenshots/accent-${name}.png`;
+  accentImage.alt = `Setpiece Studio with the ${button.getAttribute('aria-label')} accent.`;
+  swatches.forEach(s => {
+    const on = s === button;
+    s.setAttribute('aria-checked', String(on)); s.tabIndex = on ? 0 : -1;
+    s.innerHTML = on ? '<span class="ms" aria-hidden="true">check</span>' : '';
+  });
+}
+swatches.forEach((s, i) => {
+  s.addEventListener('click', () => pickAccent(s));
+  s.addEventListener('keydown', e => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (step) { e.preventDefault(); const next = swatches[(i + step + swatches.length) % swatches.length]; pickAccent(next); next.focus(); }
+  });
+});
+
+/* Screenshots that switch file with the theme rather than via CSS. */
+function refreshThemed() {
+  const url = `screenshots/${theme()}-${tourImage.dataset.name}.png`;
+  if (!tourImage.src.endsWith(url)) { tourImage.src = url; document.querySelector('#tour-link').href = url; }
+}
+refreshThemed();
+
+/* Copy build commands */
+document.querySelector('#copy-build').addEventListener('click', async () => {
+  const out = document.querySelector('#copy-status');
+  try { await navigator.clipboard.writeText(document.querySelector('#build-commands').textContent); out.textContent = 'Build commands copied.'; }
+  catch { out.textContent = 'Select the commands above and copy them manually.'; }
+});

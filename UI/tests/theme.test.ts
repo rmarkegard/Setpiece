@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeAppearance,defaultAppearance,colorRoles,accentColors,type Appearance} from '../src/theme.ts';
+import {normalizeAppearance,defaultAppearance,colorRoles,accentColors,categoryRoles,categoryShape,shapeScale,type Appearance} from '../src/theme.ts';
 
 for(const [scheme,accent] of Object.entries({terminal:'#517c60',luna:'#686299',tidal:'#316b85',clay:'#96694c'})){
   test(`migrates ${scheme} without losing mode or surface preferences`,()=>{
@@ -47,4 +47,24 @@ test('both modes retain readable text for preset and extreme custom accents',()=
       assert.ok(contrast(roles[bg],roles[fg])>=4.5,`${accent} ${dark?'dark':'light'} ${bg}/${fg}`);
     }
   }
+});
+test('every widget category keeps readable text on its container for any accent',()=>{
+  for(const accent of [...accentColors.map(a=>a.color),'#ffffff','#000000','#ffff00','#00ff00'])for(const dark of [false,true]){
+    const roles=colorRoles(accent,dark);
+    for(const [category,role] of Object.entries(categoryRoles)){
+      assert.ok(roles[role.container]&&roles[role.onContainer],`${category} roles exist`);
+      assert.ok(contrast(roles[role.container],roles[role.onContainer])>=4.5,`${accent} ${dark?'dark':'light'} ${category}`);
+    }
+  }
+});
+test('the accent is kept as the primary key color and recolors secondary and tertiary',()=>{
+  const iris=colorRoles('#5e5ce6',true),sage=colorRoles('#517c60',true);
+  assert.notEqual(iris['secondary-container'],sage['secondary-container']);
+  assert.notEqual(iris['tertiary-container'],sage['tertiary-container']);
+  assert.equal(iris['play-container'],sage['play-container']);
+});
+test('shape scale follows the corner radius preference and clamps',()=>{
+  assert.equal(shapeScale(24),1);assert.equal(shapeScale(12),.5);
+  assert.equal(shapeScale(99),32/24);assert.equal(shapeScale(Number.NaN),1);
+  assert.deepEqual(categoryShape('Unknown'),categoryShape('Preview'));
 });

@@ -23,7 +23,7 @@ internal static class VisualAudit
         "reddit"=>"""{"status":"ready","title":"r/technology","detail":"A conversation worth a moment","items":[{"title":"A new approach to local-first software","detail":"1.2k points · 318 comments"},{"title":"What are you building this week?","detail":"642 points · 129 comments"},{"title":"An open standard gets a new release","detail":"529 points · 84 comments"}]}""",
         "battery"=>"""{"status":"ready","title":"81%","detail":"About 4 h 20 min remaining","data":{"level":81,"charging":false}}""",
         "volume"=>"""{"status":"ready","title":"System volume","detail":"Windows output device","data":{"level":42,"peak":28,"muted":false}}""",
-        "codex"=>"""{"status":"ready","title":"AI Usage","detail":"Account limits","data":{"codex":{"windows":[{"name":"codex","minutes":300,"used":8,"reset":1790000000},{"name":"codex","minutes":10080,"used":78,"reset":1790200000}]},"opencode":{"available":true,"sessions":51,"tokens":15236247,"cost":9.29},"go":{"windows":[{"name":"rolling","used":0},{"name":"weekly","used":0},{"name":"monthly","used":49}]}}}""",
+        "codex"=>"""{"status":"ready","title":"AI Usage","detail":"Account limits","data":{"claude":{"windows":[{"name":"claude","minutes":300,"used":34},{"name":"claude","minutes":10080,"used":61}]},"codex":{"windows":[{"name":"codex","minutes":300,"used":8,"reset":1790000000},{"name":"codex","minutes":10080,"used":78,"reset":1790200000}]},"opencode":{"available":true,"sessions":51,"tokens":15236247,"cost":9.29},"go":{"windows":[{"name":"rolling","used":0},{"name":"weekly","used":0},{"name":"monthly","used":49}]}}}""",
         _=>"""{"status":"disconnected","title":"Connect a service","detail":"Design review"}"""
     })!;
         if(service=="google-calendar"){var items=result["items"]!.AsArray();var original=items.Select(x=>x!.DeepClone()).ToArray();for(var i=0;i<21;i++)items.Add(original[i%original.Length].DeepClone());}
@@ -50,8 +50,8 @@ internal static class VisualAudit
         storage.SaveProfile("visual-review",profile);
         await host.HandleCommand("profile",new JsonObject{["profile"]=profile.DeepClone()});
         var scenes=new List<Scene>();
-        foreach(var route in new[]{"Studio","Apps","Widgets","Connections","Appearance","Browsers","Settings"})
-            scenes.Add(new(route.ToLowerInvariant(),"route="+route,1440,route=="Widgets"?2200:route=="Appearance"?2100:route=="Connections"?1600:1250));
+        foreach(var route in new[]{"Studio","Widgets","Browsers","Appearance","Settings"})
+            scenes.Add(new(route.ToLowerInvariant(),"route="+route,1440,route=="Widgets"?1500:route=="Appearance"?1500:route=="Settings"?1400:1000));
         var widgets=new[]{"clock","system","google-calendar","discord","spotify","codex","weather","bambu-lab","ruter","news","notes","email","battery","volume","reddit","idle-game","market","focus","github","twitter"};
         foreach(var widget in widgets)scenes.Add(new("widget-"+widget,"widget="+widget,440,440,widget));
         foreach(var widget in widgets)

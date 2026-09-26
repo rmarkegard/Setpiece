@@ -20,28 +20,39 @@ export function fittingGap(gap:number,margin:number,tiles:Tile[],width:number,he
 export interface AppWindow { handle:string; title:string; process:string; }
 export interface ServiceState { status:'loading'|'ready'|'empty'|'disconnected'|'error'|'offline'; title:string; detail:string; updated?:string; data?:Record<string,unknown>; items?:{title:string;detail:string;url?:string}[]; }
 export interface WidgetDefinition { id:string; name:string; icon:string; category:string; description:string; preview?:boolean; retired?:boolean; }
+// Icons are Material Symbols ligature names.
 export const widgets:WidgetDefinition[] = [
-  {id:'clock',name:'Clock',icon:'◷',category:'Daily',description:'Your time, around the world.'},
-  {id:'system',name:'System',icon:'▥',category:'Device',description:'A clear view of your machine.'},
-  {id:'google-calendar',name:'Google Calendar',icon:'▦',category:'Daily',description:'Make room for what comes next.'},
-  {id:'discord',name:'Discord',icon:'◉',category:'Connected',description:'Your community, at a glance.'},
-  {id:'spotify',name:'Spotify',icon:'♫',category:'Connected',description:'A little space for your soundtrack.'},
-  {id:'codex',name:'AI Usage',icon:'✧',category:'Device',description:'Codex quota and Opencode activity.'},
-  {id:'weather',name:'Weather',icon:'☀',category:'Daily',description:'A window onto the day outside.'},
-  {id:'bambu-lab',name:'Bambu Lab A1 Mini',icon:'⬡',category:'Device',description:'Follow your next creation.'},
-  {id:'ruter',name:'Ruter',icon:'↗',category:'Daily',description:'Your stop. Your next departure.'},
-  {id:'news',name:'VG News',icon:'▤',category:'Connected',description:'A considered look at the headlines.'},
-  {id:'notes',name:'Notes',icon:'✎',category:'Daily',description:'Keep a thought within reach.'},
-  {id:'email',name:'Inbox',icon:'✉',category:'Connected',description:'Know what needs your attention.'},
-  {id:'battery',name:'Battery',icon:'▰',category:'Device',description:'Power for the work ahead.'},
-  {id:'volume',name:'Volume',icon:'♪',category:'Device',description:'Find the right level.'},
-  {id:'reddit',name:'Reddit',icon:'◎',category:'Connected',description:'Conversations worth a moment.'},
-  {id:'idle-game',name:'Scrapbots',icon:'⚙',category:'Play',description:'Explore. Battle. Bring your salvage home.'},
-  {id:'market',name:'Markets',icon:'⌁',category:'Preview',description:'A watchlist concept.',preview:true},
-  {id:'focus',name:'Focus',icon:'◴',category:'Preview',description:'A space to concentrate.',preview:true},
-  {id:'github',name:'GitHub',icon:'⑂',category:'Preview',description:'Your contributions, in view.',preview:true},
-  {id:'twitter',name:'X / Twitter',icon:'×',category:'Retired',description:'This integration has been retired.',retired:true}
+  {id:'clock',name:'Clock',icon:'schedule',category:'Daily',description:'Your time, around the world.'},
+  {id:'system',name:'System',icon:'monitoring',category:'Device',description:'A clear view of your machine.'},
+  {id:'google-calendar',name:'Calendar',icon:'calendar_month',category:'Daily',description:'Make room for what comes next.'},
+  {id:'discord',name:'Discord',icon:'forum',category:'Connected',description:'Your community, at a glance.'},
+  {id:'spotify',name:'Spotify',icon:'music_note',category:'Connected',description:'A little space for your soundtrack.'},
+  {id:'codex',name:'AI Usage',icon:'data_usage',category:'Device',description:'Claude and Codex quotas, and OpenCode activity.'},
+  {id:'weather',name:'Weather',icon:'partly_cloudy_day',category:'Daily',description:'A window onto the day outside.'},
+  {id:'bambu-lab',name:'Bambu Lab',icon:'deployed_code',category:'Device',description:'Follow your next print on the A1 Mini.'},
+  {id:'ruter',name:'Ruter',icon:'directions_bus',category:'Daily',description:'Your stop. Your next departure.'},
+  {id:'news',name:'VG News',icon:'newspaper',category:'Connected',description:'A considered look at the headlines.'},
+  {id:'notes',name:'Notes',icon:'edit_note',category:'Daily',description:'Keep a thought within reach.'},
+  {id:'email',name:'Inbox',icon:'mail',category:'Connected',description:'Know what needs your attention.'},
+  {id:'battery',name:'Battery',icon:'battery_full',category:'Device',description:'Power for the work ahead.'},
+  {id:'volume',name:'Volume',icon:'volume_up',category:'Device',description:'Find the right level.'},
+  {id:'reddit',name:'Reddit',icon:'dynamic_feed',category:'Connected',description:'Conversations worth a moment.'},
+  {id:'idle-game',name:'Scrapbots',icon:'smart_toy',category:'Play',description:'Explore. Battle. Bring your salvage home.'},
+  {id:'market',name:'Markets',icon:'show_chart',category:'Preview',description:'A watchlist concept.',preview:true},
+  {id:'focus',name:'Focus',icon:'timer',category:'Preview',description:'A space to concentrate.',preview:true},
+  {id:'github',name:'GitHub',icon:'commit',category:'Preview',description:'Your contributions, in view.',preview:true},
+  {id:'twitter',name:'X / Twitter',icon:'block',category:'Retired',description:'This integration has been retired.',retired:true}
 ];
+export function widgetDefinition(id:string):WidgetDefinition{return widgets.find(w=>w.id===id)??{id,name:'Unknown widget',icon:'widgets',category:'Retired',description:'This widget is no longer available.',retired:true};}
+/** Layout presets offered by the Layouts menu. Each is built by preset() below. */
+export const presetKinds=[
+  {kind:'columns',name:'Columns',icon:'view_column'},
+  {kind:'rows',name:'Rows',icon:'table_rows'},
+  {kind:'balanced',name:'Grid',icon:'grid_view'},
+  {kind:'main-half',name:'Main and side',icon:'vertical_split'},
+  {kind:'main-two',name:'Wide main',icon:'splitscreen_left'},
+  {kind:'main-third',name:'Narrow main',icon:'splitscreen_right'}
+] as const;
 export const wallpaperNames = [
   'ambient',
   // Organic futurism
@@ -62,7 +73,6 @@ export function newProfile(name:string,index=0):Profile {
   return {Name:name.trim(),SchemaVersion:18,Gap:12,OuterMargin:16,MonitorIndex:index,MonitorIndices:[index],MonitorBoards:[{MonitorIndex:index,WidgetScale:1,Zones:[newTile()]}],WallpaperId:'ambient',AnimatedWallpaper:true,SmartSnap:true,SnapStep:.05};
 }
 const eps=1e-7;
-const equal=(a:number,b:number)=>Math.abs(a-b)<eps;
 export function assertLayout(tiles:Tile[]):void {
   if(tiles.length<1||tiles.length>20) throw new Error('A board needs between 1 and 20 tiles.');
   for(let i=0;i<tiles.length;i++) {
@@ -81,28 +91,6 @@ export function splitTile(tiles:Tile[],id:string,vertical:boolean,ratio=.5):Tile
   if(vertical) { t.Width*=ratio;next.X+=t.Width;next.Width*=1-ratio; }
   else { t.Height*=ratio;next.Y+=t.Height;next.Height*=1-ratio; }
   result.splice(result.indexOf(t)+1,0,next);assertLayout(result);return result;
-}
-export interface Boundary {position:number;start:number;end:number;}
-export function sharedEdges(tiles:Tile[],axis:'x'|'y'):Boundary[] {
-  const p=axis==='x'?'X':'Y',size=axis==='x'?'Width':'Height',q=axis==='x'?'Y':'X',span=axis==='x'?'Height':'Width';
-  const edges:Boundary[]=[];
-  for(const a of tiles)for(const b of tiles){const position=a[p]+a[size],start=Math.max(a[q],b[q]),end=Math.min(a[q]+a[span],b[q]+b[span]);if(equal(position,b[p])&&end-start>eps)edges.push({position,start,end});}
-  // Only positive overlap connects segments. A four-way junction retains independent arms.
-  let changed=true;while(changed){changed=false;outer:for(let i=0;i<edges.length;i++)for(let j=i+1;j<edges.length;j++){const a=edges[i],b=edges[j];if(equal(a.position,b.position)&&Math.min(a.end,b.end)-Math.max(a.start,b.start)>eps){a.start=Math.min(a.start,b.start);a.end=Math.max(a.end,b.end);edges.splice(j,1);changed=true;break outer;}}}
-  return edges;
-}
-export function moveBoundary(tiles:Tile[],axis:'x'|'y',position:number,delta:number,snap:number,anchor?:number):Tile[] {
-  const result=structuredClone(tiles);const p=axis==='x'?'X':'Y',size=axis==='x'?'Width':'Height';
-  const q=axis==='x'?'Y':'X',span=axis==='x'?'Height':'Width';
-  let connected=result.filter(t=>equal(t[p]+t[size],position)||equal(t[p],position));
-  if(anchor!==undefined){const seeds=connected.filter(t=>anchor>=t[q]-eps&&anchor<=t[q]+t[span]+eps);if(!seeds.length)return result;const group=new Set(seeds);let added=true;while(added){added=false;for(const t of connected)if(!group.has(t)&&[...group].some(a=>Math.min(a[q]+a[span],t[q]+t[span])-Math.max(a[q],t[q])>eps)){group.add(t);added=true;}}connected=[...group];}
-  const before=connected.filter(t=>equal(t[p]+t[size],position));const after=connected.filter(t=>equal(t[p],position));
-  if(!before.length||!after.length) return result;
-  let proposed=position+delta;if(snap>0)proposed=Math.round(proposed/snap)*snap;
-  const minimum=Math.max(...before.map(t=>t[p]+.04));const maximum=Math.min(...after.map(t=>t[p]+t[size]-.04));
-  proposed=Math.min(maximum,Math.max(minimum,proposed));const change=proposed-position;
-  before.forEach(t=>t[size]+=change);after.forEach(t=>{t[p]+=change;t[size]-=change;});
-  assertLayout(result);return result;
 }
 export function removeTile(tiles:Tile[],id:string):Tile[] {
   if(tiles.length===1)throw new Error('Keep at least one tile on this display.');
@@ -204,11 +192,6 @@ export function swapTiles(tiles:Tile[],a:string,b:string):Tile[] {
   const result=structuredClone(tiles);const one=result.find(t=>t.Id===a),two=result.find(t=>t.Id===b);
   if(!one||!two)return result;
   for(const k of ['X','Y','Width','Height'] as const){const n=one[k];one[k]=two[k];two[k]=n;}
-  assertLayout(result);return result;
-}
-export function transform(tiles:Tile[],kind:'flip-x'|'flip-y'|'rotate'):Tile[] {
-  const result=structuredClone(tiles);
-  for(const t of result){if(kind==='flip-x')t.X=1-t.X-t.Width;else if(kind==='flip-y')t.Y=1-t.Y-t.Height;else {const {X,Y,Width,Height}=t;t.X=1-Y-Height;t.Y=X;t.Width=Height;t.Height=Width;}}
   assertLayout(result);return result;
 }
 export function preset(kind:string,count:number,existing:Tile[]=[]):Tile[] {

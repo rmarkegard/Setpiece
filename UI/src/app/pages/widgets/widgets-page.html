@@ -1,0 +1,59 @@
+<sp-page-header headline="Widgets" supporting="Your day, your devices and a little play. Set each one up once, and it works in every workspace.">
+  <mat-form-field class="search">
+    <sp-icon matPrefix name="search"/>
+    <input matInput aria-label="Search widgets" placeholder="Search widgets" [value]="search()" (input)="search.set($any($event.target).value)">
+    @if(search()){<button matSuffix matIconButton aria-label="Clear search" (click)="search.set('')"><sp-icon name="close"/></button>}
+  </mat-form-field>
+</sp-page-header>
+
+@if(store.connections()['error']){
+  <div class="banner" role="alert"><sp-icon name="lock" [filled]="true"/><p class="body-medium">{{store.connections()['error']}}</p></div>
+}
+
+<div class="bar">
+  <mat-chip-listbox aria-label="Filter widgets" [value]="filter()" (change)="filter.set($event.value??'All')" hideSingleSelectionIndicator>
+    @for(category of categories;track category){<mat-chip-option [value]="category" [selectable]="filter()!==category">{{category}}</mat-chip-option>}
+  </mat-chip-listbox>
+  @if(needsSetup()){<span class="label-large on-surface-variant hint"><sp-icon name="error"/>{{needsSetup()}} need setup</span>}
+</div>
+
+<div class="grid">
+  @for(card of cards();track card.id){
+    <article class="card" [attr.data-category]="card.category">
+      <button class="open" [attr.aria-label]="card.name+', open details'" (click)="dialogs.widget(card.id)"></button>
+      <div class="top">
+        <span class="mark"><sp-icon [name]="card.icon" [filled]="true"/>@if(card.count){<span class="badge label-small" [attr.aria-label]="card.count+' on this display'">{{card.count}}</span>}</span>
+        @if(card.status!=='ready'){<span class="status label-medium" [attr.data-status]="card.status"><sp-icon [name]="card.statusIcon" [filled]="true"/>{{card.statusLabel}}</span>}
+      </div>
+      <div class="copy">
+        <h2 class="title-large emphasized">{{card.name}}</h2>
+        <p class="body-medium on-surface-variant">{{card.description}}</p>
+      </div>
+      <div class="actions">
+        <span class="grow"></span>
+        @if(!card.preview){<button matButton (click)="dialogs.widget(card.id)">{{card.status==='needs-setup'?'Set up':'Settings'}}</button>}
+        <button matButton="tonal" (click)="store.addWidget(card.id)"><sp-icon name="add"/>Add</button>
+      </div>
+    </article>
+  } @empty {
+    <sp-empty class="empty" icon="search_off" headline="No widgets match" supporting="Try another word, or show all categories.">
+      <button matButton="tonal" (click)="search.set('');filter.set('All')">Show all</button>
+    </sp-empty>
+  }
+</div>
+
+<h2 class="section-title title-large">Accounts</h2>
+<div class="accounts">
+  @for(account of accountCards();track account.id){
+    <div class="account">
+      <span class="account-mark"><sp-icon [name]="account.icon" [filled]="true"/></span>
+      <div class="copy">
+        <strong class="title-medium">{{account.name}}</strong>
+        <span class="body-medium on-surface-variant">{{account.description}}</span>
+      </div>
+      <span class="status label-medium" [attr.data-status]="account.status"><sp-icon [name]="account.statusIcon" [filled]="true"/>{{account.statusLabel}}</span>
+      <button matButton="tonal" (click)="dialogs.widget(account.id)">{{account.status==='connected'?'Manage':'Connect'}}</button>
+    </div>
+  }
+  <p class="body-small on-surface-variant privacy"><sp-icon name="lock"/>Connections are encrypted for your Windows account, stored on this PC, and shared by all your workspaces.</p>
+</div>

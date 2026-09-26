@@ -19,10 +19,26 @@
             "assets": [{"glob":"**/*","input":"public","output":"/"}]
           },
           "configurations": {
-            "production": { "optimization": { "scripts": true, "styles": {"minify":true,"inlineCritical":false}, "fonts": false }, "outputHashing": "all" }
-          }
+            "production": {
+              "optimization": { "scripts": true, "styles": {"minify":true,"inlineCritical":false}, "fonts": false },
+              "outputHashing": "all",
+              "fileReplacements": [{ "replace": "src/dev/mock.ts", "with": "src/dev/mock.prod.ts" }]
+            },
+            "development": {
+              "optimization": false,
+              "sourceMap": true,
+              "assets": [
+                {"glob":"**/*","input":"public","output":"/"},
+                {"glob":"*.jpg","input":"dev-assets","output":"/dev-assets/Wallpapers"}
+              ]
+            }
+          },
+          "defaultConfiguration": "production"
         },
-        "serve": { "builder": "@angular/build:dev-server", "options": { "buildTarget": "setpiece:build" } }
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": { "buildTarget": "setpiece:build:development" }
+        }
       }
     }
   }

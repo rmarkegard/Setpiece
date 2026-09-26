@@ -1,0 +1,39 @@
+<sp-page-header headline="Browsers" supporting="Named browsers keep their own tabs and playback. Open one anywhere, or give it a tile.">
+  <button matButton="tonal" (click)="fresh()"><sp-icon name="add"/>New browser</button>
+</sp-page-header>
+
+<div class="layout">
+  <sp-section headline="Your browsers" icon="language" [flush]="true">
+    @for(browser of store.sharedBrowsers();track browser.name){
+      <div class="pick" [class.chosen]="browser.name===name()">
+        <button class="select" [attr.aria-label]="'Edit '+browser.name" (click)="choose(browser)"></button>
+        <sp-row [headline]="browser.name" [supporting]="browser.tabs+(browser.tabs===1?' tab':' tabs')+' · '+host(browser.url)" icon="tab">
+          <button matIconButton [attr.aria-label]="'Open '+browser.name" matTooltip="Open" (click)="store.openBrowser(browser.name,browser.url)"><sp-icon name="open_in_new"/></button>
+        </sp-row>
+      </div>
+    } @empty {
+      <sp-empty icon="language" headline="Name your first browser" supporting="Open it once and it shows up here, ready for any workspace."/>
+    }
+  </sp-section>
+
+  <div class="side">
+    <sp-section [headline]="existing()?name():'New browser'" icon="edit">
+      <mat-form-field><mat-label>Name</mat-label><input matInput [value]="name()" (input)="name.set($any($event.target).value)" placeholder="Media, Research, Music"></mat-form-field>
+      <mat-form-field><mat-label>Start page</mat-label><input matInput [value]="url()" (input)="url.set($any($event.target).value)" (keydown.enter)="store.openBrowser(name(),url())"></mat-form-field>
+      <div class="actions">
+        <button matButton="filled" [disabled]="!name().trim()" (click)="store.openBrowser(name(),url())"><sp-icon name="open_in_new"/>Open</button>
+        <button matButton="tonal" [disabled]="!name().trim()" (click)="store.linkBrowser(name(),url())"><sp-icon name="add_link"/>Put in selected tile</button>
+      </div>
+      <p class="body-small on-surface-variant hint"><sp-icon [name]="tileReady()?'check_circle':'info'"/>{{tileReady()?'The selected tile in Studio is empty and ready.':'Select an empty tile in Studio first.'}}</p>
+    </sp-section>
+
+    <sp-section headline="Brave bookmarks" icon="bookmarks" [supporting]="store.bookmarks().length?store.bookmarks().length+' bookmarks under the address bar':'Show your Brave bookmarks under the address bar.'">
+      <button section-action matButton="tonal" [disabled]="store.busy()" (click)="store.importBookmarks()">{{store.bookmarks().length?'Refresh':'Import'}}</button>
+      @if(store.bookmarks().length){
+        <div class="bookmarks">
+          @for(bookmark of store.bookmarks().slice(0,12);track $index){<span class="bookmark label-medium">@if(bookmark.icon){<img [src]="bookmark.icon" alt="">}@else{<sp-icon name="bookmark"/>}{{bookmark.displayTitle||bookmark.host}}</span>}
+        </div>
+      }
+    </sp-section>
+  </div>
+</div>

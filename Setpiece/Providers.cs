@@ -104,7 +104,7 @@ internal sealed class Providers : IDisposable
     }
     private async Task<JsonObject> Weather(JsonObject settings)
     {
-        if(settings["WeatherLatitude"] is null||settings["WeatherLongitude"] is null)return State("disconnected","Your local forecast","Choose your location in Connections.");
+        if(settings["WeatherLatitude"] is null||settings["WeatherLongitude"] is null)return State("disconnected","Your local forecast","Choose a city to see local conditions.");
         var lat=settings["WeatherLatitude"]!.GetValue<double>().ToString(CultureInfo.InvariantCulture);var lon=settings["WeatherLongitude"]!.GetValue<double>().ToString(CultureInfo.InvariantCulture);
         var data=await Get($"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability&forecast_days=2&timezone=auto");
         var current=data["current"]!.AsObject();var temp=current["temperature_2m"]!.GetValue<double>();var items=new JsonArray();var hours=data["hourly"]!;var locationNow=DateTime.UtcNow.AddSeconds(data["utc_offset_seconds"]?.GetValue<int>()??0);
@@ -120,7 +120,7 @@ internal sealed class Providers : IDisposable
     }
     private async Task<JsonObject> Departures(JsonObject settings)
     {
-        var stop=Text(settings,"RuterStopId");if(stop.Length==0)return State("disconnected","Where are you headed?","Find your stop in Connections.");
+        var stop=Text(settings,"RuterStopId");if(stop.Length==0)return State("disconnected","Where are you headed?","Choose the stop you leave from.");
         const string query="query Departures($stop: String!) { stopPlace(id: $stop) { name estimatedCalls(numberOfDepartures: 8, timeRange: 7200) { expectedDepartureTime destinationDisplay { frontText } serviceJourney { line { publicCode } } } } }";
         using var request=new HttpRequestMessage(HttpMethod.Post,"https://api.entur.io/journey-planner/v3/graphql"){Content=new StringContent(new JsonObject{["query"]=query,["variables"]=new JsonObject{["stop"]=stop}}.ToJsonString(),Encoding.UTF8,"application/json")};request.Headers.Add("ET-Client-Name","setpiece-workspace");
         using var response=await http.SendAsync(request);response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
@@ -142,7 +142,7 @@ internal sealed class Providers : IDisposable
         using var request=new HttpRequestMessage(HttpMethod.Get,(authenticated?"https://oauth.reddit.com":"https://www.reddit.com")+"/r/"+Uri.EscapeDataString(community)+"/hot"+(authenticated?"":".json")+"?limit=8");
         if(authenticated)request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",await OAuth.Token(http,storage,"Reddit",settings));
         using var response=await http.SendAsync(request);
-        if(!authenticated&&response.StatusCode==HttpStatusCode.Forbidden)return State("disconnected","Connect Reddit","Reddit requires authorization on this network. Add your installed-app client ID in Connections.");
+        if(!authenticated&&response.StatusCode==HttpStatusCode.Forbidden)return State("disconnected","Connect Reddit","Reddit requires authorization on this network. Add your installed-app client ID in the widget settings.");
         response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync())!;var items=new JsonArray();
         foreach(var child in data["data"]!["children"]!.AsArray()){var post=child!["data"]!;items.Add(new JsonObject{["title"]=post["title"]!.DeepClone(),["detail"]=post["score"]+" points · "+post["num_comments"]+" comments",["url"]="https://www.reddit.com"+post["permalink"]});}return State("ready","r/"+community,"Hot conversations",items);
     }

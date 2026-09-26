@@ -1,0 +1,194 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--mat-sys-surface);
+}
+
+// Custom window chrome.
+.titlebar {
+  display: flex;
+  align-items: stretch;
+  height: var(--titlebar-height);
+  flex-shrink: 0;
+  z-index: var(--z-titlebar);
+}
+.drag {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-left: calc((var(--rail-width) - var(--icon-size)) / 2);
+  user-select: none;
+  color: var(--mat-sys-on-surface-variant);
+}
+.logo { color: var(--mat-sys-primary); font-size: var(--icon-size-sm); }
+.window-control {
+  width: calc(46px * var(--ui-scale));
+  border: 0;
+  background: transparent;
+  color: var(--mat-sys-on-surface-variant);
+  cursor: pointer;
+  transition: background-color var(--motion-effects-fast);
+  sp-icon { font-size: calc(18px * var(--ui-scale)); }
+  &:hover { background: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent); color: var(--mat-sys-on-surface); }
+  &.close:hover { background: #c42b1c; color: #fff; }
+}
+
+.frame { flex: 1; display: flex; min-height: 0; }
+
+// Expressive navigation rail: collapsed with labels under icons, expanded to a drawer.
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: var(--rail-width);
+  flex-shrink: 0;
+  padding: var(--space-1) 0 var(--space-4);
+  overflow: hidden;
+  transition: width var(--motion-spatial);
+  &.expanded { width: var(--rail-expanded-width); align-items: stretch; padding-inline: var(--space-3); }
+}
+.menu { align-self: center; margin-bottom: var(--space-1); }
+.rail.expanded .menu { align-self: flex-start; margin-left: var(--space-1); }
+
+// Launch: an FAB that becomes an extended FAB.
+.launch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: calc(56px * var(--ui-scale));
+  height: calc(56px * var(--ui-scale));
+  margin-bottom: var(--space-5);
+  padding: 0;
+  border: 0;
+  border-radius: var(--shape-lg);
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  box-shadow: var(--elevation-1);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  --mat-progress-spinner-active-indicator-color: var(--mat-sys-on-primary-container);
+  transition: width var(--motion-spatial), border-radius var(--motion-spatial-fast), box-shadow var(--motion-effects), background-color var(--motion-effects);
+  &:hover { box-shadow: var(--elevation-2); background: color-mix(in srgb, var(--mat-sys-on-primary-container) 8%, var(--mat-sys-primary-container)); }
+  &:active { border-radius: var(--shape-md); }
+  &:disabled { cursor: progress; }
+  sp-icon { font-size: calc(28px * var(--ui-scale)); }
+}
+.launch-label { display: none; }
+.rail.expanded .launch { width: 100%; justify-content: flex-start; padding-inline: var(--space-4); }
+.rail.expanded .launch-label { display: inline; }
+
+.destinations { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; align-items: center; }
+.rail.expanded .destinations { align-items: stretch; gap: 0; }
+.destination {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-1) 0 var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--mat-sys-on-surface-variant);
+  cursor: pointer;
+  font: var(--mat-sys-label-medium);
+  letter-spacing: var(--mat-sys-label-medium-tracking);
+}
+.indicator {
+  display: grid;
+  place-items: center;
+  width: calc(56px * var(--ui-scale));
+  height: calc(32px * var(--ui-scale));
+  border-radius: var(--shape-full);
+  transition: background-color var(--motion-effects), width var(--motion-spatial);
+}
+.destination:hover .indicator { background: color-mix(in srgb, var(--mat-sys-on-surface-variant) 8%, transparent); }
+.destination.active { color: var(--mat-sys-on-surface); font-weight: 600; }
+.destination.active .indicator { background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); }
+.rail.expanded .destination {
+  flex-direction: row;
+  gap: var(--space-3);
+  height: calc(56px * var(--ui-scale));
+  padding: 0 var(--space-4);
+  border-radius: var(--shape-full);
+  font: var(--mat-sys-label-large);
+  .indicator { width: auto; height: auto; background: none; }
+  &:hover { background: color-mix(in srgb, var(--mat-sys-on-surface-variant) 8%, transparent); }
+  &.active { background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); }
+}
+
+// The content pane: one large rounded surface.
+.pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0 var(--space-2) var(--space-2) 0;
+  border-radius: var(--shape-xl);
+  background: var(--mat-sys-surface-container-low);
+  overflow: hidden;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-2) var(--space-6);
+}
+.profile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  margin-left: calc(var(--space-3) * -1);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--shape-md);
+  background: none;
+  color: var(--mat-sys-on-surface);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--motion-effects);
+  &:hover { background: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent); }
+}
+.name { display: flex; align-items: center; font-weight: 600; font-stretch: var(--font-hero-stretch); }
+.save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin-left: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  border-radius: var(--shape-sm);
+  color: var(--mat-sys-on-surface-variant);
+  sp-icon { font-size: 18px; }
+  &[data-state='dirty'], &[data-state='new'] { background: var(--mat-sys-tertiary-container); color: var(--mat-sys-on-tertiary-container); }
+}
+.grow { flex: 1; }
+.progress { height: 4px; flex-shrink: 0; }
+
+.page {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-2) var(--space-6) var(--space-8);
+  scrollbar-gutter: stable;
+}
+
+// M3 banners for errors and notices.
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  border-radius: var(--shape-lg);
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  --mat-button-text-label-text-color: var(--mat-sys-on-error-container);
+  p { flex: 1; padding-block: var(--space-2); }
+  &.info { background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); }
+}
+
+.menu-divider { height: 1px; margin: var(--space-2) 0; background: var(--mat-sys-outline-variant); }

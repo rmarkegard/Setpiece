@@ -1,0 +1,150 @@
+:host { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+
+.stage {
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  border-radius: var(--shape-xl);
+  background: var(--mat-sys-surface-container);
+  // Tall displays are capped by height, wide ones by the column width.
+  --board-cap: min(62vh, calc(720px * var(--ui-scale)));
+}
+
+.board {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, calc(var(--board-cap) * var(--ratio)));
+  max-height: var(--board-cap);
+  border-radius: var(--shape-lg);
+  overflow: hidden;
+  background: var(--mat-sys-surface-container-lowest);
+  box-shadow: var(--elevation-1);
+  touch-action: none;
+}
+
+.tile {
+  position: absolute;
+  z-index: var(--z-content);
+  display: flex;
+  border-radius: var(--shape-lg);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  cursor: grab;
+  transition: outline-color var(--motion-effects), box-shadow var(--motion-effects), opacity var(--motion-effects);
+  sp-widget { flex: 1; min-width: 0; }
+  &:hover { box-shadow: var(--elevation-2); }
+  &.selected { outline-color: var(--mat-sys-primary); z-index: calc(var(--z-content) + 1); }
+  &.dragging { cursor: grabbing; opacity: 0.88; box-shadow: var(--elevation-3); }
+  &:focus-visible { outline: 3px solid var(--mat-sys-secondary); }
+}
+.previewing .tile { cursor: default; }
+
+// Application and browser tiles: a quiet surface that names what goes there.
+.placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--mat-sys-surface-container-high) calc(var(--surface-opacity, 1) * 88%), transparent);
+  color: var(--mat-sys-on-surface);
+  overflow: hidden;
+}
+.selected.empty .placeholder { border-color: transparent; }
+.empty .placeholder {
+  background: color-mix(in srgb, var(--mat-sys-surface-container) 55%, transparent);
+  border: 2px dashed color-mix(in srgb, var(--mat-sys-outline) 70%, transparent);
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+[data-kind='Web'] .placeholder { background: color-mix(in srgb, var(--mat-sys-secondary-container) calc(var(--surface-opacity, 1) * 92%), transparent); color: var(--mat-sys-on-secondary-container); }
+.glyph {
+  display: grid;
+  place-items: center;
+  width: calc(40px * var(--ui-scale));
+  height: calc(40px * var(--ui-scale));
+  border-radius: var(--shape-md);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  sp-icon { font-size: var(--icon-size-sm); }
+}
+.copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 100%; }
+.copy > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.copy span { color: color-mix(in srgb, currentColor 72%, transparent); }
+.choose { margin-top: var(--space-1); }
+
+// Resize handles: pills on edges, dots on corners.
+.tile-resize {
+  position: absolute;
+  z-index: var(--z-handle);
+  padding: 0;
+  border: 2px solid var(--mat-sys-primary);
+  background: var(--mat-sys-surface);
+  border-radius: var(--shape-full);
+  box-shadow: var(--elevation-1);
+  transition: transform var(--motion-spatial-fast);
+  &:hover, &:focus-visible { transform: scale(1.25); }
+}
+.resize-n, .resize-s { left: 50%; width: 28px; height: 10px; margin-left: -14px; cursor: ns-resize; }
+.resize-n { top: -5px; } .resize-s { bottom: -5px; }
+.resize-e, .resize-w { top: 50%; width: 10px; height: 28px; margin-top: -14px; cursor: ew-resize; }
+.resize-e { right: -5px; } .resize-w { left: -5px; }
+.resize-nw, .resize-ne, .resize-sw, .resize-se { width: 14px; height: 14px; }
+.resize-nw { top: -7px; left: -7px; cursor: nwse-resize; }
+.resize-se { bottom: -7px; right: -7px; cursor: nwse-resize; }
+.resize-ne { top: -7px; right: -7px; cursor: nesw-resize; }
+.resize-sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
+
+.drop-preview {
+  position: absolute;
+  z-index: var(--z-overlay);
+  display: grid;
+  place-items: center;
+  border: 3px dashed var(--mat-sys-primary);
+  border-radius: var(--shape-lg);
+  background: color-mix(in srgb, var(--mat-sys-primary) 16%, transparent);
+  pointer-events: none;
+  span { padding: var(--space-1) var(--space-3); border-radius: var(--shape-full); background: var(--mat-sys-primary); color: var(--mat-sys-on-primary); }
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-inline: var(--space-2);
+  span { display: inline-flex; align-items: center; gap: var(--space-1); }
+  sp-icon { font-size: 16px; }
+}
+
+// Widgets hold their own controls, so they move by a grip on the top edge.
+.widget-grip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: var(--z-handle);
+  width: calc(56px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
+  margin-left: calc(-28px * var(--ui-scale));
+  cursor: grab;
+  opacity: 0;
+  transition: opacity var(--motion-effects);
+  &::before {
+    content: '';
+    position: absolute;
+    top: calc(6px * var(--ui-scale));
+    left: 50%;
+    width: calc(32px * var(--ui-scale));
+    height: calc(4px * var(--ui-scale));
+    margin-left: calc(-16px * var(--ui-scale));
+    border-radius: var(--shape-full);
+    background: currentColor;
+    color: var(--mat-sys-on-surface);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--mat-sys-surface) 60%, transparent);
+  }
+}
+.tile:hover .widget-grip, .tile.selected .widget-grip { opacity: 0.9; }
+.tile-heading { cursor: grab; }

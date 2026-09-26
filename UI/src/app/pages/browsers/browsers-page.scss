@@ -1,0 +1,31 @@
+:host { display: block; max-width: var(--page-max-width); margin-inline: auto; }
+.layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+@media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+.side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+
+.pick { position: relative; transition: background-color var(--motion-effects); }
+.select { position: absolute; inset: 0; width: 100%; border: 0; background: none; cursor: pointer; }
+.pick sp-row { position: relative; pointer-events: none; }
+.pick sp-row button { pointer-events: auto; }
+.pick:hover { background: color-mix(in srgb, var(--mat-sys-on-surface) 6%, transparent); }
+.pick.chosen { background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); }
+.pick + .pick { border-top: 1px solid var(--mat-sys-outline-variant); }
+
+mat-form-field { width: 100%; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.hint { display: flex; align-items: center; gap: var(--space-2); sp-icon { font-size: 18px; } }
+
+.bookmarks { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.bookmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: calc(180px * var(--ui-scale));
+  padding: var(--space-1-5) var(--space-3);
+  border-radius: var(--shape-sm);
+  background: var(--mat-sys-surface-container-highest);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  img, sp-icon { width: 16px; height: 16px; font-size: 16px; flex-shrink: 0; }
+}

@@ -1,0 +1,42 @@
+<div class="stage">
+  <div class="board" [ngStyle]="boardStyle()" [class.previewing]="!!store.preview()" aria-label="Layout canvas">
+    <sp-wallpaper [id]="store.profile().WallpaperId" [moving]="store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion"/>
+    @for(tile of store.tiles();track tile.Id){
+      <section class="tile" [attr.data-kind]="tile.ContentKind" [class.selected]="tile.Id===store.selected()&&!store.preview()" [class.dragging]="tile.Id===dragging()" [class.empty]="tile.ContentKind==='Application'&&!tile.AssignedProcessName"
+        [ngStyle]="bounds(tile)" tabindex="0" [attr.aria-label]="label(tile,$index)+', '+(tile.ContentKind==='Web'?'browser':tile.ContentKind==='Widget'?'widget':'application')+' tile'"
+        (pointerdown)="start($event,tile.Id)" (click)="store.selected.set(tile.Id)" (keydown.enter)="store.selected.set(tile.Id)" (keydown)="key($event,tile.Id)">
+        @if(tile.ContentKind==='Widget'){
+          <span class="widget-grip" aria-hidden="true" title="Drag to move"></span>
+          <sp-widget [id]="tile.WidgetId" [scale]="store.board().WidgetScale" (expand)="store.expandWidget(tile.WidgetId)" (manage)="store.manageWidget(tile.WidgetId)" (play)="store.playGame()"/>
+        } @else {
+          <div class="placeholder">
+            <span class="glyph tile-heading" title="Drag to move"><sp-icon [name]="tile.ContentKind==='Web'?'language':tile.AssignedProcessName?'web_asset':'add'"/></span>
+            <div class="copy">
+              <strong class="title-medium">{{tile.ContentKind==='Web'?(tile.SharedWebName||'Private browser'):(tile.AssignedProcessName||'Empty tile')}}</strong>
+              <span class="body-small">{{tile.ContentKind==='Web'?'Shared browser':tile.AssignedWindowTitle||'Put an open app here'}}</span>
+            </div>
+            @if(tile.ContentKind==='Application'&&!tile.AssignedProcessName&&!store.preview()){
+              <button matButton="tonal" class="choose" [matMenuTriggerFor]="apps" (click)="store.selected.set(tile.Id);store.refreshApps()"><sp-icon name="apps"/>Choose app</button>
+              <mat-menu #apps="matMenu">
+                @for(app of store.apps();track app.handle){<button mat-menu-item (click)="store.assign(app,tile.Id)"><sp-icon name="web_asset"/><span>{{app.process}} · {{app.title}}</span></button>}
+                @empty{<button mat-menu-item disabled><span>No open windows found</span></button>}
+              </mat-menu>
+            }
+          </div>
+        }
+        @if(tile.Id===store.selected()&&!store.preview()){
+          @for(handle of handles;track handle){
+            <button [class]="'tile-resize resize-'+handle" [attr.aria-label]="'Resize '+handle" (pointerdown)="start($event,tile.Id,handle)" (keydown)="key($event,tile.Id,handle)"></button>
+          }
+        }
+      </section>
+    }
+    @if(dropTarget()){
+      <div class="drop-preview" [ngStyle]="dropStyle()"><span class="label-large">{{dropPreview()?.kind==='fit'?'Drop to fit':'Swap tiles'}}</span></div>
+    }
+  </div>
+</div>
+<div class="footer body-small on-surface-variant">
+  <span><sp-icon name="drag_pan"/>Drag to move · handles resize · hold Alt to ignore snap</span>
+  <span>{{store.monitorSize().width}} × {{store.monitorSize().height}} · {{store.profile().SmartSnap?(store.profile().SnapStep*100)+'% snap':'Snap off'}}</span>
+</div>

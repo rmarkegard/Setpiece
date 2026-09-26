@@ -1,0 +1,84 @@
+:host { display: block; max-width: var(--page-max-width); margin-inline: auto; }
+
+.search { width: min(calc(320px * var(--ui-scale)), 100%); --mat-form-field-container-height: calc(48px * var(--ui-scale)); --mat-form-field-container-vertical-padding: calc(12px * var(--ui-scale)); }
+.search sp-icon[matPrefix] { padding: 0 var(--space-2) 0 var(--space-3); color: var(--mat-sys-on-surface-variant); }
+// A pill: half the field height. (Material sizes the outline notch from this value, so it must be a real length.)
+.search { --mat-form-field-outlined-container-shape: calc(24px * var(--ui-scale)); }
+
+.banner { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); padding: var(--space-3) var(--space-4); border-radius: var(--shape-lg); background: var(--mat-sys-error-container); color: var(--mat-sys-on-error-container); }
+
+.bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-4); }
+.hint { display: inline-flex; align-items: center; gap: var(--space-1); sp-icon { font-size: 18px; color: var(--mat-sys-tertiary); } }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(272px * var(--ui-scale)), 1fr)); gap: var(--space-3); }
+.empty { grid-column: 1 / -1; }
+
+// Library cards. The mark carries the widget's category color and silhouette.
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--shape-xl);
+  background: var(--mat-sys-surface-container);
+  transition: background-color var(--motion-effects), border-radius var(--motion-spatial-fast);
+  &:hover { background: var(--mat-sys-surface-container-high); border-radius: var(--shape-xl-increased); }
+  --mark-bg: var(--mat-sys-primary-container);
+  --mark-fg: var(--mat-sys-on-primary-container);
+  --mark-shape: var(--shape-lg);
+  &[data-category='Connected'] { --mark-bg: var(--mat-sys-secondary-container); --mark-fg: var(--mat-sys-on-secondary-container); --mark-shape: var(--shape-lg) var(--shape-lg) var(--shape-lg) var(--shape-xs); }
+  &[data-category='Device'] { --mark-bg: var(--mat-sys-tertiary-container); --mark-fg: var(--mat-sys-on-tertiary-container); --mark-shape: var(--shape-lg) var(--shape-xs) var(--shape-lg) var(--shape-lg); }
+  &[data-category='Play'] { --mark-bg: var(--mat-sys-play-container); --mark-fg: var(--mat-sys-on-play-container); --mark-shape: var(--shape-full); }
+  &[data-category='Preview'] { --mark-bg: var(--mat-sys-surface-container-highest); --mark-fg: var(--mat-sys-on-surface-variant); }
+}
+// The whole card opens details; real buttons sit above this layer.
+.open { position: absolute; inset: 0; border: 0; border-radius: inherit; background: none; cursor: pointer; }
+.top, .copy, .actions { position: relative; pointer-events: none; }
+.actions button { pointer-events: auto; }
+.top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: calc(56px * var(--ui-scale));
+  height: calc(56px * var(--ui-scale));
+  border-radius: var(--mark-shape);
+  background: var(--mark-bg);
+  color: var(--mark-fg);
+  transition: transform var(--motion-spatial-fast);
+  sp-icon { font-size: calc(28px * var(--ui-scale)); }
+}
+.card:hover .mark { transform: rotate(-6deg) scale(1.04); }
+.copy { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; }
+.actions { display: flex; align-items: center; gap: var(--space-1); }
+.grow { flex: 1; }
+.badge { position: absolute; top: calc(-4px * var(--ui-scale)); right: calc(-6px * var(--ui-scale)); display: grid; place-items: center; min-width: calc(20px * var(--ui-scale)); height: calc(20px * var(--ui-scale)); padding: 0 var(--space-1); border-radius: var(--shape-full); background: var(--mat-sys-primary); color: var(--mat-sys-on-primary); box-shadow: 0 0 0 2px var(--mat-sys-surface-container); }
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1-5);
+  border-radius: var(--shape-sm);
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+  white-space: nowrap;
+  sp-icon { font-size: 16px; }
+  &[data-status='connected'], &[data-status='ready'] { color: var(--mat-sys-primary); background: none; padding-inline: 0; }
+  &[data-status='needs-setup'] { background: var(--mat-sys-tertiary-container); color: var(--mat-sys-on-tertiary-container); }
+}
+
+.section-title { margin: var(--space-8) 0 var(--space-3); }
+.accounts { display: flex; flex-direction: column; gap: var(--space-3); }
+.account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--shape-xl);
+  background: var(--mat-sys-surface-container);
+  .copy { gap: 2px; }
+}
+.account-mark { display: grid; place-items: center; width: calc(48px * var(--ui-scale)); height: calc(48px * var(--ui-scale)); border-radius: 50%; background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); }
+.privacy { display: flex; align-items: center; gap: var(--space-2); padding-inline: var(--space-2); sp-icon { font-size: 16px; } }

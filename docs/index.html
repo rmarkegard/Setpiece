@@ -3,66 +3,270 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#090a0e">
-  <meta name="description" content="Setpiece arranges Windows applications, widgets, and persistent browsers into saved layouts.">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#131317" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#fcf8fe" media="(prefers-color-scheme: light)">
+  <meta name="description" content="Setpiece tiles your Windows apps, live widgets and persistent browsers into saved layouts, one per display. Material 3, light and dark, colored by your accent.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Setpiece — Windows workspace manager">
-  <meta property="og:description" content="Arrange applications, add widgets, and keep browser sessions inside saved layouts for Windows 11.">
-  <meta property="og:image" content="https://rmarkegard.github.io/Setpiece/reveal/screenshots/terminal-studio.png">
+  <meta property="og:title" content="Setpiece — your whole desk, in one saved layout">
+  <meta property="og:description" content="Tile Windows apps, live widgets and persistent browsers into saved layouts for Windows 11.">
+  <meta property="og:image" content="https://rmarkegard.github.io/Setpiece/screenshots/dark-studio.png">
   <meta property="og:url" content="https://rmarkegard.github.io/Setpiece/">
   <meta name="twitter:card" content="summary_large_image">
   <title>Setpiece — Windows workspace manager</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="product.css">
-  <script src="product.js" defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&amp;display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;icon_names=add,bookmarks,check,check_circle,content_copy,dark_mode,dashboard_customize,desktop_windows,drag_pan,fullscreen,fullscreen_exit,language,light_mode,lock,monitor,more_horiz,open_in_new,palette,pause,play_arrow,restart_alt,settings,share,shield,skip_next,space_dashboard,sports_esports,subtitles,swap_horiz,tab,thumb_down,thumb_up,tune,volume_up,widgets&amp;display=block">
+  <link rel="stylesheet" href="site.css">
+  <script>
+    // Apply ?theme=, or a saved choice, before paint. The page follows the system otherwise.
+    try { const t = new URLSearchParams(location.search).get('theme') || localStorage.getItem('setpiece-site-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}
+  </script>
+  <script src="site.js" defer></script>
 </head>
 <body id="top">
   <a class="skip-link" href="#main">Skip to content</a>
+
   <header class="header">
-    <div class="container nav-inner">
-      <a class="brand" href="#top" aria-label="Setpiece home"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="4"/><path d="M14 3v18M14 10h7"/></svg><span>Setpiece</span><span class="version">2.0</span></a>
-      <nav aria-label="Main navigation"><a href="#product">Product</a><a href="#details">Features</a><a href="#setup">Setup</a></nav>
-      <a class="github-link" href="https://github.com/rmarkegard/Setpiece"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.82.09-.64.35-1.08.64-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.67-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.55 9.55 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.69 1.03 1.58 1.03 2.67 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.75c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg><span>GitHub</span><span aria-hidden="true">↗</span></a>
+    <div class="container nav">
+      <a class="brand" href="#top" aria-label="Setpiece home">
+        <span class="brand-mark" aria-hidden="true"><span class="ms filled">space_dashboard</span></span>
+        <span>Setpiece</span><span class="version">2.0</span>
+      </a>
+      <nav aria-label="Main navigation">
+        <a href="#tour">Tour</a><a href="#widgets">Widgets</a><a href="#browsers">Browsers</a><a href="#color">Color</a><a href="#setup">Get it</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch to light theme" title="Switch theme"><span class="ms" aria-hidden="true">light_mode</span></button>
+        <a class="button tonal small" href="https://github.com/rmarkegard/Setpiece"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.82.09-.64.35-1.08.64-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.67-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.55 9.55 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.69 1.03 1.58 1.03 2.67 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.75c0 .27.18.58.69.48A10 10 0 0 0 12 2Z"/></svg>GitHub</a>
+      </div>
     </div>
   </header>
+
   <main id="main">
+    <!-- Hero -->
     <section class="hero container" aria-labelledby="hero-title">
-      <div class="platform"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M1 1h8v8H1zm10 0h8v8h-8zM1 11h8v8H1zm10 0h8v8h-8z"/></svg>Windows 11 <span> / </span> Workspace manager</div>
-      <h1 id="hero-title">Arrange your apps.<br><span>Save your workspace.</span></h1>
-      <p class="hero-description">Arrange applications, widgets, and browser sessions in saved layouts.<br> Configure each display, then launch the workspace from Setpiece.</p>
-      <div class="hero-actions"><a class="button primary" href="#setup">Get Setpiece <span aria-hidden="true">↓</span></a><a class="button secondary" href="https://github.com/rmarkegard/Setpiece">View source <span aria-hidden="true">↗</span></a></div>
-      <p class="availability">Source available · Free for noncommercial use</p>
-    </section>
-    <section class="product container" id="product" aria-label="Explore the Setpiece application">
-      <div class="product-tabs" role="tablist" aria-label="App screens">
-        <button id="tab-studio" role="tab" aria-selected="true" aria-controls="screen-panel" data-screen="studio" tabindex="0"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M11 3v14m0-8h7"/></svg>Studio</button>
-        <button id="tab-widgets" role="tab" aria-selected="false" aria-controls="screen-panel" data-screen="widgets" tabindex="-1"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="12" y="2" width="6" height="6" rx="1"/><rect x="2" y="12" width="6" height="6" rx="1"/><rect x="12" y="12" width="6" height="6" rx="1"/></svg>Widgets</button>
-        <button id="tab-browsers" role="tab" aria-selected="false" aria-controls="screen-panel" data-screen="browsers" tabindex="-1"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M2 7h16m-13-2h1m2 0h1"/></svg>Browsers</button>
-        <button id="tab-appearance" role="tab" aria-selected="false" aria-controls="screen-panel" data-screen="appearance" tabindex="-1"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 3v14"/></svg>Appearance</button>
+      <div class="hero-copy">
+        <span class="chip"><span class="ms" aria-hidden="true">desktop_windows</span>Windows 11 · Material 3 Expressive</span>
+        <h1 id="hero-title">Your whole desk,<br><span class="accent-text">in one saved layout.</span></h1>
+        <p class="lead">Setpiece tiles your apps, live widgets and persistent browsers across every display. Save the layout once, then launch it whenever you sit down.</p>
+        <div class="actions">
+          <a class="button filled" href="#setup"><span class="ms" aria-hidden="true">play_arrow</span>Get Setpiece</a>
+          <a class="button outlined" href="#tour">Take the tour</a>
+        </div>
+        <p class="fineprint">Source available · Free for noncommercial use</p>
       </div>
-      <div class="screen-panel" id="screen-panel" role="tabpanel" aria-labelledby="tab-studio" tabindex="0">
-        <a id="screen-link" href="reveal/screenshots/terminal-studio.png" target="_blank" rel="noopener" aria-label="Open full-size Studio screenshot"><img id="app-screen" src="reveal/screenshots/terminal-studio.png" width="1440" height="1250" alt="Setpiece Studio showing three displays, a layout canvas with an unassigned application, Clock and Weather tiles, and tile settings." fetchpriority="high"></a>
+      <div class="hero-visual">
+        <div class="window">
+          <img class="only-dark" src="screenshots/dark-studio.png" width="1440" height="960" alt="Setpiece Studio in dark mode: a display with a code editor tile and Clock, Weather, Spotify and System widgets, next to the tile inspector." fetchpriority="high">
+          <img class="only-light" src="screenshots/light-studio.png" width="1440" height="960" alt="Setpiece Studio in light mode: a display with a code editor tile and Clock, Weather, Spotify and System widgets, next to the tile inspector." loading="lazy">
+        </div>
+        <img class="float float-a only-dark" src="screenshots/widgets/dark-google-calendar.png" width="360" height="420" alt="" loading="lazy">
+        <img class="float float-a only-light" src="screenshots/widgets/light-google-calendar.png" width="360" height="420" alt="" loading="lazy">
+        <img class="float float-b only-dark" src="screenshots/widgets/dark-idle-game.png" width="360" height="300" alt="" loading="lazy">
+        <img class="float float-b only-light" src="screenshots/widgets/light-idle-game.png" width="360" height="300" alt="" loading="lazy">
       </div>
-      <div class="screen-caption"><p id="screen-description">Studio — edit layouts and assign content to each tile.</p><a id="full-screen-link" href="reveal/screenshots/terminal-studio.png" target="_blank" rel="noopener">Full-size screenshot <span aria-hidden="true">↗</span></a></div>
-      <noscript><p class="noscript-links">Screenshots: <a href="reveal/screenshots/terminal-widgets.png">Widgets</a> · <a href="reveal/screenshots/terminal-browsers.png">Browsers</a> · <a href="reveal/screenshots/terminal-appearance.png">Appearance</a></p></noscript>
     </section>
-    <section class="details container" id="details" aria-labelledby="details-title">
-      <div class="section-heading"><span class="eyebrow">LAYOUT CONTROL</span><h2 id="details-title">Configure the whole workspace.</h2><p>Setpiece manages the layout around the applications you already use.</p></div>
+
+    <!-- Tour -->
+    <section class="tour container" id="tour" aria-labelledby="tour-title">
+      <div class="section-heading">
+        <span class="eyebrow">The tour</span>
+        <h2 id="tour-title">Five places. One calm system.</h2>
+        <p>Studio for layouts, Widgets for everything live, Browsers for sessions that stay, Appearance for the look, and Settings for the rest.</p>
+      </div>
+      <div class="segmented" role="tablist" aria-label="App screens">
+        <button role="tab" id="tab-studio" aria-selected="true" aria-controls="tour-panel" data-shot="studio"><span class="ms" aria-hidden="true">space_dashboard</span>Studio</button>
+        <button role="tab" id="tab-widgets" aria-selected="false" aria-controls="tour-panel" data-shot="widgets" tabindex="-1"><span class="ms" aria-hidden="true">widgets</span>Widgets</button>
+        <button role="tab" id="tab-dialog" aria-selected="false" aria-controls="tour-panel" data-shot="dialog" tabindex="-1"><span class="ms" aria-hidden="true">tune</span>Setup</button>
+        <button role="tab" id="tab-browsers" aria-selected="false" aria-controls="tour-panel" data-shot="browsers" tabindex="-1"><span class="ms" aria-hidden="true">language</span>Browsers</button>
+        <button role="tab" id="tab-appearance" aria-selected="false" aria-controls="tour-panel" data-shot="appearance" tabindex="-1"><span class="ms" aria-hidden="true">palette</span>Appearance</button>
+        <button role="tab" id="tab-settings" aria-selected="false" aria-controls="tour-panel" data-shot="settings" tabindex="-1"><span class="ms" aria-hidden="true">settings</span>Settings</button>
+      </div>
+      <div class="tour-panel" id="tour-panel" role="tabpanel" aria-labelledby="tab-studio" tabindex="0">
+        <a class="window" id="tour-link" href="screenshots/dark-studio.png" target="_blank" rel="noopener">
+          <img id="tour-image" data-name="studio" src="screenshots/dark-studio.png" width="1440" height="960" alt="Setpiece Studio: displays, the layout board with live widgets, and the tile inspector." loading="lazy">
+        </a>
+        <p class="caption" id="tour-caption">Studio. Pick a display, start from a layout, then drag, resize and split tiles on a live board. Widgets render for real while you arrange them.</p>
+      </div>
+    </section>
+
+    <!-- Widgets -->
+    <section class="widgets-section" id="widgets" aria-labelledby="widgets-title">
+      <div class="container">
+        <div class="section-heading">
+          <span class="eyebrow">Widgets</span>
+          <h2 id="widgets-title">Sixteen widgets. One family.</h2>
+          <p>Every widget takes its color from your accent and its shape from its category, so a wall of them still feels like one piece. Set each up once; it works in every workspace.</p>
+        </div>
+        <ul class="legend" aria-label="Widget categories">
+          <li data-cat="daily"><i aria-hidden="true"></i>Daily <span>Clock, Calendar, Weather, Ruter, Notes</span></li>
+          <li data-cat="connected"><i aria-hidden="true"></i>Connected <span>Spotify, Discord, Inbox, News, Reddit</span></li>
+          <li data-cat="device"><i aria-hidden="true"></i>Device <span>System, Battery, Volume, AI Usage, Bambu Lab</span></li>
+          <li data-cat="play"><i aria-hidden="true"></i>Play <span>Scrapbots</span></li>
+        </ul>
+        <div class="widget-wall" id="widget-wall" aria-label="Widget gallery">
+          <!-- Filled by site.js from the list below, so both themes stay in sync. -->
+          <noscript><p>Widget screenshots live in <a href="https://github.com/rmarkegard/Setpiece/tree/main/docs/screenshots/widgets">docs/screenshots/widgets</a>.</p></noscript>
+        </div>
+      </div>
+    </section>
+
+    <!-- Shared browsers -->
+    <section class="browsers-section container" id="browsers" aria-labelledby="browsers-title">
+      <div class="browsers-copy">
+        <span class="eyebrow">Shared browsers</span>
+        <h2 id="browsers-title">Fullscreen, without losing the rest of your desk.</h2>
+        <p class="lead">Put a named browser in any tile. Go fullscreen on a video and it fills <em>the tile</em>, not the monitor, so your widgets, chat and editor stay right where they are.</p>
+        <ul class="checks">
+          <li><span class="ms" aria-hidden="true">tab</span><div><strong>Named sessions that stay.</strong> Media, Research, Music: each keeps its own tabs, logins and playback, across every workspace.</div></li>
+          <li><span class="ms" aria-hidden="true">fullscreen</span><div><strong>Fullscreen inside the tile.</strong> One switch per tile. Video players, slides and games expand to the tile's edges and stop there.</div></li>
+          <li><span class="ms" aria-hidden="true">bookmarks</span><div><strong>A toolbar that gets out of the way.</strong> Tabs, address and your Brave bookmarks, or collapse it to a single slim row.</div></li>
+          <li><span class="ms" aria-hidden="true">shield</span><div><strong>Private by design.</strong> Web pages get no access to Setpiece, and uBlock Origin Lite ships built in.</div></li>
+        </ul>
+      </div>
+
+      <figure class="demo" id="fullscreen-demo" data-fullscreen="false" data-contained="true">
+        <div class="monitor">
+          <!-- A 1920 × 1080 desktop at real pixel sizes, scaled to fit by site.js. Setpiece defaults: 16px margin, 12px gaps. -->
+          <div class="stage" aria-hidden="true">
+            <div class="desk"></div>
+            <div class="win browser">
+              <img class="toolbar only-dark" src="screenshots/demo/dark-toolbar.png" width="1352" height="124" alt="">
+              <img class="toolbar only-light" src="screenshots/demo/light-toolbar.png" width="1352" height="124" alt="">
+              <div class="watch">
+                <div class="primary">
+                  <div class="player-slot"></div>
+                  <h4 class="watch-title">Blue hour over the fjord, live in 4K</h4>
+                  <div class="channel-row">
+                    <img class="avatar" src="assets/thumb-quiet-coast.jpg" alt="">
+                    <div class="channel"><strong>Northern Skies <span class="ms filled verified">check_circle</span></strong><span>412K subscribers</span></div>
+                    <span class="pill solid">Subscribe</span>
+                    <span class="spacer"></span>
+                    <span class="pill"><span class="ms">thumb_up</span>18K<i></i><span class="ms">thumb_down</span></span>
+                    <span class="pill"><span class="ms">share</span>Share</span>
+                    <span class="pill round"><span class="ms">more_horiz</span></span>
+                  </div>
+                  <div class="description"><strong>38K watching now · Started streaming 2 hours ago</strong><p>The last light over the fjord, filmed from the ridge above the village. Stay for the stars.</p></div>
+                </div>
+                <div class="up-next">
+                  <div class="chips-row"><span class="pill active">All</span><span class="pill">Northern Skies</span><span class="pill">Live</span></div>
+                  <div class="rec"><img src="assets/thumb-moss-geometry.jpg" alt=""><div><strong>Moss and granite: a slow hike to the plateau</strong><span>Trail Notes</span><span>1.2M views · 3 weeks ago</span></div></div>
+                  <div class="rec"><img src="assets/thumb-violet-current.jpg" alt=""><div><strong>Northern lights, uncut, all night</strong><span>Northern Skies</span><span>884K views · 1 year ago</span></div></div>
+                  <div class="rec"><img src="assets/thumb-ember-grid.jpg" alt=""><div><strong>Lo-fi for deep work, three hours</strong><span>Quiet Hours</span><span>2.4M views · 5 months ago</span></div></div>
+                  <div class="rec"><img src="assets/thumb-paper-horizon.jpg" alt=""><div><strong>Desert light at golden hour</strong><span>Wide Open</span><span>412K views · 2 weeks ago</span></div></div>
+                  <div class="rec"><img src="assets/thumb-quiet-coast.jpg" alt=""><div><strong>A quiet coast, sunrise to noon</strong><span>Northern Skies</span><span>96K views · 4 days ago</span></div></div>
+                </div>
+              </div>
+            </div>
+            <img class="win w-clock only-dark" src="screenshots/demo/dark-clock.png" width="524" height="341" alt="">
+            <img class="win w-clock only-light" src="screenshots/demo/light-clock.png" width="524" height="341" alt="">
+            <img class="win w-chat only-dark" src="screenshots/demo/dark-discord.png" width="524" height="341" alt="">
+            <img class="win w-chat only-light" src="screenshots/demo/light-discord.png" width="524" height="341" alt="">
+            <img class="win w-system only-dark" src="screenshots/demo/dark-system.png" width="524" height="342" alt="">
+            <img class="win w-system only-light" src="screenshots/demo/light-system.png" width="524" height="342" alt="">
+            <div class="player">
+              <img class="video" src="assets/video-blue-hour.jpg" alt="">
+              <div class="player-top"><strong>Blue hour over the fjord, live in 4K</strong><span>Northern Skies</span></div>
+              <div class="player-bottom">
+                <div class="scrub"><i></i></div>
+                <div class="controls">
+                  <span class="ms filled">pause</span><span class="ms filled">skip_next</span><span class="ms filled">volume_up</span>
+                  <span class="live"><i></i>LIVE</span>
+                  <span class="spacer"></span>
+                  <span class="ms">subtitles</span><span class="ms">settings</span><span class="ms fs-icon">fullscreen</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="tag tag-tile">Browser tile · Media</span>
+          <span class="tag tag-widgets">Widgets keep running</span>
+        </div>
+        <figcaption class="demo-controls">
+          <button class="button filled" id="demo-play" type="button" aria-pressed="false"><span class="ms" aria-hidden="true">fullscreen</span><span class="label">Go fullscreen</span></button>
+          <label class="switch">
+            <input type="checkbox" id="demo-contain" role="switch" checked>
+            <span class="track" aria-hidden="true"><span class="handle"><span class="ms">check</span></span></span>
+            Keep fullscreen inside the tile
+          </label>
+          <p class="demo-status" id="demo-status" aria-live="polite">A live stream in a browser tile on a 1080p display. Go fullscreen: it stays inside its tile.</p>
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- Color -->
+    <section class="color-section container" id="color" aria-labelledby="color-title">
+      <div class="color-copy">
+        <span class="eyebrow">Appearance</span>
+        <h2 id="color-title">One accent colors everything.</h2>
+        <p class="lead">Pick an accent, or any color you like. Setpiece builds a full Material 3 palette from it, in light and dark, and every page, control and widget follows along.</p>
+        <div class="swatches" role="radiogroup" aria-label="Preview an accent">
+          <button role="radio" aria-checked="true" data-accent="iris" style="--swatch:#5e5ce6" aria-label="Iris"><span class="ms" aria-hidden="true">check</span></button>
+          <button role="radio" aria-checked="false" data-accent="sage" style="--swatch:#517c60" aria-label="Sage" tabindex="-1"></button>
+          <button role="radio" aria-checked="false" data-accent="ocean" style="--swatch:#316b85" aria-label="Ocean" tabindex="-1"></button>
+          <button role="radio" aria-checked="false" data-accent="rose" style="--swatch:#ad526f" aria-label="Rose" tabindex="-1"></button>
+        </div>
+        <p class="fineprint">Also on the Appearance page: surface opacity, wallpaper dimming, accent glow, corner roundness, and eleven wallpapers, some of them moving.</p>
+      </div>
+      <div class="window color-shot"><img id="accent-image" src="screenshots/dark-studio.png" width="1440" height="960" alt="Setpiece Studio with the Iris accent." loading="lazy"></div>
+    </section>
+
+    <!-- Everything else -->
+    <section class="features container" aria-labelledby="features-title">
+      <div class="section-heading">
+        <span class="eyebrow">And the rest</span>
+        <h2 id="features-title">Built around the apps you already use.</h2>
+      </div>
       <div class="feature-grid">
-        <article><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 22h8m-4-4v4M14 4v14m0-8h7"/></svg><h3>Arrange native applications</h3><p>Assign open Windows apps to tiles. Drag, resize, split, and snap tiles in the Studio canvas.</p></article>
-        <article><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="14" height="11" rx="2"/><path d="M18 8h3a1 1 0 0 1 1 1v10H10v-3M6 18h6m-3-4v4"/></svg><h3>Set up each display</h3><p>Choose the displays a profile uses and give each one its own layout. Save profiles for different setups.</p></article>
-        <article><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7m-3.5-3.5h7"/></svg><h3>Add widgets</h3><p>Use clocks, notes, and device widgets, or configure optional service integrations from the widget library.</p></article>
-        <article><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18m-14-2h1m3 0h1"/></svg><h3>Keep browser sessions</h3><p>Create named WebView2 browsers with saved tabs, then use them across your workspace profiles.</p></article>
-        <article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><rect x="8" y="8" width="8" height="8" rx="1"/></svg><h3>Contain fullscreen video</h3><p>Enable fullscreen inside a browser tile to expand a video without covering the other tiles on your display.</p></article>
-        <article><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a8 8 0 1 1-1 8M4 3v5h5"/><path d="M12 7v5l3 2"/></svg><h3>Restore your windows</h3><p>Stop the workspace or close Setpiece to restore the original application windows and taskbars.</p></article>
+        <article><span class="shape s1"><span class="ms filled" aria-hidden="true">monitor</span></span><h3>Every display, its own layout</h3><p>Include the displays a workspace uses, portrait ones too, and give each its own board at its real aspect ratio.</p></article>
+        <article><span class="shape s2"><span class="ms filled" aria-hidden="true">drag_pan</span></span><h3>Drag, resize, snap</h3><p>Move tiles freely or with smart snap. Drop one tile on another to swap them. Undo is always one Ctrl+Z away.</p></article>
+        <article><span class="shape s3"><span class="ms filled" aria-hidden="true">dashboard_customize</span></span><h3>Start from a layout</h3><p>Columns, rows, grid or main-and-side. Preview first, pick the tile count, then apply. Tile contents keep their order.</p></article>
+        <article><span class="shape s4"><span class="ms filled" aria-hidden="true">swap_horiz</span></span><h3>Workspaces for every mode</h3><p>Deep focus, streaming, a Friday of meetings. Switch in one click; unsaved changes are never lost silently.</p></article>
+        <article><span class="shape s5"><span class="ms filled" aria-hidden="true">restart_alt</span></span><h3>Put it all back</h3><p>Stop the workspace, or just close Setpiece, and your windows and taskbars return to where they were.</p></article>
+        <article><span class="shape s6"><span class="ms filled" aria-hidden="true">lock</span></span><h3>Local and encrypted</h3><p>Workspaces live on your PC. Connection secrets are encrypted for your Windows account and never leave it.</p></article>
       </div>
     </section>
-    <section class="appearance-section container" aria-labelledby="appearance-title"><div class="appearance-copy"><span class="eyebrow">APPEARANCE</span><h2 id="appearance-title">Light or dark.<br>Set your own accent.</h2><p>Switch themes, choose an accent color, and save a wallpaper with each profile.</p><a href="reveal/screenshots/luna-appearance.png" target="_blank" rel="noopener" class="inline-link">View appearance settings <span aria-hidden="true">↗</span></a></div><a class="appearance-shot" href="reveal/screenshots/luna-appearance.png" target="_blank" rel="noopener" aria-label="Open full-size light appearance settings screenshot"><img src="reveal/screenshots/luna-appearance.png" width="1440" height="2100" alt="Setpiece appearance settings in light mode, including light and dark previews, accent colors, and wallpaper options." loading="lazy"></a></section>
-    <section class="setup container" id="setup" aria-labelledby="setup-title"><div class="section-heading"><span class="eyebrow">GET SETPIECE</span><h2 id="setup-title">Build and run on Windows 11.</h2><p>The repository provides the source code. A prebuilt download is not currently published.</p></div><div class="setup-grid"><div class="build-card"><div class="code-heading"><span>PowerShell <span class="code-location">/ repository root</span></span><button id="copy-build" type="button" aria-label="Copy build commands">Copy <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="6" y="6" width="11" height="11" rx="2"/><path d="M13 6V3H3v10h3"/></svg></button></div><pre><code id="build-commands">cd UI
+
+    <!-- Setup -->
+    <section class="setup container" id="setup" aria-labelledby="setup-title">
+      <div class="section-heading">
+        <span class="eyebrow">Get Setpiece</span>
+        <h2 id="setup-title">Build and run on Windows 11.</h2>
+        <p>The repository provides the source. A prebuilt download isn't published yet.</p>
+      </div>
+      <div class="setup-grid">
+        <div class="card code-card">
+          <div class="code-head"><span>PowerShell <span class="muted">· repository root</span></span><button class="button text small" id="copy-build" type="button"><span class="ms" aria-hidden="true">content_copy</span>Copy</button></div>
+          <pre><code id="build-commands">cd UI
 pnpm install --frozen-lockfile
 cd ..
-.\build.ps1</code></pre><div class="build-footer"><p>Then run <code>Setpiece.exe</code> from<br><code>Setpiece/bin/Release/net10.0-windows/</code></p><a class="inline-link" href="https://github.com/rmarkegard/Setpiece#build-from-source">Full build instructions ↗</a></div><p id="copy-status" class="copy-status" role="status"></p></div><div class="requirements"><h3>Requirements</h3><dl><div><dt>Operating system</dt><dd>Windows 11, x64</dd></div><div><dt>To run</dt><dd>.NET 10 Desktop Runtime<br>Edge WebView2 Runtime</dd></div><div><dt>To build</dt><dd>.NET 10 SDK<br>Node.js 24.15+ · pnpm 11</dd></div></dl><a class="inline-link" href="https://github.com/rmarkegard/Setpiece/blob/main/docs/VERIFICATION.md">Tested configurations &amp; known limits ↗</a></div></div><p class="data-note">Profiles and browser data are stored locally. Optional integrations may require separate accounts or hardware. Screenshots use a demo profile; Weather is disconnected.</p></section>
+.\build.ps1</code></pre>
+          <p class="muted">Then run <code>Setpiece.exe</code> from <code>Setpiece/bin/Release/net10.0-windows/</code>.</p>
+          <p id="copy-status" class="copy-status" role="status"></p>
+          <a class="text-link" href="https://github.com/rmarkegard/Setpiece#build-from-source">Full build instructions <span class="ms" aria-hidden="true">open_in_new</span></a>
+        </div>
+        <div class="card requirements">
+          <h3>Requirements</h3>
+          <dl>
+            <div><dt>System</dt><dd>Windows 11, x64</dd></div>
+            <div><dt>To run</dt><dd>.NET 10 Desktop Runtime<br>Edge WebView2 Runtime</dd></div>
+            <div><dt>To build</dt><dd>.NET 10 SDK<br>Node.js 24.15+ · pnpm 11</dd></div>
+          </dl>
+          <a class="text-link" href="https://github.com/rmarkegard/Setpiece/blob/main/docs/VERIFICATION.md">Tested configurations and known limits <span class="ms" aria-hidden="true">open_in_new</span></a>
+        </div>
+      </div>
+      <p class="fineprint center">Screenshots come from the development preview, which runs the real interface with sample data. Optional integrations may need their own accounts or hardware.</p>
+    </section>
   </main>
-  <footer class="footer container"><div class="footer-main"><a href="#top" class="brand">Setpiece</a><div><a href="https://github.com/rmarkegard/Setpiece">Source code ↗</a><a href="https://github.com/rmarkegard/Setpiece/issues">Report an issue ↗</a><a href="https://github.com/rmarkegard/Setpiece/blob/main/CONTRIBUTING.md">Contribute ↗</a></div></div><p>Available under the <a href="https://github.com/rmarkegard/Setpiece/blob/main/LICENSE">PolyForm Noncommercial 1.0.0</a> license. Commercial use is not permitted.</p></footer>
+
+  <footer class="footer container">
+    <div class="footer-main">
+      <a href="#top" class="brand"><span class="brand-mark" aria-hidden="true"><span class="ms filled">space_dashboard</span></span>Setpiece</a>
+      <div class="footer-links"><a href="https://github.com/rmarkegard/Setpiece">Source code</a><a href="https://github.com/rmarkegard/Setpiece/issues">Report an issue</a><a href="https://github.com/rmarkegard/Setpiece/blob/main/CONTRIBUTING.md">Contribute</a></div>
+    </div>
+    <p>Available under the <a href="https://github.com/rmarkegard/Setpiece/blob/main/LICENSE">PolyForm Noncommercial 1.0.0</a> license. Commercial use is not permitted.</p>
+  </footer>
 </body>
 </html>

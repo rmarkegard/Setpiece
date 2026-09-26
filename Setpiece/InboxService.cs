@@ -11,7 +11,7 @@ internal static class InboxService
     {
         var provider=settings["InboxProvider"]?.GetValue<string>()??"";
         if(provider=="outlook")return await Outlook();
-        if(provider!="google"||string.IsNullOrWhiteSpace(settings["GoogleRefreshToken"]?.GetValue<string>()))return Providers.State("disconnected","A quieter view of your inbox","Choose Google or Outlook desktop in Connections.");
+        if(provider!="google"||string.IsNullOrWhiteSpace(settings["GoogleRefreshToken"]?.GetValue<string>()))return Providers.State("disconnected","A quieter view of your inbox","Choose Gmail or Outlook desktop in the widget settings.");
         var token=await OAuth.Token(http,storage,"Google",settings);
         async Task<JsonNode> Get(string path)
         {
@@ -36,7 +36,7 @@ internal static class InboxService
             T Keep<T>(T item) where T:class {objects.Push(item);return item;}
             try
             {
-                var type=Type.GetTypeFromProgID("Outlook.Application");if(type is null){completion.SetResult(Providers.State("disconnected","Open Outlook to connect","Install classic Outlook and sign in, or choose Google in Connections."));return;}
+                var type=Type.GetTypeFromProgID("Outlook.Application");if(type is null){completion.SetResult(Providers.State("disconnected","Open Outlook to connect","Install classic Outlook and sign in, or switch to Gmail in the widget settings."));return;}
                 dynamic application=Keep(Activator.CreateInstance(type)!);dynamic session=Keep((object)application.GetNamespace("MAPI"));dynamic inbox=Keep((object)session.GetDefaultFolder(6));dynamic collection=Keep((object)inbox.Items);dynamic unread=Keep((object)collection.Restrict("[UnRead] = true"));unread.Sort("[ReceivedTime]",true);
                 var count=(int)unread.Count;var items=new JsonArray();
                 for(var i=1;i<=Math.Min(count,8);i++)

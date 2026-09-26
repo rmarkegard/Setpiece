@@ -24,7 +24,7 @@ internal sealed class Host : Form
     public Host(Storage storage)
     {
         this.storage = storage;providers = new Providers(storage);
-        Text = "Setpiece";Size = new Size(1440, 960);MinimumSize = new Size(1040, 680);StartPosition = FormStartPosition.CenterScreen;FormBorderStyle = FormBorderStyle.None;BackColor = Color.FromArgb(18, 21, 19);
+        Text = "Setpiece";Size = new Size(1440, 960);MinimumSize = new Size(1040, 680);StartPosition = FormStartPosition.CenterScreen;FormBorderStyle = FormBorderStyle.None;BackColor = SurfaceColor;
         Controls.Add(view);Shown += async (_, _) => await Initialize();
         FormClosing+=(_,e)=>{if(!closingConfirmed&&AuditOutput is null&&view.CoreWebView2 is not null&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;Emit("request-close",null);}};
         FormClosed += (_, _) => { foreach (var surface in surfaces) surface.Dispose();foreach (var browser in browsers.Values)browser.Dispose();windows?.Dispose();providers.Dispose(); };
@@ -304,6 +304,8 @@ internal sealed class Host : Form
     internal void Emit(string name,JsonNode? data) { if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data?.DeepClone()}.ToJsonString()); }
     internal void NotifyBrowserCatalog()=>Emit("browsers",BrowserCatalog());
     internal double CornerRadius=>storage.Preferences()["radius"]?.GetValue<double>()??24;
+    // Matches the UI's Material 3 surface role, so the window never flashes another color before the page paints.
+    private Color SurfaceColor=>storage.Preferences()["mode"]?.GetValue<string>()=="light"?Color.FromArgb(252,248,255):Color.FromArgb(19,19,24);
     private void Broadcast(string name,JsonNode data){Emit(name,data);foreach(var surface in surfaces)surface.Emit(name,data);foreach(var browser in browsers.Values)browser.Emit(name,data);}
     internal static void OpenExternal(string url){if(!Uri.TryCreate(url,UriKind.Absolute,out var uri)||uri.Scheme is not ("https" or "http"))throw new InvalidOperationException("Use an HTTP or HTTPS address.");Process.Start(new ProcessStartInfo(uri.AbsoluteUri){UseShellExecute=true});}
     protected override void WndProc(ref Message message)

@@ -1,0 +1,65 @@
+<sp-page-header headline="Settings" supporting="How Setpiece looks to you, runs and stays up to date."/>
+
+<div class="sections">
+  <sp-section headline="Comfort" icon="accessibility_new" [flush]="true">
+    <sp-row headline="Interface size" supporting="Controls, spacing and window chrome." icon="aspect_ratio">
+      <span class="value label-large">{{store.appearance().uiScale|number:'1.2-2'}}×</span>
+      <mat-slider row-below [min]="uiRange.min" [max]="uiRange.max" step="0.05"><input matSliderThumb aria-label="Interface size" [value]="store.appearance().uiScale" (valueChange)="store.appearanceChange('uiScale',$event)"></mat-slider>
+    </sp-row>
+    <sp-row headline="Text size" supporting="Type across Setpiece. Both sizes add to Windows display scaling." icon="format_size">
+      <span class="value label-large">{{store.appearance().fontScale|number:'1.2-2'}}×</span>
+      <mat-slider row-below [min]="fontRange.min" [max]="fontRange.max" step="0.05"><input matSliderThumb aria-label="Text size" [value]="store.appearance().fontScale" (valueChange)="store.appearanceChange('fontScale',$event)"></mat-slider>
+    </sp-row>
+    <sp-row headline="Reduce motion" supporting="Keep transitions and wallpapers still." icon="motion_photos_off">
+      <mat-slide-toggle aria-label="Reduce motion" [checked]="store.appearance().reducedMotion" (change)="store.appearanceChange('reducedMotion',$event.checked)"/>
+    </sp-row>
+  </sp-section>
+
+  <sp-section headline="Workspaces" icon="space_dashboard" [flush]="true">
+    <button section-action matButton="tonal" (click)="dialogs.createProfile()"><sp-icon name="add"/>New</button>
+    @for(item of store.savedProfiles();track item.key){
+      <sp-row [headline]="item.profile!.Name" [supporting]="item.profile!.MonitorIndices.length+(item.profile!.MonitorIndices.length===1?' display':' displays')" [icon]="item.key===store.key()?'radio_button_checked':'radio_button_unchecked'">
+        @if(item.key===store.key()){
+          <span class="current label-medium">Current</span>
+          <button matIconButton aria-label="Rename" matTooltip="Rename" (click)="dialogs.rename()"><sp-icon name="edit"/></button>
+          <button matIconButton aria-label="Delete" matTooltip="Delete" (click)="dialogs.deleteProfile()"><sp-icon name="delete"/></button>
+        } @else {
+          <button matButton (click)="dialogs.switchProfile(item.key)">Switch</button>
+        }
+      </sp-row>
+    }
+    @if(!store.key()){<sp-row [headline]="store.profile().Name" supporting="Not saved yet" icon="radio_button_checked"><button matButton="tonal" (click)="store.save()">Save</button></sp-row>}
+    @for(item of store.profileErrors();track item.key){
+      <sp-row [headline]="item.key" [supporting]="item.error!" icon="error"/>
+    }
+    <sp-row headline="Stop the workspace" supporting="Closes Setpiece's windows and puts your apps back where they were." icon="stop_circle">
+      <button matButton="outlined" (click)="store.execute('stop')">Stop</button>
+    </sp-row>
+  </sp-section>
+
+  <sp-section headline="Updates" icon="system_update" [flush]="true">
+    <sp-row headline="Setpiece updates" [supporting]="store.updateStatus()||'Checks the latest release on GitHub. Installers are verified before they run.'" icon="new_releases">
+      @if(store.updateBusy()){<mat-spinner diameter="24" strokeWidth="3" aria-label="Checking"/>}
+      @if(store.updateVersion()){<button matButton="filled" [disabled]="store.updateBusy()" (click)="store.installUpdate()">Install {{store.updateVersion()}}</button>}
+      @else{<button matButton="tonal" [disabled]="store.updateBusy()" (click)="store.checkUpdate()">Check now</button>}
+    </sp-row>
+  </sp-section>
+
+  <sp-section headline="Keyboard" icon="keyboard" supporting="Shortcuts work while Setpiece is focused." [flush]="true">
+    @for(shortcut of shortcuts;track shortcut.label){
+      <sp-row [headline]="shortcut.label">
+        <span class="keys">@for(key of shortcut.keys;track key){<kbd class="label-large">{{key}}</kbd>}</span>
+      </sp-row>
+    }
+  </sp-section>
+
+  <sp-section headline="About" icon="info" [flush]="true">
+    <sp-row headline="Program" [supporting]="store.executable()||'Unknown'" icon="terminal">
+      <button matIconButton aria-label="Copy program path" matTooltip="Copy" (click)="copy(store.executable())"><sp-icon name="content_copy"/></button>
+    </sp-row>
+    <sp-row headline="Your data" [supporting]="store.dataRoot()||'Unknown'" icon="folder">
+      <button matIconButton aria-label="Copy data folder" matTooltip="Copy" (click)="copy(store.dataRoot())"><sp-icon name="content_copy"/></button>
+    </sp-row>
+    <sp-row headline="WebView2" [supporting]="store.runtime()||'Unknown'" icon="web"/>
+  </sp-section>
+</div>

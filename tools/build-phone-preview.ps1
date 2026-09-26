@@ -30,6 +30,8 @@ foreach ($match in $matches) {
     $mimeType = switch ($extension) {
         '.css'  { 'text/css' }
         '.html' { 'text/html' }
+        '.jpg'  { 'image/jpeg' }
+        '.js'   { 'text/javascript' }
         '.md'   { 'text/markdown;charset=utf-8' }
         '.mp4'  { 'video/mp4' }
         '.png'  { 'image/png' }
