@@ -1,4 +1,5 @@
 using Setpiece.Rebuild;
+using System.ComponentModel;
 using System.Drawing;
 using System.Text.Json.Nodes;
 
@@ -8,6 +9,11 @@ public class WindowCoordinatorTests
 {
     private static readonly HashSet<string> None = new(StringComparer.OrdinalIgnoreCase);
     private static JsonArray Distinct() => new(new JsonObject { ["handle"] = "21", ["process"] = "editor", ["title"] = "Notes.md - Editor" }, new JsonObject { ["handle"] = "22", ["process"] = "editor", ["title"] = "Plan.md - Editor" });
+
+    [Fact] public void ProcessNameReadReturnsAvailableName() => Assert.Equal("editor", Setpiece.Rebuild.Windows.TryReadProcessName(() => "editor"));
+    [Fact] public void ExitedProcessIsSkippedDuringNameRead() => Assert.Null(Setpiece.Rebuild.Windows.TryReadProcessName(() => throw new InvalidOperationException()));
+    [Fact] public void InaccessibleProcessIsSkippedDuringNameRead() => Assert.Null(Setpiece.Rebuild.Windows.TryReadProcessName(() => throw new Win32Exception()));
+    [Fact] public void UnexpectedProcessNameFailuresRemainVisible() => Assert.Throws<IOException>(() => Setpiece.Rebuild.Windows.TryReadProcessName(() => throw new IOException()));
 
     [Fact] public void LargeGapsKeepNarrowTilesPositiveAndEven()
     {
