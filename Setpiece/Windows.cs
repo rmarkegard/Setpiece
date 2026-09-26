@@ -54,6 +54,11 @@ internal static class Windows
         catch(EntryPointNotFoundException){}
     }
     public static JsonArray Displays() => new(Screen.AllScreens.Select((s, i) => (JsonNode)new JsonObject { ["index"] = i, ["name"] = s.DeviceName, ["width"] = s.Bounds.Width, ["height"] = s.Bounds.Height, ["x"] = s.Bounds.X, ["y"] = s.Bounds.Y, ["primary"] = s.Primary }).ToArray());
+    internal static string? TryReadProcessName(Func<string> read)
+    {
+        try { return read(); }
+        catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException) { return null; }
+    }
     public static void BehindApplications(nint layer)
     {
         nint desktop=0;EnumWindows((window,_)=>{if(FindWindowEx(window,0,"SHELLDLL_DefView",null)!=0){desktop=window;return false;}return true;},0);
@@ -78,7 +83,8 @@ internal static class Windows
             try
             {
                 using var process = Process.GetProcessById((int)pid);
-                result.Add(new JsonObject { ["handle"] = window.ToString(), ["title"] = title.ToString(), ["process"] = process.ProcessName });
+                var processName = TryReadProcessName(() => process.ProcessName);
+                if (processName is not null) result.Add(new JsonObject { ["handle"] = window.ToString(), ["title"] = title.ToString(), ["process"] = processName });
             }
             catch (ArgumentException) { }
             return true;
@@ -132,7 +138,7 @@ internal sealed class WindowCoordinator : IDisposable
         if (pid == Environment.ProcessId) throw new InvalidOperationException("Choose an external application.");
         var original=new Windows.Placement{Length=Marshal.SizeOf<Windows.Placement>()};if(!pendingMoves.Remove(hwnd,out original)&&!Windows.GetWindowPlacement(hwnd,ref original))throw new InvalidOperationException("The application window is no longer available.");
         var already=attachments.FirstOrDefault(p=>p.Value.Handle==hwnd);
-        long started;try{using var process=Process.GetProcessById((int)pid);started=process.StartTime.ToUniversalTime().Ticks;}catch(Exception error) when(error is ArgumentException or System.ComponentModel.Win32Exception){throw new InvalidOperationException("Windows could not verify this application's identity.");}
+        long started;try{using var process=Process.GetProcessById((int)pid);started=process.StartTime.ToUniversalTime().Ticks;}catch(Exception error) when(error is ArgumentException or System.ComponentModel.Win32Exception or InvalidOperationException){throw new InvalidOperationException("Windows could not verify this application's identity.");}
         var previous = attachments.GetValueOrDefault(id);
         Windows.ShowWindow(hwnd, 9);
         var placement=PlacementBounds(hwnd,destination);
@@ -203,7 +209,7 @@ internal sealed class WindowCoordinator : IDisposable
     private static bool SameWindow(Attachment entry)
     {
         if(!Windows.IsWindow(entry.Handle))return false;Windows.GetWindowThreadProcessId(entry.Handle,out var pid);if(pid!=entry.Process)return false;
-        try{using var process=Process.GetProcessById((int)pid);return process.StartTime.ToUniversalTime().Ticks==entry.Started;}catch(Exception error) when(error is ArgumentException or System.ComponentModel.Win32Exception){return false;}
+        try{using var process=Process.GetProcessById((int)pid);return process.StartTime.ToUniversalTime().Ticks==entry.Started;}catch(Exception error) when(error is ArgumentException or System.ComponentModel.Win32Exception or InvalidOperationException){return false;}
     }
     private static void Restore(Attachment entry)
     {

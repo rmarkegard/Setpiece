@@ -1,6 +1,24 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync,readdirSync} from 'node:fs';
+import {wallpaperNames} from '../src/domain.ts';
 import {newTile,preset,splitTile,removeTile,swapTiles,assertLayout,History,fittingGap,moveTile,resizeTile,vacantTile,vacantRegionAt,dropTile,tilePercentBounds} from '../src/domain.ts';
+
+test('every selectable wallpaper ships and agrees with native validation',()=>{
+  const images=wallpaperNames.filter(id=>id!=='ambient');
+  assert.equal(images.length,20);
+  assert.equal(new Set(wallpaperNames).size,21);
+  const assets=new URL('../../Setpiece/Assets/Wallpapers/',import.meta.url);
+  assert.deepEqual(readdirSync(assets).sort(),images.map(id=>id+'.jpg').sort());
+  const native=readFileSync(new URL('../../Setpiece/ProfileRules.cs',import.meta.url),'utf8');
+  const nativeIds=[...native.match(/WallpaperIds\s*=\s*\[([\s\S]*?)\]/)![1].matchAll(/"([^"]+)"/g)].map(match=>match[1]);
+  assert.deepEqual(nativeIds,wallpaperNames);
+  for(const id of images){
+    const bytes=readFileSync(new URL(id+'.jpg',assets));
+    assert.equal(bytes.readUInt16BE(0),0xffd8,id+' must be a JPEG');
+    assert.ok(bytes.length>10000,id+' must contain artwork');
+  }
+});
 
 test('large gaps adapt to narrow tiles on a smaller display',()=>{
   const tiles=preset('columns',3);tiles[0].Width=.475;tiles[1].X=.475;tiles[1].Width=.025;tiles[2].X=.5;tiles[2].Width=.5;

@@ -14,7 +14,7 @@ export const displays:Display[]=[
 ];
 
 export function sampleProfile():Profile{
-  return {Name:'Setpiece Reveal',SchemaVersion:18,Gap:12,OuterMargin:16,MonitorIndex:0,MonitorIndices:[0,1],WallpaperId:'fjord-glass',AnimatedWallpaper:false,SmartSnap:true,SnapStep:.05,
+  return {Name:'Setpiece Reveal',SchemaVersion:18,Gap:12,OuterMargin:16,MonitorIndex:0,MonitorIndices:[0,1],WallpaperId:'jade-synthesis',AnimatedWallpaper:false,SmartSnap:true,SnapStep:.05,
     MonitorBoards:[
       {MonitorIndex:0,WidgetScale:1,Zones:[
         tile(0,0,.5,1,{AssignedProcessName:'Code',AssignedWindowTitle:'setpiece — Visual Studio Code'}),

@@ -29,7 +29,7 @@
               "sourceMap": true,
               "assets": [
                 {"glob":"**/*","input":"public","output":"/"},
-                {"glob":"*.png","input":"dev-assets","output":"/dev-assets/Wallpapers"}
+                {"glob":"*.jpg","input":"dev-assets","output":"/dev-assets/Wallpapers"}
               ]
             }
           },

@@ -4,6 +4,28 @@ namespace Setpiece.Rebuild;
 
 internal static class ProfileRules
 {
+    internal static readonly string[] WallpaperIds =
+    [
+        "ambient",
+        "jade-synthesis","ceramic-resonance","amber-phase","mist-lattice",
+        "mineral-memory","carbon-tension","glacial-diffusion","moss-imprint",
+        "chromatic-echo","sodium-haze","violet-interference","spectral-drift",
+        "modular-moss","pixel-cascade","cobalt-assembly","clay-mosaic",
+        "iridescent-pleats","peach-contour","mercury-flow","opal-suspension",
+    ];
+    private static readonly Dictionary<string,string> LegacyWallpapers = new()
+    {
+        ["fjord-glass"]="jade-synthesis",
+        ["paper-horizon"]="peach-contour",
+        ["moss-geometry"]="modular-moss",
+        ["blue-hour"]="glacial-diffusion",
+        ["ember-grid"]="chromatic-echo",
+        ["slate-dunes"]="mineral-memory",
+        ["orchard-mist"]="moss-imprint",
+        ["violet-current"]="violet-interference",
+        ["quiet-coast"]="ceramic-resonance",
+        ["mono-bloom"]="mercury-flow",
+    };
     private const double Epsilon=.000001;
     internal static double Number(JsonObject source,string key,double fallback)
     {
@@ -21,7 +43,9 @@ internal static class ProfileRules
         profile["Gap"]=Math.Clamp(Number(profile,"Gap",12),0,40);profile["OuterMargin"]=Math.Clamp(Number(profile,"OuterMargin",16),0,64);
         profile["SnapStep"]=Math.Clamp(Number(profile,"SnapStep",.05),.01,.2);profile["SmartSnap"]=Flag(profile,"SmartSnap",true);profile["AnimatedWallpaper"]=Flag(profile,"AnimatedWallpaper",true);
         profile["SchemaVersion"]=18;profile["FreeformBoard"]=true;
-        var wallpaper=Text(profile,"WallpaperId","ambient");var known=new[]{"ambient","fjord-glass","paper-horizon","moss-geometry","blue-hour","ember-grid","slate-dunes","orchard-mist","violet-current","quiet-coast","mono-bloom"};profile["WallpaperId"]=known.Contains(wallpaper)?wallpaper:"ambient";
+        var wallpaper=Text(profile,"WallpaperId","ambient");
+        if(LegacyWallpapers.TryGetValue(wallpaper,out var replacement))wallpaper=replacement;
+        profile["WallpaperId"]=WallpaperIds.Contains(wallpaper)?wallpaper:"ambient";
         var current=Index(profile,"MonitorIndex");var selected=new List<int>();
         if(profile["MonitorIndices"] is JsonArray indices)foreach(var item in indices){if(item is JsonValue value&&value.TryGetValue<int>(out var index)&&index is >=0 and <=128&&!selected.Contains(index))selected.Add(index);}
         if(selected.Count==0)selected.Add(current);if(!selected.Contains(current))current=selected[0];
