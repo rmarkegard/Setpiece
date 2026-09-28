@@ -133,8 +133,6 @@ internal sealed class Host : Form
             case "spotify-playback":return await providers.Playback(payload);
             case "manage-widget":Show();WindowState=FormWindowState.Normal;Activate();Emit("manage-widget",payload["id"]);return null;
             case "inspect-widget":Show();WindowState=FormWindowState.Normal;Activate();Emit("inspect-widget",payload["id"]);return null;
-            case "open-game":
-                var game=surfaces.FirstOrDefault(s=>s.Key=="scrapbots");if(game is null){game=new Surface(this,new Rectangle(Location.X+80,Location.Y+80,980,740),false){Key="scrapbots"};surfaces.Add(game);await game.Start("game=1");}game.Show();game.Activate();return null;
             case "service": return await providers.Read(payload["service"]!.GetValue<string>());
             case "connect":var connected=await providers.Connect(payload);Broadcast("connections",providers.PublicSettings());return connected;
             case "disconnect":providers.Disconnect(payload["service"]!.GetValue<string>());Broadcast("connections",providers.PublicSettings());return null;
@@ -142,8 +140,6 @@ internal sealed class Host : Form
             case "timezone-search": return await providers.SearchTimezones(payload["query"]?.GetValue<string>()??"");
             case "note-read": return storage.ReadOptional("notes-v2.json");
             case "note-save": storage.SaveDocument("notes-v2.json",payload);return JsonValue.Create(DateTimeOffset.Now.ToString("O"));
-            case "game-read": return storage.ReadOptional("scrapbots-v2.json");
-            case "game-save": storage.SaveDocument("scrapbots-v2.json",payload);return null;
             case "brave-bookmarks": return BraveBookmarks.Import(storage);
             case "brave-bookmarks-read": return BraveBookmarks.Read(storage);
             case "external": OpenExternal(payload["url"]!.GetValue<string>());return null;
@@ -176,7 +172,8 @@ internal sealed class Host : Form
     }
     private void AutoAssignMovedWindow(nint handle)
     {
-        if(!launched||active is null||!Windows.IsWindow(handle))return;
+        // A move that does not end in a tile must not leave its placement behind as a later assignment's restore point.
+        if(!launched||active is null||!Windows.IsWindow(handle)){windows!.ForgetPendingMove(handle);return;}
         var selected=active["MonitorIndices"]!.AsArray().Select(n=>n!.GetValue<int>()).ToHashSet();var pointer=Control.MousePosition;
         foreach(var board in active["MonitorBoards"]!.AsArray().OfType<JsonObject>())
         {
@@ -260,8 +257,9 @@ internal sealed class Host : Form
         if(active is null)return;launched=true;
         var kept=new HashSet<string>();
         var keptBrowsers=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var visible=Windows.Visible();var selected=active["MonitorIndices"]!.AsArray().Select(n=>n!.GetValue<int>()).ToHashSet();var reservedHandles=new HashSet<string>(StringComparer.OrdinalIgnoreCase);var unrestored=0;
-        foreach(var board in active["MonitorBoards"]!.AsArray().OfType<JsonObject>().Where(b=>selected.Contains(b["MonitorIndex"]!.GetValue<int>())))foreach(var tile in board["Zones"]!.AsArray().OfType<JsonObject>().Where(t=>t["ContentKind"]!.GetValue<string>()=="Application"))
+        // Window enumeration only serves restoring apps; live layout edits skip it.
+        var visible=restore?Windows.Visible():new JsonArray();var selected=active["MonitorIndices"]!.AsArray().Select(n=>n!.GetValue<int>()).ToHashSet();var reservedHandles=new HashSet<string>(StringComparer.OrdinalIgnoreCase);var unrestored=0;
+        if(restore)foreach(var board in active["MonitorBoards"]!.AsArray().OfType<JsonObject>().Where(b=>selected.Contains(b["MonitorIndex"]!.GetValue<int>())))foreach(var tile in board["Zones"]!.AsArray().OfType<JsonObject>().Where(t=>t["ContentKind"]!.GetValue<string>()=="Application"))
         {
             var id=tile["Id"]!.GetValue<string>();var name=tile["AssignedProcessName"]!.GetValue<string>();var title=tile["AssignedWindowTitle"]!.GetValue<string>();
             if(name.Length!=0&&windows!.Matches(id,name,title)&&windows.AttachedHandle(id) is nint handle)reservedHandles.Add(handle.ToString());
@@ -303,7 +301,6 @@ internal sealed class Host : Form
     }
     internal void Emit(string name,JsonNode? data) { if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data?.DeepClone()}.ToJsonString()); }
     internal void NotifyBrowserCatalog()=>Emit("browsers",BrowserCatalog());
-    internal double CornerRadius=>storage.Preferences()["radius"]?.GetValue<double>()??24;
     // Matches the UI's Material 3 surface role, so the window never flashes another color before the page paints.
     private Color SurfaceColor=>storage.Preferences()["mode"]?.GetValue<string>()=="light"?Color.FromArgb(252,248,255):Color.FromArgb(19,19,24);
     private void Broadcast(string name,JsonNode data){Emit(name,data);foreach(var surface in surfaces)surface.Emit(name,data);foreach(var browser in browsers.Values)browser.Emit(name,data);}
@@ -323,8 +320,8 @@ internal sealed class Surface : Form
 {
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     internal string Key {get;init;}="";
-    private readonly Host host;private readonly bool clickThrough;private readonly WebView2 view=new(){Dock=DockStyle.Fill};private double radius;
-    public Surface(Host host,Rectangle bounds,bool clickThrough){this.host=host;this.clickThrough=clickThrough;radius=host.CornerRadius;Bounds=bounds;FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;if(!clickThrough)BackColor=Color.Black;Controls.Add(view);Text="Setpiece workspace";HandleCreated+=(_,_)=>UpdateShape();SizeChanged+=(_,_)=>UpdateShape();UpdateShape();}
+    private readonly Host host;private readonly bool clickThrough;private readonly WebView2 view=new(){Dock=DockStyle.Fill};
+    public Surface(Host host,Rectangle bounds,bool clickThrough){this.host=host;this.clickThrough=clickThrough;Bounds=bounds;FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;if(!clickThrough)BackColor=Color.Black;Controls.Add(view);Text="Setpiece workspace";HandleCreated+=(_,_)=>UpdateShape();SizeChanged+=(_,_)=>UpdateShape();UpdateShape();}
     protected override bool ShowWithoutActivation=>true;
     protected override CreateParams CreateParams { get {var p=base.CreateParams;p.ExStyle|=0x80;if(clickThrough)p.ExStyle|=0x08000000|0x20|0x80000;return p;} }
     public async Task Start(string query)
@@ -354,5 +351,5 @@ internal sealed class Surface : Form
         Windows.ApplyRoundedCorners(Handle,false);
         Windows.ExtendGlass(Handle);
     }
-    public void Emit(string name,JsonNode data){if(name=="appearance"){radius=data["radius"]?.GetValue<double>()??24;UpdateShape();}if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
+    public void Emit(string name,JsonNode data){if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
 }

@@ -35,21 +35,15 @@ export function colorRoles(seed:string,dark:boolean):Record<string,string>{
     neutralVariantPalette:TonalPalette.fromHueAndChroma(source.hue,9)});
   const roles:Record<string,string>={};
   for(const [name,value] of Object.entries(MaterialDynamicColors))if(value&&typeof value==='object'&&'getArgb' in value){const role=name.replace(/[A-Z]/g,c=>'-'+c.toLowerCase());roles[role]=hexFromArgb(value.getArgb(scheme));}
-  // Play is the one fixed hue: a bright game green, still toned like any other container.
-  const play=TonalPalette.fromHueAndChroma(150,40);
-  roles['play-container']=hexFromArgb(play.tone(dark?30:90));
-  roles['on-play-container']=hexFromArgb(play.tone(dark?90:10));
-  roles['play']=hexFromArgb(play.tone(dark?80:40));
   return roles;
 }
 
 /** Widget categories map onto color roles so every widget follows the accent. */
-export type WidgetCategory='Daily'|'Connected'|'Device'|'Play'|'Preview'|'Retired';
+export type WidgetCategory='Daily'|'Connected'|'Device'|'Preview'|'Retired';
 export const categoryRoles:Record<WidgetCategory,{container:string;onContainer:string;accent:string}>={
   Daily:{container:'primary-container',onContainer:'on-primary-container',accent:'primary'},
   Connected:{container:'secondary-container',onContainer:'on-secondary-container',accent:'secondary'},
   Device:{container:'tertiary-container',onContainer:'on-tertiary-container',accent:'tertiary'},
-  Play:{container:'play-container',onContainer:'on-play-container',accent:'play'},
   Preview:{container:'surface-container-highest',onContainer:'on-surface',accent:'on-surface-variant'},
   Retired:{container:'surface-container-highest',onContainer:'on-surface-variant',accent:'outline'}
 };
@@ -60,7 +54,7 @@ export function categoryRole(category:string){return categoryRoles[category as W
  * multiples of the corner token. One smaller corner gives each family a recognizable silhouette.
  */
 export const categoryShapes:Record<WidgetCategory,[number,number,number,number]>={
-  Daily:[1,1,1,1],Connected:[1,1,1,.25],Device:[1,.25,1,1],Play:[1.5,1.5,1.5,1.5],Preview:[1,1,1,1],Retired:[1,1,1,1]
+  Daily:[1,1,1,1],Connected:[1,1,1,.25],Device:[1,.25,1,1],Preview:[1,1,1,1],Retired:[1,1,1,1]
 };
 export function categoryShape(category:string){return categoryShapes[category as WidgetCategory]??categoryShapes.Preview;}
 

@@ -52,7 +52,7 @@ internal static class VisualAudit
         var scenes=new List<Scene>();
         foreach(var route in new[]{"Studio","Widgets","Browsers","Appearance","Settings"})
             scenes.Add(new(route.ToLowerInvariant(),"route="+route,1440,route=="Widgets"?1500:route=="Appearance"?1500:route=="Settings"?1400:1000));
-        var widgets=new[]{"clock","system","google-calendar","discord","spotify","codex","weather","bambu-lab","ruter","news","notes","email","battery","volume","reddit","idle-game","market","focus","github","twitter"};
+        var widgets=new[]{"clock","system","google-calendar","discord","spotify","codex","weather","bambu-lab","ruter","news","notes","email","battery","volume","reddit","market","focus","github","twitter"};
         foreach(var widget in widgets)scenes.Add(new("widget-"+widget,"widget="+widget,440,440,widget));
         foreach(var widget in widgets)
         {
@@ -60,7 +60,6 @@ internal static class VisualAudit
             scenes.Add(new("tall-"+widget,"widget="+widget,280,660,widget));
         }
         foreach(var service in new[]{"weather","ruter","calendar","google","spotify","discord","reddit","news","email","codex","system","bambu-lab"})scenes.Add(new("guide-"+service,"guide="+service,1000,900));
-        scenes.Add(new("game-pilot","game=1",1000,800));scenes.Add(new("game-skills","game=1&skills=1",1000,800));
         scenes.Add(new("workspace","workspace=0",1440,900));
         if(design){scenes.Clear();foreach(var widget in widgets)foreach(var size in new[]{new Size(300,340),new Size(540,325),new Size(280,660),new Size(360,220),new Size(512,286),new Size(384,286),new Size(936,256),new Size(343,271),new Size(344,635)})scenes.Add(new($"design-{widget}-{size.Width}x{size.Height}","widget="+widget,size.Width,size.Height,widget));}
         var filterIndex=Array.IndexOf(arguments,"--capture-filter");
@@ -78,7 +77,7 @@ internal static class VisualAudit
         foreach(var theme in new[]{"terminal","luna"})foreach(var scene in scenes)
         {
             frame.ClientSize=new Size(scene.Width,scene.Height);
-            if(!design&&scene.Service is not null&&widgets.Take(16).Contains(scene.Service)&&scene.Service is not ("notes" or "idle-game"))await host.HandleCommand("service",new JsonObject{["service"]=scene.Service});
+            if(!design&&scene.Service is not null&&widgets.Take(15).Contains(scene.Service)&&scene.Service!="notes")await host.HandleCommand("service",new JsonObject{["service"]=scene.Service});
             var completion=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             void Complete(object? sender,CoreWebView2NavigationCompletedEventArgs args){if(args.IsSuccess)completion.TrySetResult();else completion.TrySetException(new IOException("Audit navigation failed: "+args.WebErrorStatus));}
             view.CoreWebView2.NavigationCompleted+=Complete;

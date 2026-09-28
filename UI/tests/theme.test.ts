@@ -61,7 +61,6 @@ test('the accent is kept as the primary key color and recolors secondary and ter
   const iris=colorRoles('#5e5ce6',true),sage=colorRoles('#517c60',true);
   assert.notEqual(iris['secondary-container'],sage['secondary-container']);
   assert.notEqual(iris['tertiary-container'],sage['tertiary-container']);
-  assert.equal(iris['play-container'],sage['play-container']);
 });
 test('shape scale follows the corner radius preference and clamps',()=>{
   assert.equal(shapeScale(24),1);assert.equal(shapeScale(12),.5);

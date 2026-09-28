@@ -13,7 +13,7 @@ import {WidgetContext} from './context';
 // How often each live widget refreshes, in seconds.
 const refreshSeconds=(id:string)=>['system','volume','battery'].includes(id)?2:id==='codex'?60:id==='bambu-lab'?10:['discord','spotify'].includes(id)?5:30;
 // Widgets whose body is always shown: they own their data or have nothing to wait for.
-const selfContained=['clock','notes','idle-game'];
+const selfContained=['clock','notes'];
 
 /**
  * The shell every widget shares. It owns the Expressive card (category color and shape),
@@ -55,7 +55,6 @@ const selfContained=['clock','notes','idle-game'];
               @case('email'){<sp-inbox-body/>}
               @case('discord'){<sp-discord-body/>}
               @case('notes'){<sp-notes-body/>}
-              @case('idle-game'){<sp-scrapbots-body (play)="play.emit()"/>}
               @default{<sp-preview-body/>}
             }
           } @else if(state().status==='loading'){
@@ -86,7 +85,6 @@ export class WidgetFrame extends WidgetContext implements OnInit,AfterViewInit,O
   readonly canExpand=input(true);
   readonly canManage=input(true);
   readonly manage=output<void>();
-  readonly play=output<void>();
   readonly expand=output<void>();
 
   private readonly bridge=inject(Bridge);
@@ -106,7 +104,7 @@ export class WidgetFrame extends WidgetContext implements OnInit,AfterViewInit,O
   readonly narrow=signal(false);
   readonly spacious=signal(false);
   readonly controlError=signal('');
-  readonly live=computed(()=>!this.definition().preview&&!this.definition().retired&&!['notes','idle-game'].includes(this.id()));
+  readonly live=computed(()=>!this.definition().preview&&!this.definition().retired&&this.id()!=='notes');
   readonly bodyReady=computed(()=>selfContained.includes(this.id())||this.state().status==='ready');
   readonly hasSettings=computed(()=>this.canManage()&&!this.definition().preview&&!this.definition().retired);
   readonly statusLabel=computed(()=>this.definition().preview?'Preview':this.definition().retired?'Retired':this.state().status==='ready'?'Live':this.state().status==='loading'&&!selfContained.includes(this.id())?'loading':this.state().status);
@@ -115,6 +113,7 @@ export class WidgetFrame extends WidgetContext implements OnInit,AfterViewInit,O
   private timer?:ReturnType<typeof setInterval>;
   private observer?:ResizeObserver;
   private ticks=0;
+  private polling=false;
   private measureVersion=0;
   private readonly unsubscribe=this.bridge.listen(e=>{if(e.event==='connections'&&this.live())void this.refresh();});
 
@@ -125,9 +124,11 @@ export class WidgetFrame extends WidgetContext implements OnInit,AfterViewInit,O
     else if(!this.definition().retired&&!this.definition().preview)this.state.set({status:'ready',title:this.definition().name,detail:'Saved on this PC'});
     this.timer=setInterval(()=>{
       this.now.set(new Date());this.ticks++;
-      if(this.live()&&this.id()!=='clock'&&this.ticks%refreshSeconds(this.id())===0)void this.refresh();
+      if(this.live()&&this.id()!=='clock'&&!this.polling&&this.ticks%refreshSeconds(this.id())===0)void this.poll();
     },1000);
   }
+  /** Timed refreshes never overlap: a slow service skips a beat instead of queuing requests. */
+  private async poll(){this.polling=true;try{await this.refresh();}finally{this.polling=false;}}
   ngAfterViewInit(){this.observer=new ResizeObserver(()=>this.measure());this.observer.observe(this.container().nativeElement);}
   ngOnDestroy(){this.unsubscribe();clearInterval(this.timer);this.observer?.disconnect();}
 

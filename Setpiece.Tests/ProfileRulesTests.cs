@@ -46,6 +46,35 @@ public class ProfileRulesTests
         var profile = TestData.Profile(); profile["Zones"] = new JsonArray(Enumerable.Range(0, 21).Select(_ => (JsonNode)new JsonObject()).ToArray());
         Assert.Throws<InvalidDataException>(() => Storage.Normalize(profile));
     }
+    [Fact] public void EveryWallpaperAndStaticPreferenceSurviveSaveAndReload()
+    {
+        var store = new Storage(TestData.Root());
+        foreach (var id in ProfileRules.WallpaperIds)
+        {
+            var profile = TestData.Profile(); profile["WallpaperId"] = id; profile["AnimatedWallpaper"] = false;
+            var key = store.SaveProfile(null, profile);
+            var saved = store.Profiles().OfType<JsonObject>().Single(p => p["key"]!.GetValue<string>() == key)["profile"]!;
+            Assert.Equal(id, saved["WallpaperId"]!.GetValue<string>()); Assert.False(saved["AnimatedWallpaper"]!.GetValue<bool>());
+            store.DeleteProfile(key);
+        }
+    }
+    [Theory]
+    [InlineData("fjord-glass", "jade-synthesis")] [InlineData("paper-horizon", "peach-contour")] [InlineData("moss-geometry", "modular-moss")]
+    [InlineData("blue-hour", "glacial-diffusion")] [InlineData("ember-grid", "chromatic-echo")] [InlineData("slate-dunes", "mineral-memory")]
+    [InlineData("orchard-mist", "moss-imprint")] [InlineData("violet-current", "violet-interference")] [InlineData("quiet-coast", "ceramic-resonance")]
+    [InlineData("mono-bloom", "mercury-flow")]
+    public void LegacyWallpaperMigratesIdempotentlyWithoutLosingPreferences(string legacy, string current)
+    {
+        var profile = TestData.Profile(); profile["WallpaperId"] = legacy; profile["AnimatedWallpaper"] = true;
+        var migrated = Storage.Normalize(profile);
+        Assert.Equal(current, migrated["WallpaperId"]!.GetValue<string>()); Assert.True(migrated["AnimatedWallpaper"]!.GetValue<bool>()); Assert.Equal("retained", migrated["CustomLegacyField"]!.GetValue<string>());
+        Assert.True(JsonNode.DeepEquals(migrated, Storage.Normalize(migrated.DeepClone().AsObject())));
+    }
+    [Fact] public void UnknownWallpaperFallsBackToAmbient()
+    {
+        var profile = TestData.Profile(); profile["WallpaperId"] = "../unknown";
+        Assert.Equal("ambient", Storage.Normalize(profile)["WallpaperId"]!.GetValue<string>());
+    }
     [Theory]
     [InlineData(0, false)] [InlineData(1, true)] [InlineData(2, false)] [InlineData(21, false)]
     public void LayoutRejectsInvalidTileCounts(int count, bool expected)

@@ -22,13 +22,10 @@
     <Content Include="../UI/dist/browser/**/*" Link="UI/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets/**/*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-  <Target Name="UseOnlyWinFormsWebView" BeforeTargets="ResolveAssemblyReferences">
-    <ItemGroup><Reference Remove="@(Reference)" Condition="'%(Reference.Filename)' == 'Microsoft.Web.WebView2.Wpf'" /></ItemGroup>
-  </Target>
   <Target Name="StampProductionBuild" AfterTargets="Build"><Touch Files="$(TargetDir)production.stamp" AlwaysCreate="true" /></Target>
   <Target Name="CopySensorHost" AfterTargets="Build">
     <ItemGroup><SensorOutput Include="../Sensors/bin/$(Configuration)/net10.0-windows/**/*" /></ItemGroup>
     <Copy SourceFiles="@(SensorOutput)" DestinationFiles="@(SensorOutput->'$(TargetDir)Sensors/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
-  <ItemGroup><InternalsVisibleTo Include="Setpiece.Verification" /><InternalsVisibleTo Include="Setpiece.Verification.Integration" /><InternalsVisibleTo Include="Setpiece.Tests" /></ItemGroup>
+  <ItemGroup><InternalsVisibleTo Include="Setpiece.Verification.Integration" /><InternalsVisibleTo Include="Setpiece.Tests" /></ItemGroup>
 </Project>

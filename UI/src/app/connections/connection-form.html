@@ -102,9 +102,6 @@
       <mat-form-field><mat-label>Serial number</mat-label><input matInput [(ngModel)]="form['serial']"></mat-form-field>
       <mat-form-field><mat-label>LAN access code</mat-label><input matInput type="password" [(ngModel)]="form['accessCode']" autocomplete="off"><mat-hint>On the printer: Settings, Network, LAN only mode.</mat-hint></mat-form-field>
     }
-    @case('idle-game'){
-      <button matButton="filled" class="play" (click)="openGame.emit()"><sp-icon name="sports_esports"/>Play Scrapbots</button>
-    }
   }
 </div>
 

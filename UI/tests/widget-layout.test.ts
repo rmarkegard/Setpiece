@@ -10,7 +10,7 @@ test('calendar keeps two upcoming events in a small widget and scales with avail
 
 test('widget content grows using each widget’s own layout needs',()=>{
  const small={width:190,height:160},medium={width:360,height:320},large={width:620,height:800};
- for(const id of ['weather','email','ruter','reddit','discord','news','codex','clock','bambu-lab','idle-game','github','market']){
+ for(const id of ['weather','email','ruter','reddit','discord','news','codex','clock','bambu-lab','github','market']){
   const counts=[small,medium,large].map(size=>widgetContentLimit(id,size.width,size.height));
   assert.ok(counts[0]<=counts[1]&&counts[1]<=counts[2],`${id} should reveal more content as it grows: ${counts}`);
  }

@@ -14,7 +14,7 @@ export class Dialogs {
   constructor(){
     this.store.dialogs={
       closeUnsaved:()=>void this.closeUnsaved(),
-      manage:id=>this.widget(id,id==='idle-game'),
+      manage:id=>this.widget(id),
       inspect:id=>this.widget(id),
       guide:service=>this.widget(service==='calendar'?'google-calendar':service)
     };
@@ -23,9 +23,9 @@ export class Dialogs {
   private confirm(data:ConfirmData){return firstValueFrom(this.dialog.open<ConfirmDialog,ConfirmData,string>(ConfirmDialog,{data,autoFocus:'dialog'}).afterClosed());}
   private name(data:NameData){return firstValueFrom(this.dialog.open<NameDialog,NameData,string>(NameDialog,{data}).afterClosed());}
 
-  widget(id:string,play=false){
+  widget(id:string){
     this.dialog.closeAll();
-    const ref=this.dialog.open<WidgetDialog,WidgetDialogData>(WidgetDialog,{data:{id,play},maxWidth:'none',panelClass:'sp-dialog',autoFocus:'dialog'});
+    const ref=this.dialog.open<WidgetDialog,WidgetDialogData>(WidgetDialog,{data:{id},maxWidth:'none',panelClass:'sp-dialog',autoFocus:'dialog'});
     ref.componentInstance.openAccount=account=>this.widget(account);
   }
 

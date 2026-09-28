@@ -17,15 +17,20 @@ internal sealed class Storage
     {
         lock (logGate)
         {
-            Directory.CreateDirectory(Root);
-            var path = Path.Combine(Root, "rebuild.log");
-            File.AppendAllText(path, $"{DateTimeOffset.Now:O} {message}{Environment.NewLine}");
-            const int limit = 256 * 1024;
-            if (new FileInfo(path).Length <= limit) return;
-            var bytes = File.ReadAllBytes(path);
-            var start = bytes.Length - limit;
-            while (start < bytes.Length && bytes[start++] != (byte)'\n') { }
-            File.WriteAllBytes(path, bytes[start..]);
+            // Logging runs inside error handlers, so a locked or full disk must never turn into a second failure.
+            try
+            {
+                Directory.CreateDirectory(Root);
+                var path = Path.Combine(Root, "rebuild.log");
+                File.AppendAllText(path, $"{DateTimeOffset.Now:O} {message}{Environment.NewLine}");
+                const int limit = 256 * 1024;
+                if (new FileInfo(path).Length <= limit) return;
+                var bytes = File.ReadAllBytes(path);
+                var start = bytes.Length - limit;
+                while (start < bytes.Length && bytes[start++] != (byte)'\n') { }
+                File.WriteAllBytes(path, bytes[start..]);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
         }
     }
     public void Log(string message, Exception error) => Log(message + ": " + error);

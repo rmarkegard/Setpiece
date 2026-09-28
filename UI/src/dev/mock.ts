@@ -30,7 +30,6 @@ export function installMock(){
   const accent=query.get('accent');
   let preferences={...defaultAppearance,mode:query.get('mode')==='light'?'light':'dark',accent:accent&&/^[0-9a-f]{6}$/i.test(accent)?'#'+accent:defaultAppearance.accent};
   let note='Pick up the new keyboard switches.\nCall Mira about the reveal.';
-  let game={salvage:140,level:3,armor:1,power:2,engine:0,last:Date.now()-45*60000};
   const browserState={name:query.get('browser')??'Media',selected:'t1',tabs:[{id:'t1',title:'Blue hour over the fjord, live - YouTube',url:'https://www.youtube.com/watch?v=blue-hour'},{id:'t2',title:'Material Design 3',url:'https://m3.material.io/'}],url:'https://www.youtube.com/watch?v=blue-hour',pinned:true,back:true,forward:false,extension:'uBlock Origin Lite 2025.1',runtime:'140.0.3485.54'};
   const services=structuredClone(fixtures.services);
 
@@ -50,13 +49,11 @@ export function installMock(){
     'check-update':()=>({current:'2.0.0',latest:'2.1.0'}),'install-update':()=>null,
     connect:({service}:{service:string})=>({title:'Connected',detail:service+' is ready to use'}),disconnect:()=>null,
     'note-read':()=>({text:note}),'note-save':({text}:{text:string})=>{note=text;return null;},
-    'game-read':()=>game,'game-save':(value:typeof game)=>{game=value;return null;},
     volume:(change:{level?:number;muted?:boolean})=>{Object.assign(services['volume'].data!,change);return structuredClone(services['volume']);},
     'discord-voice':()=>services['discord'],
     'spotify-playback':({action}:{action:string})=>{const data=services['spotify'].data!;if(action==='play'||action==='pause')data['playing']=action==='play';return structuredClone(services['spotify']);},
     'manage-widget':({id}:{id:string})=>{event('manage-widget',id);return null;},
     'inspect-widget':({id}:{id:string})=>{event('inspect-widget',id);return null;},
-    'open-game':()=>null,
     browser:({action,...rest}:{action:string;[key:string]:unknown})=>{
       if(action==='select')browserState.selected=String(rest['id']);
       if(action==='pin')browserState.pinned=!browserState.pinned;

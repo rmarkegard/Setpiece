@@ -109,9 +109,11 @@ internal sealed class BrowserSurface : Form
             case "reload":core?.Reload();break;
             case "external":if(core is not null)Host.OpenExternal(core.Source);break;
             case "add":await Add("https://www.google.com/");break;
-            case "select":Select(tabs.First(t=>t.Id==payload["id"]!.GetValue<string>()));break;
+            // A repeated click can name a tab that has already closed; it is ignored rather than reported.
+            case "select":if(Find(payload) is { } chosen)Select(chosen);break;
             case "close":
-                var target=tabs.First(t=>t.Id==payload["id"]!.GetValue<string>());tabs.Remove(target);target.View.Dispose();
+                if(Find(payload) is not { } target)break;
+                tabs.Remove(target);target.View.Dispose();
                 if(tabs.Count==0)await Add("https://www.google.com/");else if(target==selected)Select(tabs[0]);break;
             case "pin":pinned=!pinned;ApplyPin();break;
             case "diagnostics":diagnostics=payload["open"]?.GetValue<bool>()??false;ApplyPin();break;
@@ -122,8 +124,21 @@ internal sealed class BrowserSurface : Form
         }
         Persist();EmitState();return State();
     }
-    private JsonObject State()=>new(){["tabs"]=new JsonArray(tabs.Select(t=>(JsonNode)new JsonObject{["id"]=t.Id,["title"]=t.View.CoreWebView2.DocumentTitle??"New tab",["url"]=t.View.CoreWebView2.Source}).ToArray()),["selected"]=selected?.Id,["url"]=selected?.View.CoreWebView2.Source,["back"]=selected?.View.CoreWebView2.CanGoBack??false,["forward"]=selected?.View.CoreWebView2.CanGoForward??false,["pinned"]=pinned,["extension"]=extensionStatus,["error"]=selected?.Error,["runtime"]=CoreWebView2Environment.GetAvailableBrowserVersionString()};
-    private void Persist(){if(tabs.Count==0)return;var document=storage.ReadOptional("browsers-v2.json");document[name]=State();storage.SaveDocument("browsers-v2.json",document);host.NotifyBrowserCatalog();}
+    private Tab? Find(JsonObject payload){var id=payload["id"]?.GetValue<string>();return tabs.FirstOrDefault(t=>t.Id==id);}
+    private static readonly Lazy<string> runtime=new(()=>CoreWebView2Environment.GetAvailableBrowserVersionString());
+    private JsonObject State()=>new(){["tabs"]=new JsonArray(tabs.Select(t=>(JsonNode)new JsonObject{["id"]=t.Id,["title"]=t.View.CoreWebView2.DocumentTitle??"New tab",["url"]=t.View.CoreWebView2.Source}).ToArray()),["selected"]=selected?.Id,["url"]=selected?.View.CoreWebView2.Source,["back"]=selected?.View.CoreWebView2.CanGoBack??false,["forward"]=selected?.View.CoreWebView2.CanGoForward??false,["pinned"]=pinned,["extension"]=extensionStatus,["error"]=selected?.Error,["runtime"]=runtime.Value};
+    // Unchanged state is not rewritten or rebroadcast. An unreadable file is preserved and logged, not overwritten.
+    private void Persist()
+    {
+        if(tabs.Count==0)return;
+        try
+        {
+            var document=storage.ReadOptional("browsers-v2.json");var state=State();if(JsonNode.DeepEquals(document[name],state))return;
+            document[name]=state;storage.SaveDocument("browsers-v2.json",document);
+        }
+        catch(Exception error) when(error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException or InvalidOperationException){storage.Log("Browser state could not be saved",error);return;}
+        host.NotifyBrowserCatalog();
+    }
     private void EmitState(){if(chrome.CoreWebView2 is not null)Emit("browser",State());}
     public void Emit(string name,JsonNode data){if(chrome.CoreWebView2 is not null&&!IsDisposed)chrome.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
     protected override void Dispose(bool disposing){closing=true;if(fullscreen&&!restoreBounds.IsEmpty)Bounds=restoreBounds;base.Dispose(disposing);}

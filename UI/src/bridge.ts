@@ -4,11 +4,10 @@ declare global { interface Window { chrome?: {webview?: {postMessage:(message:un
 export class Bridge {
   private sequence=0;
   private pending=new Map<number,{resolve:(value:any)=>void;reject:(reason:Error)=>void;timeout:ReturnType<typeof setTimeout>}>();
-  onEvent:(event:any)=>void=()=>{};
   private listeners=new Set<(event:any)=>void>();
   listen(listener:(event:any)=>void){this.listeners.add(listener);return()=>this.listeners.delete(listener);}
   constructor(){window.chrome?.webview?.addEventListener('message',event=>{
-    const data=event.data;if(data.event){this.onEvent(data);for(const listener of this.listeners)listener(data);return;}
+    const data=event.data;if(data.event){for(const listener of this.listeners)listener(data);return;}
     const task=this.pending.get(data.id);if(!task)return;clearTimeout(task.timeout);this.pending.delete(data.id);
     if(data.error)task.reject(new Error(data.error));else task.resolve(data.result);
   });}

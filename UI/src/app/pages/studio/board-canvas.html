@@ -7,7 +7,7 @@
         (pointerdown)="start($event,tile.Id)" (click)="store.selected.set(tile.Id)" (keydown.enter)="store.selected.set(tile.Id)" (keydown)="key($event,tile.Id)">
         @if(tile.ContentKind==='Widget'){
           <span class="widget-grip" aria-hidden="true" title="Drag to move"></span>
-          <sp-widget [id]="tile.WidgetId" [scale]="store.board().WidgetScale" (expand)="store.expandWidget(tile.WidgetId)" (manage)="store.manageWidget(tile.WidgetId)" (play)="store.playGame()"/>
+          <sp-widget [id]="tile.WidgetId" [scale]="store.board().WidgetScale" (expand)="store.expandWidget(tile.WidgetId)" (manage)="store.manageWidget(tile.WidgetId)"/>
         } @else {
           <div class="placeholder">
             <span class="glyph tile-heading" title="Drag to move"><sp-icon [name]="tile.ContentKind==='Web'?'language':tile.AssignedProcessName?'web_asset':'add'"/></span>

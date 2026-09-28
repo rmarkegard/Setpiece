@@ -39,7 +39,9 @@ internal sealed class Providers : IDisposable
         {
             if(cache.TryGetValue(service,out var fresh)&&DateTimeOffset.UtcNow-fresh.Time<lifetime)return (JsonObject)fresh.Value.DeepClone();
             JsonObject settings;var connectionStoreUnavailable=false;
-            try{settings=storage.Connections();}
+            // Device readings poll every few seconds and never use saved connections, so they skip decrypting them.
+            if(service is "system" or "battery" or "volume")settings=new JsonObject();
+            else try{settings=storage.Connections();}
             catch(System.Security.Cryptography.CryptographicException){settings=new JsonObject();connectionStoreUnavailable=true;}
             JsonObject result;
             try
@@ -59,7 +61,7 @@ internal sealed class Providers : IDisposable
             catch(Exception error) when(error is IOException or System.Net.Sockets.SocketException or System.Security.Authentication.AuthenticationException){result=State("offline","Device unavailable","Check that the device is on and connected to this network.");}
             if(connectionStoreUnavailable&&result["status"]?.GetValue<string>()=="disconnected")
                 result["detail"]="Saved connections could not be decrypted for this Windows account. Reconnect this service in Settings; the existing file has been preserved.";
-            result["updated"]=DateTimeOffset.UtcNow.ToString("O");cache[service]=(DateTimeOffset.UtcNow,(JsonObject)result.DeepClone());result["DiscordCallConnected"]=Text(settings,"DiscordCallToken").Length>0;return result;
+            result["updated"]=DateTimeOffset.UtcNow.ToString("O");cache[service]=(DateTimeOffset.UtcNow,(JsonObject)result.DeepClone());return result;
         }
         finally{gate.Release();}
     }
@@ -108,7 +110,7 @@ internal sealed class Providers : IDisposable
         var lat=settings["WeatherLatitude"]!.GetValue<double>().ToString(CultureInfo.InvariantCulture);var lon=settings["WeatherLongitude"]!.GetValue<double>().ToString(CultureInfo.InvariantCulture);
         var data=await Get($"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability&forecast_days=2&timezone=auto");
         var current=data["current"]!.AsObject();var temp=current["temperature_2m"]!.GetValue<double>();var items=new JsonArray();var hours=data["hourly"]!;var locationNow=DateTime.UtcNow.AddSeconds(data["utc_offset_seconds"]?.GetValue<int>()??0);
-        for(var i=0;i<hours["time"]!.AsArray().Count;i++){var time=hours["time"]![i]!.GetValue<string>();if(DateTime.Parse(time)<locationNow.AddMinutes(-locationNow.Minute))continue;items.Add(new JsonObject{["title"]=DateTime.Parse(time).ToString("HH:mm"),["detail"]=hours["temperature_2m"]![i]+"° · "+hours["precipitation_probability"]![i]+"% rain"});if(items.Count==5)break;}
+        for(var i=0;i<hours["time"]!.AsArray().Count;i++){var time=DateTime.Parse(hours["time"]![i]!.GetValue<string>(),CultureInfo.InvariantCulture);if(time<locationNow.AddMinutes(-locationNow.Minute))continue;items.Add(new JsonObject{["title"]=time.ToString("HH:mm"),["detail"]=hours["temperature_2m"]![i]+"° · "+hours["precipitation_probability"]![i]+"% rain"});if(items.Count==5)break;}
         return State("ready",$"{temp:0}°",Text(settings,"WeatherLocation"),items,new JsonObject{["feelsLike"]=current["apparent_temperature"]!.DeepClone(),["wind"]=current["wind_speed_10m"]!.DeepClone(),["code"]=current["weather_code"]!.DeepClone(),["source"]="Open-Meteo"});
     }
     public async Task<JsonArray> SearchStops(string query)

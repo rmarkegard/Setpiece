@@ -31,9 +31,8 @@ export class StudioStore {
   readonly query=new URLSearchParams(location.search);
   readonly widgetId=this.query.get('widget');
   readonly workspace=this.query.has('workspace');
-  readonly gameSurface=this.query.has('game');
   readonly browserName=this.query.get('browser');
-  readonly isStudio=!this.widgetId&&!this.workspace&&!this.gameSurface&&!this.browserName;
+  readonly isStudio=!this.widgetId&&!this.workspace&&!this.browserName;
 
   readonly route=signal<Route>('Studio');
   readonly profile=signal<Profile>(newProfile('My workspace'));
@@ -233,7 +232,6 @@ export class StudioStore {
     try{const assigned=await this.bridge.call<Profile>('assign',{id:tile.Id,handle:window.handle,profile:next});this.commit(this.profile());this.profile.set(assigned);this.notify('Application assigned');}
     catch(e){this.error.set((e as Error).message);}
   }
-  assignByHandle(handle:string,tileId=this.selected()){const app=this.apps().find(a=>a.handle===handle);if(app)void this.assign(app,tileId);}
   detach(id:string){
     this.profile.update(p=>{const next=structuredClone(p);for(const board of next.MonitorBoards){const tile=board.Zones.find(t=>t.Id===id);if(tile){tile.AssignedProcessName='';tile.AssignedWindowTitle='';}}return next;});
     this.notify('Application detached. The tile keeps its place.');
@@ -255,11 +253,11 @@ export class StudioStore {
   }
   manageWidget(id:string){
     if(this.widgetId){void this.execute('manage-widget',{id});return;}
-    if(widgets.find(w=>w.id===id)?.preview||id==='twitter'){this.route.set('Widgets');return;}
+    const known=widgets.find(w=>w.id===id);
+    if(known?.preview||known?.retired){this.route.set('Widgets');return;}
     this.dialogs.manage(id);
   }
   expandWidget(id:string){if(this.widgetId)void this.execute('inspect-widget',{id});else this.dialogs.inspect(id);}
-  playGame(){if(this.widgetId)void this.execute('open-game');else this.dialogs.manage('idle-game');}
   async refreshConnections(){try{const data=await this.bridge.call('bootstrap');this.connections.set(data.connections??{});}catch{}}
 
   // Appearance and wallpaper.

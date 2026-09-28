@@ -9,7 +9,7 @@ internal static class Windows
 {
     internal delegate bool WindowVisitor(nint window, nint state);
     internal delegate void EventCallback(nint hook, uint kind, nint window, int objectId, int childId, uint thread, uint time);
-    [StructLayout(LayoutKind.Sequential)] internal struct Rect { public int Left, Top, Right, Bottom; public readonly Rectangle Bounds => Rectangle.FromLTRB(Left, Top, Right, Bottom); }
+    [StructLayout(LayoutKind.Sequential)] internal struct Rect { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] internal struct Placement {public int Length,Flags,Show;public Point Min,Max;public Rect Normal;}
     [DllImport("user32.dll")] internal static extern bool GetWindowPlacement(nint window,ref Placement placement);
     [DllImport("user32.dll")] internal static extern bool SetWindowPlacement(nint window,ref Placement placement);
@@ -31,7 +31,6 @@ internal static class Windows
     [DllImport("user32.dll")] internal static extern nint SetWinEventHook(uint min, uint max, nint module, EventCallback callback, uint process, uint thread, uint flags);
     [DllImport("user32.dll")] internal static extern bool UnhookWinEvent(nint hook);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] internal static extern nint GetWindowLongPtr(nint window, int index);
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] internal static extern nint SetWindowLongPtr(nint window, int index, nint value);
     [DllImport("dwmapi.dll")] internal static extern int DwmGetWindowAttribute(nint window, uint attribute, out int value, int size);
     [DllImport("dwmapi.dll")] internal static extern int DwmGetWindowAttribute(nint window, uint attribute, out Rect value, int size);
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(nint window, uint attribute, ref int value, int size);
@@ -138,22 +137,21 @@ internal sealed class WindowCoordinator : IDisposable
         if (pid == Environment.ProcessId) throw new InvalidOperationException("Choose an external application.");
         var original=new Windows.Placement{Length=Marshal.SizeOf<Windows.Placement>()};if(!pendingMoves.Remove(hwnd,out original)&&!Windows.GetWindowPlacement(hwnd,ref original))throw new InvalidOperationException("The application window is no longer available.");
         var already=attachments.FirstOrDefault(p=>p.Value.Handle==hwnd);
-        long started;try{using var process=Process.GetProcessById((int)pid);started=process.StartTime.ToUniversalTime().Ticks;}catch(Exception error) when(error is ArgumentException or System.ComponentModel.Win32Exception or InvalidOperationException){throw new InvalidOperationException("Windows could not verify this application's identity.");}
+        long started;string processName;try{using var process=Process.GetProcessById((int)pid);started=process.StartTime.ToUniversalTime().Ticks;processName=process.ProcessName;}catch(Exception error) when(error is ArgumentException or System.ComponentModel.Win32Exception or InvalidOperationException){throw new InvalidOperationException("Windows could not verify this application's identity.");}
         var previous = attachments.GetValueOrDefault(id);
         Windows.ShowWindow(hwnd, 9);
         var placement=PlacementBounds(hwnd,destination);
         if (!Windows.SetWindowPos(hwnd, 0, placement.X, placement.Y, placement.Width, placement.Height, 0x4010)){Windows.SetWindowPlacement(hwnd,ref original);throw new InvalidOperationException("Windows refused this placement. Check the application's permissions.");}
         if(already.Key is not null&&already.Key!=id){attachments.Remove(already.Key);Detached?.Invoke(already.Key);}
         if (previous is not null && previous.Handle != hwnd) Restore(previous);
-        var title=new StringBuilder(1024);Windows.GetWindowText(hwnd,title,title.Capacity);using var assignedProcess=Process.GetProcessById((int)pid);
-        attachments[id] = already.Value??new Attachment(hwnd,pid,started,original,assignedProcess.ProcessName,title.ToString());
+        var title=new StringBuilder(1024);Windows.GetWindowText(hwnd,title,title.Capacity);
+        attachments[id] = already.Value??new Attachment(hwnd,pid,started,original,processName,title.ToString());
     }
     public bool Matches(string id,string name,string title)=>attachments.TryGetValue(id,out var entry)&&SameWindow(entry)&&entry.Name.Equals(name,StringComparison.OrdinalIgnoreCase)&&entry.Title==title;
     public void ForgetPendingMove(nint handle)=>pendingMoves.Remove(handle);
     public void Place(string id, Rectangle destination)
     {
         if (!attachments.TryGetValue(id, out var entry)) return;
-        Windows.GetWindowThreadProcessId(entry.Handle, out var process);
         if (!SameWindow(entry)) { attachments.Remove(id); Detached?.Invoke(id); return; }
         var placement=PlacementBounds(entry.Handle,destination);
         Windows.SetWindowPos(entry.Handle, 0, placement.X, placement.Y, placement.Width, placement.Height, 0x4014);

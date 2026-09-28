@@ -1,9 +1,7 @@
 import {ChangeDetectionStrategy,Component,computed,inject} from '@angular/core';
 import {NgStyle} from '@angular/common';
-import {MatButtonModule} from '@angular/material/button';
 import {Tile,tilePercentBounds,widgetDefinition} from '../../domain';
 import {StudioStore} from '../state/studio-store';
-import {GameComponent} from '../game/game';
 import {IconComponent} from '../ui/icon';
 import {WallpaperComponent} from '../ui/wallpaper';
 import {WidgetFrame} from '../widgets/widget-frame';
@@ -15,7 +13,7 @@ import {WidgetFrame} from '../widgets/widget-frame';
   imports:[NgStyle,WallpaperComponent,WidgetFrame],
   template:`
     <sp-wallpaper [id]="store.profile().WallpaperId" [moving]="store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion" [ngStyle]="store.wallpaperViewport()"/>
-    <sp-widget [id]="store.widgetId!" [scale]="scale()" (expand)="store.expandWidget(store.widgetId!)" (manage)="store.manageWidget(store.widgetId!)" (play)="store.playGame()"/>`,
+    <sp-widget [id]="store.widgetId!" [scale]="scale()" (expand)="store.expandWidget(store.widgetId!)" (manage)="store.manageWidget(store.widgetId!)"/>`,
   styles:`
     :host{display:block;position:relative;isolation:isolate;height:100vh;overflow:hidden}
     :host-context(.widget-surface) sp-wallpaper{display:none}
@@ -62,18 +60,3 @@ export class WorkspaceBackdrop {
   label(tile:Tile,index:number){return tile.ContentKind==='Widget'?widgetDefinition(tile.WidgetId).name:tile.ContentKind==='Web'?(tile.SharedWebName||'Browser'):'Tile '+(index+1)+' · waiting for an app';}
   icon(tile:Tile){return tile.ContentKind==='Widget'?widgetDefinition(tile.WidgetId).icon:tile.ContentKind==='Web'?'language':'web_asset';}
 }
-
-/** Scrapbots in its own window. */
-@Component({
-  selector:'sp-game-window',
-  changeDetection:ChangeDetectionStrategy.OnPush,
-  imports:[MatButtonModule,IconComponent,GameComponent],
-  template:`
-    <div class="top"><button matButton (click)="store.execute('manage-widget',{id:'idle-game'})"><sp-icon name="space_dashboard"/>Open Setpiece</button></div>
-    <sp-game/>`,
-  styles:`
-    :host{display:block;height:100vh;overflow:auto;padding:var(--space-4) var(--space-6) var(--space-6);background:var(--mat-sys-surface-container-low)}
-    .top{display:flex;justify-content:flex-end}
-  `
-})
-export class GameWindow {readonly store=inject(StudioStore);}

@@ -10,7 +10,7 @@ import {Dialogs} from '../../dialogs/dialogs';
 import {IconComponent} from '../../ui/icon';
 import {PageHeaderComponent,EmptyStateComponent} from '../../ui/kit';
 
-const categories=['All','Daily','Connected','Device','Play','Preview'];
+const categories=['All','Daily','Connected','Device','Preview'];
 
 /** The widget library and every connection, in one place. */
 @Component({

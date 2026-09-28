@@ -1,5 +1,4 @@
-import {ChangeDetectionStrategy,Component,OnDestroy,OnInit,computed,inject,output,signal} from '@angular/core';
-import {MatButtonModule} from '@angular/material/button';
+import {ChangeDetectionStrategy,Component,OnDestroy,OnInit,inject,signal} from '@angular/core';
 import {Bridge} from '../../../bridge';
 import {IconComponent} from '../../ui/icon';
 import {WidgetContext} from '../context';
@@ -31,41 +30,6 @@ export class NotesBody implements OnInit,OnDestroy {
     this.bridge.call('note-save',{text:value}).then(()=>{if(revision===this.revision)this.status.set('Saved on this PC');}).catch(e=>this.status.set(e.message));
   }
   ngOnDestroy(){if(this.status()==='Saving…')void this.bridge.call('note-save',{text:this.text()});}
-}
-
-@Component({
-  selector:'sp-scrapbots-body',
-  changeDetection:ChangeDetectionStrategy.OnPush,
-  imports:[MatButtonModule,IconComponent],
-  template:`
-    <div class="row">
-      <span class="bot"><sp-icon name="smart_toy" [filled]="true"/></span>
-      <div class="list-copy"><strong class="title">Your bot is ready</strong><span>Sector {{level()}}</span></div>
-    </div>
-    <div class="map grow" aria-hidden="true">@for(n of cells();track n){<i [class.signal]="n%7===2" [class.home]="n===cells().length-1"></i>}</div>
-    <div class="row spread">
-      <span class="hero md">{{salvage()}}<small>salvage</small></span>
-      <button matButton="filled" (click)="play.emit()"><sp-icon name="sports_esports"/>Play</button>
-    </div>`,
-  styleUrl:'./body.scss',
-  styles:`
-    .bot{display:grid;place-items:center;width:48px;height:48px;border-radius:var(--shape-lg) var(--shape-lg) var(--shape-lg) var(--shape-xs);background:var(--w-fg);color:var(--w-container)}
-    .bot sp-icon{font-size:28px}
-    .map{display:grid;grid-template-columns:repeat(auto-fill,minmax(18px,1fr));grid-auto-rows:18px;gap:5px;align-content:center;overflow:hidden}
-    .map i{border-radius:5px;background:var(--w-inset)}
-    .map i.signal{background:var(--w-inset-strong);border-radius:50%}
-    .map i.home{background:var(--w-fg)}
-    :host-context(.compact) .map{display:none}
-  `
-})
-export class ScrapbotsBody implements OnInit {
-  private readonly w=inject(WidgetContext);
-  private readonly bridge=inject(Bridge);
-  readonly play=output<void>();
-  readonly salvage=signal(0);
-  readonly level=signal(1);
-  readonly cells=computed(()=>Array.from({length:this.w.contentLimit('idle-game')},(_,i)=>i));
-  ngOnInit(){this.bridge.call('game-read').then(data=>{this.salvage.set(data.salvage??0);this.level.set(data.level??1);}).catch(()=>{});}
 }
 
 @Component({

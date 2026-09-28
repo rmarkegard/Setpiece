@@ -22,6 +22,11 @@ public class StorageTests
         Assert.True(new FileInfo(Path.Combine(store.Root, "rebuild.log")).Length <= 256 * 1024);
         Assert.Contains("entry 299", File.ReadAllText(Path.Combine(store.Root, "rebuild.log")));
     }
+    [Fact] public void UnwritableLogDoesNotThrow()
+    {
+        var store = new Storage(TestData.Root()); Directory.CreateDirectory(Path.Combine(store.Root, "rebuild.log"));
+        store.Log("Failure", new InvalidOperationException("synthetic diagnostic"));
+    }
     [Fact] public void FreePlacementSurvivesSaveAndReload()
     {
         var store = new Storage(TestData.Root()); var profile = TestData.Profile(); profile["Zones"]![0]!["Width"] = .2; profile["Zones"]![0]!["Y"] = .15; profile["Zones"]![0]!["Height"] = .3;

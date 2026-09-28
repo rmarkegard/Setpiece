@@ -26,7 +26,6 @@ const redirect='http://127.0.0.1:43827/callback/';
 })
 export class ConnectionFormComponent {
   readonly id=input.required<string>();
-  readonly openGame=output<void>();
   readonly openAccount=output<void>();
 
   private readonly bridge=inject(Bridge);
