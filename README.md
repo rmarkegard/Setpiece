@@ -4,6 +4,12 @@ Setpiece is a Windows workspace manager. It tiles your apps, live widgets and pe
 
 **[Explore Setpiece](https://rmarkegard.github.io/Setpiece/)** · [Build from source](#build-from-source) · [Report an issue](https://github.com/rmarkegard/Setpiece/issues) · [Contribute](CONTRIBUTING.md)
 
+<a href="https://rmarkegard.github.io/Setpiece/#reel">
+  <img src="docs/reveal/setpiece-reel-cover.jpg" alt="Play the 15-second Setpiece reel: a video fullscreen inside its browser tile, next to live Clock, Weather, System, music and group widgets.">
+</a>
+
+**[▶ Watch the 15-second reel](https://rmarkegard.github.io/Setpiece/#reel)**. Widgets fly into their tiles, a browser opens a video and goes fullscreen inside its tile, and every display takes one accent. You can also [download the MP4](docs/reveal/setpiece-reel-15s.mp4?raw=true).
+
 <a href="https://rmarkegard.github.io/Setpiece/">
   <picture>
     <source media="(prefers-color-scheme: light)" srcset="docs/screenshots/light-studio.png">

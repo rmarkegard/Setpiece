@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wdth,wght@8..144,25..151,100..1000&amp;display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;icon_names=add,bookmarks,check,check_circle,content_copy,dark_mode,dashboard_customize,desktop_windows,drag_pan,fullscreen,fullscreen_exit,language,light_mode,lock,monitor,more_horiz,open_in_new,palette,pause,play_arrow,restart_alt,settings,share,shield,skip_next,space_dashboard,sports_esports,subtitles,swap_horiz,tab,thumb_down,thumb_up,tune,volume_up,widgets&amp;display=block">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;icon_names=add,bookmarks,check,check_circle,content_copy,dark_mode,dashboard_customize,desktop_windows,drag_pan,fullscreen,fullscreen_exit,language,light_mode,lock,monitor,more_horiz,open_in_new,palette,pause,play_arrow,restart_alt,settings,share,shield,skip_next,space_dashboard,sports_esports,subtitles,swap_horiz,tab,thumb_down,thumb_up,tune,volume_off,volume_up,widgets&amp;display=block">
   <link rel="stylesheet" href="site.css">
   <script>
     // Apply ?theme=, or a saved choice, before paint. The page follows the system otherwise.
@@ -36,7 +36,7 @@
         <span>Setpiece</span><span class="version">2.0</span>
       </a>
       <nav aria-label="Main navigation">
-        <a href="#tour">Tour</a><a href="#widgets">Widgets</a><a href="#browsers">Browsers</a><a href="#color">Color</a><a href="#setup">Get it</a>
+        <a href="#reel">Reel</a><a href="#tour">Tour</a><a href="#widgets">Widgets</a><a href="#browsers">Browsers</a><a href="#color">Color</a><a href="#setup">Get it</a>
       </nav>
       <div class="nav-actions">
         <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch to light theme" title="Switch theme"><span class="ms" aria-hidden="true">light_mode</span></button>
@@ -67,6 +67,19 @@
         <img class="float float-a only-light" src="screenshots/widgets/light-google-calendar.png" width="360" height="420" alt="" loading="lazy">
         <img class="float float-b only-dark" src="screenshots/widgets/dark-idle-game.png" width="360" height="300" alt="" loading="lazy">
         <img class="float float-b only-light" src="screenshots/widgets/light-idle-game.png" width="360" height="300" alt="" loading="lazy">
+      </div>
+    </section>
+
+    <!-- Reel -->
+    <section class="reel container" id="reel" aria-labelledby="reel-title">
+      <div class="section-heading">
+        <span class="eyebrow">In motion</span>
+        <h2 id="reel-title">Fifteen seconds, the whole idea.</h2>
+        <p>Widgets land in their tiles, a browser opens a video and goes fullscreen inside its tile, and every display follows one accent.</p>
+      </div>
+      <div class="reel-frame window">
+        <video id="reel-video" src="reveal/setpiece-reel-15s.mp4" poster="reveal/setpiece-reel-poster.jpg" width="1920" height="1080" muted loop playsinline preload="metadata" aria-label="The Setpiece reel: the mark assembles, widgets and a browser fly onto a monitor, a video goes fullscreen inside its tile, three displays change accent together, and the displays fold back into the Setpiece mark."></video>
+        <button class="button tonal small reel-sound" id="reel-sound" type="button" aria-pressed="false"><span class="ms" aria-hidden="true">volume_off</span><span class="label">Sound on</span></button>
       </div>
     </section>
 

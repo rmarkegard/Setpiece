@@ -18,6 +18,21 @@ toggle.addEventListener('click', () => {
 systemLight.addEventListener('change', () => { if (!root.dataset.theme) { paintToggle(); refreshThemed(); } });
 paintToggle();
 
+/* Reel: plays muted while in view, pauses out of view. With reduced motion it waits for the viewer. */
+const reel = document.querySelector('#reel-video');
+const reelSound = document.querySelector('#reel-sound');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reduceMotion) reel.controls = true;
+else new IntersectionObserver(([e]) => { if (e.isIntersecting) reel.play().catch(() => { reel.controls = true; }); else reel.pause(); }, { threshold: .4 }).observe(reel);
+reelSound.addEventListener('click', () => {
+  const on = reel.muted;
+  reel.muted = !on;
+  if (on) { reel.currentTime = 0; reel.play().catch(() => {}); }
+  reelSound.setAttribute('aria-pressed', String(on));
+  reelSound.querySelector('.ms').textContent = on ? 'volume_up' : 'volume_off';
+  reelSound.querySelector('.label').textContent = on ? 'Sound off' : 'Sound on';
+});
+
 /* Tour */
 const shots = {
   studio: ['Studio. Pick a display, start from a layout, then drag, resize and split tiles on a live board. Widgets render for real while you arrange them.', 'Setpiece Studio: displays, the layout board with live widgets, and the tile inspector.', 960],
