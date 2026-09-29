@@ -339,9 +339,14 @@ internal sealed class Surface : Form
     private void UpdateViewport()
     {
         if(clickThrough||Width<=0||Height<=0)return;
-        var screen=Screen.FromRectangle(Bounds).Bounds;
+        Emit("wallpaper-viewport",WallpaperViewport(Bounds));
+    }
+    /** Where the display's wallpaper falls inside a window, so a glass card can frost the part behind it. */
+    internal static JsonObject WallpaperViewport(Rectangle bounds)
+    {
+        var screen=Screen.FromRectangle(bounds).Bounds;
         string Percent(double value)=>value.ToString("0.######",System.Globalization.CultureInfo.InvariantCulture)+"%";
-        Emit("wallpaper-viewport",new JsonObject{["left"]=Percent(100d*(screen.Left-Left)/Width),["top"]=Percent(100d*(screen.Top-Top)/Height),["width"]=Percent(100d*screen.Width/Width),["height"]=Percent(100d*screen.Height/Height),["right"]="auto",["bottom"]="auto"});
+        return new JsonObject{["left"]=Percent(100d*(screen.Left-bounds.Left)/bounds.Width),["top"]=Percent(100d*(screen.Top-bounds.Top)/bounds.Height),["width"]=Percent(100d*screen.Width/bounds.Width),["height"]=Percent(100d*screen.Height/bounds.Height),["right"]="auto",["bottom"]="auto"};
     }
     private void UpdateShape()
     {

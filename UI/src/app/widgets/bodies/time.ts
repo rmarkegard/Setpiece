@@ -11,6 +11,7 @@ import {OdoComponent,flashSet,onChange,slotList} from '../motion';
   imports:[OdoComponent],
   template:`
     <div class="ck-main">
+      <span class="ck-rip r1"></span><span class="ck-rip r2"></span><span class="ck-rip r3"></span>
       <div class="spread"><span class="eyebrow">{{dateLabel()}}</span><span class="chip"><span>Week {{week()}}</span></span></div>
       <div>
         <div class="ck-time hero" role="img" [attr.aria-label]="hh()+':'+mm()">
@@ -57,6 +58,8 @@ export class ClockBody {
       return {zone:z.zone,name:z.name,t,day,off:(diff>0?'+':diff<0?'−':'')+Math.abs(diff)+'h',x:(20+16*Math.cos(th)).toFixed(2),y:(21-16*Math.sin(th)).toFixed(2)};
     });
   });
+  /** On the hour, the clock ripples (a visual chime; there is no sound). */
+  constructor(){onChange(()=>this.w.now().getHours(),()=>this.w.fire('chime',2600));}
 }
 
 interface CalendarEvent {key:string;title:string;place:string;start:number;}

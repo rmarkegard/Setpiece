@@ -79,7 +79,8 @@ export class StudioStore {
   dialogs:{closeUnsaved:()=>void;manage:(id:string)=>void;inspect:(id:string)=>void;guide:(service:string)=>void}={closeUnsaved:()=>{},manage:()=>{},inspect:()=>{},guide:()=>{}};
 
   constructor(){
-    if(this.query.has('surface'))document.body.classList.add('widget-surface');
+    // Widget windows and the browser card are transparent: the card itself is the only visible shape.
+    if(this.query.has('surface')||this.browserName)document.body.classList.add('widget-surface');
     applyAppearance(defaultAppearance);
     this.bridge.listen(e=>this.receive(e));
   }

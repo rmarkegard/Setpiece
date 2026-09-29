@@ -5,14 +5,18 @@ using System.Text.Json.Nodes;
 namespace Setpiece.Rebuild;
 
 // The local toolbar alone has a host bridge. Remote pages have no application capabilities.
+// The toolbar page draws the whole card (tone, glass, corners) on a transparent window; the web
+// pages sit in the opening it reports, so the browser matches the widgets around it.
 internal sealed class BrowserSurface : Form
 {
     private sealed record Tab(string Id, WebView2 View) { public string? Error { get; set; } }
     private readonly Host host;
     private readonly Storage storage;
     private readonly string name;
-    private readonly WebView2 chrome = new() { Dock=DockStyle.Top, Height=112 };
-    private readonly Panel pages = new() { Dock=DockStyle.Fill };
+    private readonly WebView2 chrome = new() { Dock=DockStyle.Fill };
+    private readonly Panel pages = new() { BackColor=Color.FromArgb(24,24,28) };
+    /** The opening for the web page, in CSS pixels, as the toolbar last reported it. */
+    private (double Top,double Left,double Right,double Bottom,double Radius)? frame;
     private readonly List<Tab> tabs=[];
     private Tab? selected;
     private bool pinned=true;
@@ -26,10 +30,11 @@ internal sealed class BrowserSurface : Form
     public BrowserSurface(Host host,Storage storage,string name,Rectangle bounds,bool constrainFullscreen=false)
     {
         this.host=host;this.storage=storage;this.name=name;this.constrainFullscreen=constrainFullscreen;tileBounds=bounds;Bounds=bounds;Text="Setpiece · "+name;
-        FormBorderStyle=FormBorderStyle.None;StartPosition=FormStartPosition.Manual;MinimumSize=new Size(280,160);
+        FormBorderStyle=FormBorderStyle.None;StartPosition=FormStartPosition.Manual;MinimumSize=new Size(280,160);BackColor=Color.Black;
         Controls.Add(pages);Controls.Add(chrome);
-        HandleCreated+=(_,_)=>Windows.ApplyRoundedCorners(Handle);
-        Resize+=(_,_)=>{ApplyPin();Windows.ApplyRoundedCorners(Handle);};
+        // Per-pixel transparency, as for widget windows: the card's own rounded, anti-aliased edge is the window's shape.
+        HandleCreated+=(_,_)=>{Windows.ApplyRoundedCorners(Handle,false);Windows.ExtendGlass(Handle);};
+        Resize+=(_,_)=>{ApplyPin();Windows.ExtendGlass(Handle);UpdateViewport();};Move+=(_,_)=>UpdateViewport();
         FormClosing+=(_,e)=>{if(!closing){e.Cancel=true;Hide();}};
     }
     public void Place(Rectangle bounds,bool constrain)
@@ -41,7 +46,8 @@ internal sealed class BrowserSurface : Form
     public async Task Start(string url,JsonObject? initial=null)
     {
         Show();await host.Configure(chrome,true,Command);
-        chrome.CoreWebView2.NavigationCompleted+=(_,_)=>EmitState();
+        try{chrome.DefaultBackgroundColor=Color.Transparent;}catch(Exception){}
+        chrome.CoreWebView2.NavigationCompleted+=(_,_)=>{EmitState();UpdateViewport();};
         chrome.CoreWebView2.Navigate("https://setpiece.local/index.html?browser="+Uri.EscapeDataString(name));
         var saved=storage.ReadOptional("browsers-v2.json")[name]?.AsObject();
         if(saved is null&&initial is not null)saved=new JsonObject{["pinned"]=initial["ToolbarPinned"]?.DeepClone(),["selected"]=initial["SelectedTabId"]?.DeepClone(),["tabs"]=new JsonArray((initial["Tabs"] as JsonArray??new JsonArray()).OfType<JsonObject>().Select(t=>(JsonNode)new JsonObject{["id"]=t["Id"]?.DeepClone(),["url"]=t["Url"]?.DeepClone()??JsonValue.Create(url)}).ToArray())};
@@ -88,13 +94,29 @@ internal sealed class BrowserSurface : Form
         core.Navigate(address);Select(tab);Persist();
     }
     private void Select(Tab tab){selected=tab;foreach(var item in tabs)item.View.Visible=item==tab;tab.View.BringToFront();SetFullscreen(tab.View.CoreWebView2.ContainsFullScreenElement);EmitState();}
-    private void ApplyPin(){chrome.Visible=!fullscreen||diagnostics;chrome.Height=diagnostics?ClientSize.Height:pinned?124:40;pages.Visible=!diagnostics;}
+    private void ApplyPin()
+    {
+        chrome.Visible=!fullscreen||diagnostics;pages.Visible=!diagnostics;
+        if(fullscreen&&!diagnostics){pages.Bounds=ClientRectangle;SetPageShape(0);pages.BringToFront();return;}
+        // Until the toolbar reports its opening, leave room for the toolbar it is about to draw.
+        var f=frame??(pinned?(132,8,8,8,12):(52,8,8,8,12));var scale=DeviceDpi/96d;int Px(double v)=>(int)Math.Round(v*scale);
+        pages.Bounds=Rectangle.FromLTRB(Px(f.Left),Px(f.Top),Math.Max(Px(f.Left)+1,ClientSize.Width-Px(f.Right)),Math.Max(Px(f.Top)+1,ClientSize.Height-Px(f.Bottom)));
+        SetPageShape(Px(f.Radius));pages.BringToFront();
+    }
+    private void SetPageShape(int radius)
+    {
+        var old=pages.Region;
+        if(radius<=1||pages.Width<2*radius||pages.Height<2*radius)pages.Region=null;
+        else{using var path=new System.Drawing.Drawing2D.GraphicsPath();var d=radius*2;var w=pages.Width;var h=pages.Height;path.AddArc(0,0,d,d,180,90);path.AddArc(w-d,0,d,d,270,90);path.AddArc(w-d,h-d,d,d,0,90);path.AddArc(0,h-d,d,d,90,90);path.CloseFigure();pages.Region=new Region(path);}
+        old?.Dispose();
+    }
+    private void UpdateViewport(){if(chrome.CoreWebView2 is not null&&Width>0&&Height>0)Emit("wallpaper-viewport",Surface.WallpaperViewport(Bounds));}
     private void SetFullscreen(bool value)
     {
         if(fullscreen==value)return;
         if(value){restoreBounds=Bounds;Bounds=constrainFullscreen?tileBounds:Screen.FromRectangle(tileBounds).Bounds;}
         else if(!restoreBounds.IsEmpty)Bounds=restoreBounds;
-        fullscreen=value;Windows.ApplyRoundedCorners(Handle,!fullscreen||constrainFullscreen);ApplyPin();
+        fullscreen=value;ApplyPin();
     }
     private async Task<JsonNode?> Command(string command,JsonObject payload)
     {
@@ -103,6 +125,9 @@ internal sealed class BrowserSurface : Form
         switch(action)
         {
             case "state":break;
+            case "frame":
+                double Read(string key)=>Math.Clamp(payload[key]?.GetValue<double>()??0,0,4000);
+                frame=(Read("top"),Read("left"),Read("right"),Read("bottom"),Math.Min(Read("radius"),64));ApplyPin();return null;
             case "navigate":core?.Navigate(Address(payload["url"]!.GetValue<string>()));break;
             case "back":if(core?.CanGoBack==true)core.GoBack();break;
             case "forward":if(core?.CanGoForward==true)core.GoForward();break;

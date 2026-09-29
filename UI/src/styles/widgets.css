@@ -275,6 +275,15 @@
 .ck-sun { fill: var(--hi); transition: transform 1.2s var(--spring-soft); }
 .ck-place.night .arc { stroke-dasharray: 1.5 3; }
 .ck-place.night .ck-sun { fill: var(--c); stroke: var(--on); stroke-width: 1.4; }
+.ck-rip { position: absolute; left: 32%; top: 58%; width: 460px; height: 460px; border-radius: 50%; border: 1.5px solid var(--hi); opacity: 0; pointer-events: none; z-index: 0; }
+.ck.fx-chime .ck-rip { animation: sp-ripple 1.8s var(--glide); }
+.ck.fx-chime .ck-rip.r2 { animation-delay: .28s; }
+.ck.fx-chime .ck-rip.r3 { animation-delay: .56s; }
+.ck.fx-chime .ck-h { animation: sp-pop .8s var(--spring); transform-origin: 50% 80%; }
+.ck.fx-chime .ck-place { animation: ck-flash 1.3s var(--glide) both; }
+.ck.fx-chime .ck-place:nth-child(2) { animation-delay: .12s; }
+.ck.fx-chime .ck-place:nth-child(3) { animation-delay: .24s; }
+@keyframes ck-flash { 0% { background-color: var(--inset); } 30% { background-color: color-mix(in oklab, var(--hi) 34%, transparent); } 100% { background-color: var(--inset); } }
 @container (max-width: 460px) {
   .ck .in { grid-template-columns: minmax(0, 1fr); }
   .ck-places { display: none; }
