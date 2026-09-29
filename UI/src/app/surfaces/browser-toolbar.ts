@@ -4,11 +4,11 @@ import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {Bridge} from '../../bridge';
-import {StudioStore} from '../state/studio-store';
+import {BookmarkNode,StudioStore} from '../state/studio-store';
 import {IconComponent} from '../ui/icon';
 import {WallpaperComponent} from '../ui/wallpaper';
 
-interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:string}[];url?:string;pinned?:boolean;constrain?:boolean;back?:boolean;forward?:boolean;error?:string;extension?:string;runtime?:string;}
+interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:string}[];url?:string;pinned?:boolean;constrain?:boolean;docked?:boolean;back?:boolean;forward?:boolean;error?:string;extension?:string;runtime?:string;}
 
 /**
  * A shared browser wears the widget card: same tone, radius, Glass or Solid and Colorful or Plain.
@@ -24,7 +24,7 @@ interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:strin
     <section class="sp wg br" [class.pinned]="pinned()" aria-label="Browser">
       <div class="top">
         <div class="row tabs">
-          <span class="eyebrow name" (pointerdown)="action('drag')"><sp-icon name="language"/>{{store.browserName}}</span>
+          <span class="eyebrow name" (pointerdown)="drag()"><sp-icon name="language"/>{{store.browserName}}</span>
           @if(pinned()){
             <div class="strip" role="tablist">
               @for(tab of state().tabs??[];track tab.id){
@@ -38,7 +38,7 @@ interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:strin
           } @else {
             <span class="now clip">{{title()}}</span>
           }
-          <span class="drag" (pointerdown)="action('drag')"></span>
+          <span class="drag" (pointerdown)="drag()"></span>
           <button class="btn" [class.on]="state().constrain" [attr.aria-pressed]="!!state().constrain" [attr.aria-label]="state().constrain?'Fullscreen stays in the tile. Switch to the whole display':'Fullscreen fills the display. Switch to the tile'" [matTooltip]="state().constrain?'Fullscreen: inside the tile':'Fullscreen: whole display'" (click)="action('fullscreen-mode')"><sp-icon [name]="state().constrain?'fit_screen':'fullscreen'"/></button>
           <button class="btn" [attr.aria-label]="pinned()?'Collapse toolbar':'Show toolbar'" [matTooltip]="pinned()?'Collapse toolbar':'Show toolbar'" (click)="action('pin')"><sp-icon [name]="pinned()?'expand_less':'expand_more'"/></button>
         </div>
@@ -58,11 +58,18 @@ interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:strin
             <button class="btn" aria-label="Browser information" matTooltip="Browser information" (click)="diagnostics(true)"><sp-icon name="info"/></button>
           </div>
           <div class="row marks">
-            @for(bookmark of store.bookmarks();track $index){
-              <button class="mark" [class.icon-only]="!bookmark.displayTitle" [attr.aria-label]="bookmark.displayTitle||bookmark.host" [title]="bookmark.displayTitle||bookmark.host" (click)="action('navigate',{url:bookmark.url})">
-                @if(bookmark.icon){<img [src]="bookmark.icon" alt="">}@else{<sp-icon name="bookmark"/>}
-                @if(bookmark.displayTitle){<span>{{bookmark.displayTitle}}</span>}
-              </button>
+            @if(folders().length){
+              <button class="mark back" [attr.aria-label]="'Back from '+folders()[folders().length-1].title" (click)="folderUp()"><sp-icon name="chevron_left"/><span>{{folders()[folders().length-1].title}}</span></button>
+            }
+            @for(node of shelf();track $index){
+              @if(node.type==='folder'){
+                <button class="mark" [title]="node.title" (click)="openFolder(node)"><sp-icon name="folder"/><span>{{node.title}}</span></button>
+              } @else {
+                <button class="mark" [class.icon-only]="!node.displayTitle" [attr.aria-label]="node.displayTitle||node.host" [title]="(node.displayTitle||node.host)+' · Middle-click for a new tab'" (click)="openBookmark(node.url)" (mousedown)="$event.button===1&&$event.preventDefault()" (auxclick)="$event.button===1&&openBookmark(node.url,true)">
+                  @if(node.icon){<img [src]="node.icon" alt="">}@else{<sp-icon name="bookmark"/>}
+                  @if(node.displayTitle){<span>{{node.displayTitle}}</span>}
+                </button>
+              }
             } @empty {<span class="hint">Import Brave bookmarks from Browsers in Setpiece.</span>}
           </div>
         }
@@ -126,6 +133,8 @@ interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:strin
     .mark{display:flex;align-items:center;gap:6px;flex:none;height:28px;max-width:170px;padding:0 10px;border:0;border-radius:14px;background:none;color:var(--muted);font:550 12px/1 var(--font-brand);cursor:pointer;transition:background-color .2s var(--glide),color .2s var(--glide)}
     .mark:hover{background:var(--inset2);color:var(--on)}
     .mark.icon-only{padding:0 6px}
+    .mark.back{background:var(--inset2);color:var(--on);padding-left:4px}
+    .mark sp-icon{color:inherit}
     .mark img,.mark sp-icon{width:16px;height:16px;font-size:16px;flex:none;border-radius:4px}
     .mark span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .hint{padding:0 8px;font:500 12px/1 var(--font-brand);color:var(--faint)}
@@ -147,6 +156,9 @@ export class BrowserToolbar implements OnDestroy {
   readonly pinned=signal(true);
   readonly showDiagnostics=signal(false);
   readonly editing=signal(false);
+  /** The folders opened from the bookmark bar, outermost first; the row shows the innermost one's contents. */
+  readonly folders=signal<Extract<BookmarkNode,{type:'folder'}>[]>([]);
+  readonly shelf=computed(()=>{const open=this.folders();return open.length?open[open.length-1].children:this.store.bookmarkBar();});
   readonly glass=computed(()=>this.store.appearance().surface==='glass');
   readonly error=computed(()=>this.state().error);
   readonly title=computed(()=>{const s=this.state();return s.tabs?.find(t=>t.id===s.selected)?.title??'';});
@@ -181,6 +193,15 @@ export class BrowserToolbar implements OnDestroy {
     this.state.set(data);if(data.url){this.address.set(data.url);if(!this.editing())this.url=data.url;}
     this.pinned.set(data.pinned??true);
   }
+  openFolder(folder:Extract<BookmarkNode,{type:'folder'}>){this.folders.update(open=>[...open,folder]);}
+  folderUp(){this.folders.update(open=>open.slice(0,-1));}
+  /** A click opens the bookmark here and closes any open folder; a middle-click opens it in a new tab behind this one. */
+  openBookmark(url:string,background=false){
+    if(background){void this.action('add',{url,background:true});return;}
+    this.folders.set([]);void this.action('navigate',{url});
+  }
+  /** A browser in a workspace tile stays on its tile; one opened on its own moves by its toolbar. */
+  drag(){if(!this.state().docked)void this.action('drag');}
   go(){this.editing.set(false);void this.action('navigate',{url:this.url});(document.activeElement as HTMLElement|null)?.blur();}
   async action(action:string,payload:Record<string,unknown>={}){
     try{const data=await this.bridge.call<BrowserState>('browser',{action,...payload});if(data)this.receive(data);}

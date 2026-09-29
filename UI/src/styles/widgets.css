@@ -903,17 +903,20 @@
   .wx-cond { flex-direction: column; align-items: flex-start; gap: 3px; }
   .sy-flow { display: none; }
   .sy-flow-v { min-width: 0; flex: 1; }
-  .ai-ring { width: min(82px, 27.1cqw); height: min(82px, 27.1cqw); }
 }
 @container (max-height: 190px) { .wx-curve { display: none; } }
 /* In a roomy tile the forecast sits at the foot of the card and the rings grow into the space. */
 .wx-curve { margin-top: auto; }
 @container (min-height: 340px) { .ai-rings { align-content: center; } }
-@container (min-width: 560px) and (min-height: 400px) {
-  .ai-ring { width: 124px; height: 124px; }
-  .ai-c { font-size: 28px; }
-  .ai-name { font-size: 16px; }
-}
+/* The rings fill the tile: each takes its column (82px at the design size) up to what the height leaves
+   after the eyebrow and the labels, and the percentage inside grows with it. */
+.ai-rings { gap: 2px; }
+.ai-ring { --ring: max(64px, min(calc((100cqw - 40px) / var(--ai-n, 3) - 6px), calc(100cqh - 150px), 170px)); width: var(--ring); height: var(--ring); }
+.ai-c { font-size: calc(var(--ring) * .232); }
+.ai-c small { font-size: calc(var(--ring) * .122); }
+.ai-p.three .ai-c { font-size: calc(var(--ring) * .183); }
+.ai-p.three .ai-c small { font-size: calc(var(--ring) * .104); }
+@container (min-width: 560px) and (min-height: 400px) { .ai-name { font-size: 16px; } }
 .bb-stage.v-cam .bb-model { transform: scale(var(--model-scale, .72)); }
 .bb-stage.cam-only { justify-content: center; }
 .bb-stage.cam-only .bb-layers { display: none; }
@@ -921,8 +924,7 @@
 @container (max-width: 250px) {
   .ai-rings { grid-template-columns: minmax(0, 1fr); align-content: center; gap: 10px; }
   .ai-p { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 4px; align-items: center; justify-items: start; }
-  .ai-ring { grid-row: span 2; width: 64px; height: 64px; }
-  .ai-c { font-size: 15px; }
+  .ai-ring { grid-row: span 2; --ring: 64px; }
   .ai-p .burst { display: none; }
 }
 @container (max-width: 250px) {

@@ -27,6 +27,9 @@ internal sealed class BrowserSurface : Form
     private Rectangle tileBounds;
     private string extensionStatus="Loading extension…";
     private bool closing;
+    /** In a workspace tile the browser stays put: it cannot be dragged off its tile. A browser opened on its own can. */
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    internal bool Docked {get;set;}
     private readonly PageCorners corners;
     private readonly System.Windows.Forms.Timer cornerTimer=new(){Interval=60};
     /** Set when the corner windows cannot draw; the page then keeps only its hard-edged rounded region. */
@@ -36,7 +39,7 @@ internal sealed class BrowserSurface : Form
     private string look="";
     public BrowserSurface(Host host,Storage storage,string name,Rectangle bounds,bool constrainFullscreen=false)
     {
-        this.host=host;this.storage=storage;this.name=name;this.constrainFullscreen=constrainFullscreen;tileBounds=bounds;Bounds=bounds;Text="Setpiece · "+name;
+        this.host=host;this.storage=storage;this.name=name;this.constrainFullscreen=constrainFullscreen;tileBounds=bounds;Bounds=bounds;Text="Setpiece · "+name;if(Windows.AppIcon.Value is { } icon)Icon=icon;
         FormBorderStyle=FormBorderStyle.None;StartPosition=FormStartPosition.Manual;MinimumSize=new Size(280,160);BackColor=Color.Black;
         Controls.Add(pages);Controls.Add(chrome);
         corners=new PageCorners(this);cornerTimer.Tick+=async(_,_)=>{cornerTimer.Stop();await RefreshCorners();};
@@ -71,10 +74,11 @@ internal sealed class BrowserSurface : Form
         if(!Uri.TryCreate(value,UriKind.Absolute,out var uri)||uri.Scheme is not ("http" or "https"))throw new InvalidDataException("Enter an HTTP or HTTPS web address.");
         return uri.AbsoluteUri;
     }
-    private async Task Add(string url,string? id=null)
+    /** Opens a tab; a background tab (a middle-clicked bookmark) leaves the current one in front. */
+    private async Task Add(string url,string? id=null,bool select=true)
     {
         var address=Address(url);var tab=await CreateTab(id);
-        tab.View.CoreWebView2.Navigate(address);Select(tab);Persist();
+        tab.View.CoreWebView2.Navigate(address);if(select)Select(tab);else EmitState();Persist();
     }
     /** A new, not yet navigated tab. A page's popup (a sign-in window, say) is handed one of these, so it keeps its opener. */
     private async Task<Tab> CreateTab(string? id=null)
@@ -128,7 +132,8 @@ internal sealed class BrowserSurface : Form
     {
         chrome.Visible=!fullscreen||diagnostics;pages.Visible=!diagnostics;
         if(fullscreen||diagnostics)corners.Hide();
-        if(fullscreen&&!diagnostics){pages.Bounds=ClientRectangle;SetPageShape(0);shaped=null;pages.BringToFront();return;}
+        // Fullscreen inside the tile keeps the card's rounded corners; fullscreen on the whole display is square.
+        if(fullscreen&&!diagnostics){pages.Bounds=ClientRectangle;var f0=frame??(0,8,8,8,12);SetPageShape(constrainFullscreen?(int)Math.Round((f0.Radius+f0.Left)*DeviceDpi/96d):0,exact:true);shaped=null;pages.BringToFront();return;}
         // Until the toolbar reports its opening, leave room for the toolbar it is about to draw.
         var f=frame??(pinned?(132,8,8,8,12):(52,8,8,8,12));var scale=DeviceDpi/96d;int Px(double v)=>(int)Math.Round(v*scale);
         var bounds=Rectangle.FromLTRB(Px(f.Left),Px(f.Top),Math.Max(Px(f.Left)+1,ClientSize.Width-Px(f.Right)),Math.Max(Px(f.Top)+1,ClientSize.Height-Px(f.Bottom)));
@@ -158,13 +163,13 @@ internal sealed class BrowserSurface : Form
      * curve (a region only keeps whole pixels, and cut exactly it bites into the curve's soft edge);
      * without them it follows the curve itself.
      */
-    private void SetPageShape(int radius)
+    private void SetPageShape(int radius,bool exact=false)
     {
         var old=pages.Region;var w=pages.Width;var h=pages.Height;
         if(radius<=1||w<2*radius||h<2*radius)pages.Region=null;
         else
         {
-            var cut=cornersFailed?radius:radius+2;var region=new Region(new Rectangle(0,0,w,h));
+            var cut=cornersFailed||exact?radius:radius+2;var region=new Region(new Rectangle(0,0,w,h));
             foreach(var (cx,cy,sx,sy) in new[]{(radius,radius,0,0),(w-radius,radius,w-radius,0),(w-radius,h-radius,w-radius,h-radius),(radius,h-radius,0,h-radius)})
             {
                 using var circle=new System.Drawing.Drawing2D.GraphicsPath();circle.AddEllipse(cx-cut,cy-cut,cut*2,cut*2);
@@ -204,13 +209,13 @@ internal sealed class BrowserSurface : Form
             case "forward":if(core?.CanGoForward==true)core.GoForward();break;
             case "reload":core?.Reload();break;
             case "external":if(core is not null)Host.OpenExternal(core.Source);break;
-            case "add":await Add("https://www.google.com/");break;
+            case "add":await Add(payload["url"]?.GetValue<string>()??"https://www.google.com/",null,payload["background"]?.GetValue<bool>()!=true);break;
             // A repeated click can name a tab that has already closed; it is ignored rather than reported.
             case "select":if(Find(payload) is { } chosen)Select(chosen);break;
             case "close":if(Find(payload) is { } target)await Close(target);break;
             case "pin":pinned=!pinned;ApplyPin();break;
             case "diagnostics":diagnostics=payload["open"]?.GetValue<bool>()??false;ApplyPin();break;
-            case "drag":Windows.ReleaseCapture();Windows.SendMessage(Handle,0xA1,2,0);break;
+            case "drag":if(!Docked){Windows.ReleaseCapture();Windows.SendMessage(Handle,0xA1,2,0);}break;
             case "devtools":core?.OpenDevToolsWindow();break;
             default:throw new InvalidOperationException("Unknown browser action.");
         }
@@ -218,7 +223,7 @@ internal sealed class BrowserSurface : Form
     }
     private Tab? Find(JsonObject payload){var id=payload["id"]?.GetValue<string>();return tabs.FirstOrDefault(t=>t.Id==id);}
     private static readonly Lazy<string> runtime=new(()=>CoreWebView2Environment.GetAvailableBrowserVersionString());
-    private JsonObject State()=>new(){["tabs"]=new JsonArray(tabs.Select(t=>(JsonNode)new JsonObject{["id"]=t.Id,["title"]=t.View.CoreWebView2.DocumentTitle??"New tab",["url"]=t.View.CoreWebView2.Source}).ToArray()),["selected"]=selected?.Id,["url"]=selected?.View.CoreWebView2.Source,["back"]=selected?.View.CoreWebView2.CanGoBack??false,["forward"]=selected?.View.CoreWebView2.CanGoForward??false,["pinned"]=pinned,["constrain"]=constrainFullscreen,["extension"]=extensionStatus,["error"]=selected?.Error,["runtime"]=runtime.Value};
+    private JsonObject State()=>new(){["tabs"]=new JsonArray(tabs.Select(t=>(JsonNode)new JsonObject{["id"]=t.Id,["title"]=t.View.CoreWebView2.DocumentTitle??"New tab",["url"]=t.View.CoreWebView2.Source}).ToArray()),["selected"]=selected?.Id,["url"]=selected?.View.CoreWebView2.Source,["back"]=selected?.View.CoreWebView2.CanGoBack??false,["forward"]=selected?.View.CoreWebView2.CanGoForward??false,["pinned"]=pinned,["constrain"]=constrainFullscreen,["docked"]=Docked,["extension"]=extensionStatus,["error"]=selected?.Error,["runtime"]=runtime.Value};
     // Unchanged state is not rewritten or rebroadcast. An unreadable file is preserved and logged, not overwritten.
     private void Persist()
     {
@@ -231,6 +236,7 @@ internal sealed class BrowserSurface : Form
         catch(Exception error) when(error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException or InvalidOperationException){storage.Log("Browser state could not be saved",error);return;}
         host.NotifyBrowserCatalog();
     }
+    internal void NotifyState()=>EmitState();
     private void EmitState(){if(chrome.CoreWebView2 is not null)Emit("browser",State());}
     public void Emit(string name,JsonNode data){if(chrome.CoreWebView2 is not null&&!IsDisposed)chrome.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
     protected override void Dispose(bool disposing){closing=true;if(disposing){cornerTimer.Dispose();corners.Dispose();}if(fullscreen&&!restoreBounds.IsEmpty)Bounds=restoreBounds;base.Dispose(disposing);}

@@ -24,7 +24,7 @@ internal sealed class Host : Form
     public Host(Storage storage)
     {
         this.storage = storage;providers = new Providers(storage);
-        Text = "Setpiece";Size = new Size(1440, 960);MinimumSize = new Size(1040, 680);StartPosition = FormStartPosition.CenterScreen;FormBorderStyle = FormBorderStyle.None;BackColor = SurfaceColor;
+        Text = "Setpiece";if(Windows.AppIcon.Value is { } icon)Icon=icon;Size = new Size(1440, 960);MinimumSize = new Size(1040, 680);StartPosition = FormStartPosition.CenterScreen;FormBorderStyle = FormBorderStyle.None;BackColor = SurfaceColor;
         Controls.Add(view);Shown += async (_, _) => await Initialize();
         FormClosing+=(_,e)=>{if(!closingConfirmed&&AuditOutput is null&&view.CoreWebView2 is not null&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;Emit("request-close",null);}};
         FormClosed += (_, _) => { foreach (var surface in surfaces) surface.Dispose();foreach (var browser in browsers.Values)browser.Dispose();windows?.Dispose();providers.Dispose(); };
@@ -149,7 +149,7 @@ internal sealed class Host : Form
             case "window":
                 switch(payload["action"]!.GetValue<string>()) { case "drag":Windows.ReleaseCapture();Windows.SendMessage(Handle,0xA1,2,0);break;case "minimize":WindowState=FormWindowState.Minimized;break;case "maximize":MaximizedBounds=Screen.FromControl(this).WorkingArea;WindowState=WindowState==FormWindowState.Maximized?FormWindowState.Normal:FormWindowState.Maximized;break;case "close":Close();break;case "close-confirmed":closingConfirmed=true;Close();break; }
                 return null;
-            case "browser-open": await OpenBrowser(payload["name"]!.GetValue<string>(),payload["url"]?.GetValue<string>()??"https://www.youtube.com/",new Rectangle(Location.X+80,Location.Y+100,1000,700),null,false);return null;
+            case "browser-open": await OpenBrowser(payload["name"]!.GetValue<string>(),payload["url"]?.GetValue<string>()??"https://www.youtube.com/",new Rectangle(Location.X+80,Location.Y+100,1000,700),null,false,false);return null;
             case "browser-list":return BrowserCatalog();
             default: throw new InvalidOperationException("This action is not supported by this version of Setpiece.");
         }
@@ -275,7 +275,7 @@ internal sealed class Host : Form
             foreach(var tile in board["Zones"]!.AsArray().OfType<JsonObject>())
             {
                 var kind=tile["ContentKind"]!.GetValue<string>();var bounds=WindowCoordinator.TileBounds(active,board,tile);
-                if(kind=="Web") { var shared=tile["SharedWebName"]?.GetValue<string>();var name=string.IsNullOrWhiteSpace(shared)?"tile-"+tile["Id"]!.GetValue<string>():shared;var url=tile["Web"]?["Tabs"]?.AsArray().FirstOrDefault()?["Url"]?.GetValue<string>()??"https://www.youtube.com/";keptBrowsers.Add(name);await OpenBrowser(name,url,bounds,tile["Web"]?.AsObject(),tile["ConstrainFullscreenToTile"]?.GetValue<bool>()??false); }
+                if(kind=="Web") { var shared=tile["SharedWebName"]?.GetValue<string>();var name=string.IsNullOrWhiteSpace(shared)?"tile-"+tile["Id"]!.GetValue<string>():shared;var url=tile["Web"]?["Tabs"]?.AsArray().FirstOrDefault()?["Url"]?.GetValue<string>()??"https://www.youtube.com/";keptBrowsers.Add(name);await OpenBrowser(name,url,bounds,tile["Web"]?.AsObject(),tile["ConstrainFullscreenToTile"]?.GetValue<bool>()??false,true); }
                 else if(restore)
                 {
                     var process=tile["AssignedProcessName"]!.GetValue<string>();if(string.IsNullOrWhiteSpace(process))continue;
@@ -297,11 +297,11 @@ internal sealed class Host : Form
         if(surface is null){surface=new Surface(this,bounds){Key=key};surfaces.Add(surface);await surface.Start(query);}
         else{surface.Bounds=bounds;surface.Emit("profile",active!);}
     }
-    private async Task OpenBrowser(string name,string url,Rectangle bounds,JsonObject? initial=null,bool constrainFullscreen=false)
+    private async Task OpenBrowser(string name,string url,Rectangle bounds,JsonObject? initial=null,bool constrainFullscreen=false,bool docked=false)
     {
         name=storage.ReadOptional("browsers-v2.json").FirstOrDefault(p=>p.Key.Equals(name,StringComparison.OrdinalIgnoreCase)).Key??name.Trim();
-        if(browsers.TryGetValue(name,out var existing)){existing.Place(bounds,constrainFullscreen);existing.Show();return;}
-        var browser=new BrowserSurface(this,storage,name,bounds,constrainFullscreen);browsers[name]=browser;await browser.Start(url,initial);
+        if(browsers.TryGetValue(name,out var existing)){existing.Docked=docked;existing.Place(bounds,constrainFullscreen);existing.Show();existing.NotifyState();return;}
+        var browser=new BrowserSurface(this,storage,name,bounds,constrainFullscreen){Docked=docked};browsers[name]=browser;await browser.Start(url,initial);
     }
     internal void Emit(string name,JsonNode? data) { if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data?.DeepClone()}.ToJsonString()); }
     internal void NotifyBrowserCatalog()=>Emit("browsers",BrowserCatalog());

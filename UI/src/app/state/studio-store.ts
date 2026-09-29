@@ -16,6 +16,8 @@ export const routes:{name:Route;label:string;icon:string}[]=[
 const routeAliases:Record<string,Route>={Connections:'Widgets',Apps:'Studio'};
 
 export interface Bookmark {title:string;displayTitle:string;host:string;url:string;icon:string;folder:string;profile:string;}
+/** The bookmark bar as Brave shows it: bookmarks and folders in order. */
+export type BookmarkNode={type:'url';title:string;displayTitle:string;host:string;url:string;icon:string}|{type:'folder';title:string;children:BookmarkNode[]};
 export interface SharedBrowser {name:string;tabs:number;url:string;}
 
 /**
@@ -54,6 +56,7 @@ export class StudioStore {
   readonly runtime=signal('');
   readonly sharedBrowsers=signal<SharedBrowser[]>([]);
   readonly bookmarks=signal<Bookmark[]>([]);
+  readonly bookmarkBar=signal<BookmarkNode[]>([]);
   readonly wallpaperViewport=signal<Record<string,string>>({});
   readonly ready=signal(false);
 
@@ -276,10 +279,24 @@ export class StudioStore {
       return {...item,host,displayTitle:isAddress?'':title};
     });
   }
-  async loadBookmarks(){try{const data=await this.bridge.call<any>('brave-bookmarks-read');this.bookmarks.set(this.normalizeBookmarks(data.items??[]));}catch{}}
+  normalizeBar(nodes:any[]):BookmarkNode[]{
+    return (nodes??[]).map(node=>node.type==='folder'?{type:'folder' as const,title:String(node.title??''),children:this.normalizeBar(node.children)}:{...this.normalizeBookmarks([node])[0],type:'url' as const});
+  }
+  private showBookmarks(data:any){
+    this.bookmarks.set(this.normalizeBookmarks(data.items??[]));
+    // An import from before folders were kept has no bar: its bookmarks stand in, one level.
+    this.bookmarkBar.set(Array.isArray(data.bar)?this.normalizeBar(data.bar):this.normalizeBar((data.items??[]).map((item:any)=>({...item,type:'url'}))));
+  }
+  async loadBookmarks(){
+    try{
+      const data=await this.bridge.call<any>('brave-bookmarks-read');this.showBookmarks(data);
+      // Bookmarks imported before folders were kept are read again once, so the bar gains its folders.
+      if((data.items??[]).length&&!Array.isArray(data.bar))this.showBookmarks(await this.bridge.call<any>('brave-bookmarks'));
+    }catch{}
+  }
   async importBookmarks(){
     this.busy.set(true);
-    try{const data=await this.bridge.call<any>('brave-bookmarks');this.bookmarks.set(this.normalizeBookmarks(data.items??[]));this.notify(`${data.count} Brave bookmarks imported`);}
+    try{const data=await this.bridge.call<any>('brave-bookmarks');this.showBookmarks(data);this.notify(`${data.count} Brave bookmarks imported`);}
     catch(e){this.error.set((e as Error).message);}
     finally{this.busy.set(false);}
   }

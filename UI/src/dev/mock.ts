@@ -29,6 +29,9 @@ export function installMock(){
   let active=structuredClone(saved[0].profile);
   const accent=query.get('accent');
   let preferences={...defaultAppearance,mode:query.get('mode')==='light'?'light':'dark',accent:accent&&/^[0-9a-f]{6}$/i.test(accent)?'#'+accent:defaultAppearance.accent,surface:query.get('surface')==='glass'?'glass':'solid',palette:query.get('palette')==='plain'?'plain':'colorful'};
+  // The bar keeps Brave's folders: two bookmarks, then a folder with the rest and a nested one.
+  const asUrl=(b:typeof fixtures.bookmarks[number])=>({type:'url',...b});
+  const bookmarkBar=[...fixtures.bookmarks.slice(0,2).map(asUrl),{type:'folder',title:'Misc',children:[...fixtures.bookmarks.slice(2).map(asUrl),{type:'folder',title:'Reading',children:fixtures.bookmarks.slice(0,1).map(asUrl)}]}];
   let note='Widget redesign\n• Motion only when something happens\n• Numbers roll, lists make room';
   const browserState={name:query.get('browser')??'Media',selected:'t1',tabs:[{id:'t1',title:'Blue hour over the fjord, live - YouTube',url:'https://www.youtube.com/watch?v=blue-hour'},{id:'t2',title:'Material Design 3',url:'https://m3.material.io/'}],url:'https://www.youtube.com/watch?v=blue-hour',pinned:true,constrain:false,back:true,forward:false,extension:'uBlock Origin Lite 2025.1',runtime:'140.0.3485.54'};
   const services=fixtures.services(query.get('mockCamera')??undefined);
@@ -66,12 +69,12 @@ export function installMock(){
       if(action==='pin')browserState.pinned=!browserState.pinned;
       if(action==='fullscreen-mode')browserState.constrain=!browserState.constrain;
       if(action==='navigate')browserState.url=String(rest['url']);
-      if(action==='add'){const id='t'+(browserState.tabs.length+1);browserState.tabs.push({id,title:'New tab',url:'about:blank'});browserState.selected=id;}
+      if(action==='add'){const id='t'+(browserState.tabs.length+1);browserState.tabs.push({id,title:'New tab',url:String(rest['url']??'about:blank')});if(!rest['background'])browserState.selected=id;}
       if(action==='close')browserState.tabs=browserState.tabs.filter(t=>t.id!==rest['id']);
       return structuredClone(browserState);
     },
     'browser-open':()=>null,'browser-list':()=>fixtures.browsers,
-    'brave-bookmarks':()=>({count:fixtures.bookmarks.length,items:fixtures.bookmarks}),'brave-bookmarks-read':()=>({items:fixtures.bookmarks})
+    'brave-bookmarks':()=>({count:fixtures.bookmarks.length,items:fixtures.bookmarks,bar:bookmarkBar}),'brave-bookmarks-read':()=>({items:fixtures.bookmarks,bar:bookmarkBar})
   };
 
   // Development hooks: change a service's state and announce it, so a widget plays its event now.

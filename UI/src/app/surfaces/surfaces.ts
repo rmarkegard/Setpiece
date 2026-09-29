@@ -121,17 +121,27 @@ export class FrostComponent {
 export class WorkspaceBackdrop {
   readonly store=inject(StudioStore);
   constructor(){
-    // Looping ambient motion on the desk (the colon, the seconds bar, breathing dots, the wallpaper drift)
-    // advances 30 times a second, keeping its easing. At the display's full rate (240 Hz here) the desk
-    // redrew so often that video in the browser above it could not keep decoding. One-off event motion
-    // stays at full rate.
+    // Ambient motion on the desk advances 30 times a second, keeping its curve: looping animations (the
+    // colon, the seconds bar, breathing dots, the wallpaper drift) and the longer transitions that data
+    // updates restart every second (Spotify's progress and record, System's charts and digits). At the
+    // display's full rate (240 Hz here) the desk redrew so often that video in the browser above it could
+    // not keep decoding. One-off event motion and quick hover feedback stay at full rate.
+    const paced=new WeakSet<Animation>();
     const pace=(animation:Animation)=>{
-      const timing=animation.effect?.getTiming();
-      if(timing?.iterations===Infinity&&typeof timing.duration==='number'&&timing.duration>0)
-        animation.effect!.updateTiming({easing:'steps('+Math.max(2,Math.round(timing.duration/1000*deskFps))+', jump-none)'});
+      const effect=animation.effect as KeyframeEffect|null,timing=effect?.getTiming();
+      if(!effect||paced.has(animation)||typeof timing?.duration!=='number'||timing.duration<=0)return;
+      const loop=timing.iterations===Infinity,transition=animation instanceof CSSTransition;
+      if(!loop&&!(transition&&timing.duration>=300))return;
+      paced.add(animation);
+      // A transition's curve lives on the effect; move it onto the keyframes so the steps can take its place.
+      if(transition&&timing.easing&&timing.easing!=='linear'){const frames=effect.getKeyframes();frames[0]={...frames[0],easing:timing.easing};effect.setKeyframes(frames);}
+      effect.updateTiming({easing:'steps('+Math.max(2,Math.round(timing.duration/1000*deskFps))+', jump-none)'});
     };
-    document.addEventListener('animationstart',event=>{for(const animation of (event.target as Element).getAnimations())pace(animation);},true);
-    queueMicrotask(()=>document.getAnimations().forEach(pace));
+    const paceTarget=(event:Event)=>{for(const animation of (event.target as Element).getAnimations())pace(animation);};
+    document.addEventListener('animationstart',paceTarget,true);
+    document.addEventListener('transitionrun',paceTarget,true);
+    // Transitions replaced mid-flight (a chart retargeting every second) can start without an event in time.
+    queueMicrotask(()=>document.getAnimations().forEach(pace));setInterval(()=>document.getAnimations().forEach(pace),200);
   }
   readonly glass=computed(()=>this.store.appearance().surface==='glass');
   /** The live wallpaper drifts between 1.025× and 1.065×; the frosted copies hold the middle of that. */

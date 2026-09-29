@@ -7,6 +7,8 @@ namespace Setpiece.Rebuild;
 
 internal static class Windows
 {
+    /** Setpiece's mark, for the taskbar and window corners; the executable carries the same icon. */
+    internal static readonly Lazy<Icon?> AppIcon=new(()=>{try{return new Icon(Path.Combine(AppContext.BaseDirectory,"Assets","Setpiece.ico"));}catch(Exception error) when(error is IOException or ArgumentException or UnauthorizedAccessException){return null;}});
     internal delegate bool WindowVisitor(nint window, nint state);
     internal delegate void EventCallback(nint hook, uint kind, nint window, int objectId, int childId, uint thread, uint time);
     [StructLayout(LayoutKind.Sequential)] internal struct Rect { public int Left, Top, Right, Bottom; }
