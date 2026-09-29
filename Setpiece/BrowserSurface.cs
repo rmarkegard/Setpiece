@@ -133,7 +133,7 @@ internal sealed class BrowserSurface : Form
         chrome.Visible=!fullscreen||diagnostics;pages.Visible=!diagnostics;
         if(fullscreen||diagnostics)corners.Hide();
         // Fullscreen inside the tile keeps the card's rounded corners; fullscreen on the whole display is square.
-        if(fullscreen&&!diagnostics){pages.Bounds=ClientRectangle;var f0=frame??(0,8,8,8,12);SetPageShape(constrainFullscreen?(int)Math.Round((f0.Radius+f0.Left)*DeviceDpi/96d):0,exact:true);shaped=null;pages.BringToFront();return;}
+        if(fullscreen&&!diagnostics){pages.Bounds=ClientRectangle;SetPageShape(constrainFullscreen?OuterRadius:0);shaped=null;pages.BringToFront();if(constrainFullscreen)ScheduleCorners();return;}
         // Until the toolbar reports its opening, leave room for the toolbar it is about to draw.
         var f=frame??(pinned?(132,8,8,8,12):(52,8,8,8,12));var scale=DeviceDpi/96d;int Px(double v)=>(int)Math.Round(v*scale);
         var bounds=Rectangle.FromLTRB(Px(f.Left),Px(f.Top),Math.Max(Px(f.Left)+1,ClientSize.Width-Px(f.Right)),Math.Max(Px(f.Top)+1,ClientSize.Height-Px(f.Bottom)));
@@ -144,9 +144,12 @@ internal sealed class BrowserSurface : Form
         SetPageShape(Px(f.Radius));ScheduleCorners();
     }
     private void ScheduleCorners(){cornerTimer.Stop();cornerTimer.Start();}
+    /** The card's own corner radius, in pixels: the page's inner radius plus the card's edge around it. */
+    private int OuterRadius{get{var f=frame??(0,8,8,8,12);return (int)Math.Round((f.Radius+f.Left)*DeviceDpi/96d);}}
     /** Draws the smooth page corners from a fresh capture of the toolbar page. */
     private async Task RefreshCorners()
     {
+        if(Visible&&fullscreen&&constrainFullscreen&&!diagnostics&&!cornersFailed){await RefreshFullscreenCorners();return;}
         if(!Visible||fullscreen||diagnostics||frame is null||cornersFailed||chrome.CoreWebView2 is null||chrome.Width<1){corners.Hide();return;}
         try
         {
@@ -155,6 +158,22 @@ internal sealed class BrowserSurface : Form
             if(!Visible||fullscreen||diagnostics){corners.Hide();return;}
             var radius=(int)Math.Round(frame.Value.Radius*DeviceDpi/96d);
             if(!corners.Show(card,chrome.PointToScreen(Point.Empty),card.Width/(double)chrome.Width,RectangleToScreen(pages.Bounds),radius)){cornersFailed=true;corners.Hide();ApplyPin();}
+        }
+        catch(Exception error) when(error is ArgumentException or InvalidOperationException or System.Runtime.InteropServices.COMException or ObjectDisposedException){corners.Hide();}
+    }
+    /**
+     * Fullscreen inside the tile: the page fills the window and its outer corners are rounded. What shows
+     * beyond them is Setpiece's desk, so the corner windows paint the desk (captured once, on entering
+     * fullscreen, so nothing runs during playback) with a smooth curve cut out.
+     */
+    private async Task RefreshFullscreenCorners()
+    {
+        if(host.DeskAt(Bounds) is not { } desk){corners.Hide();return;}
+        try
+        {
+            using var picture=await desk.Picture();
+            if(picture is null||!Visible||!fullscreen||!constrainFullscreen){corners.Hide();return;}
+            if(!corners.Show(picture,desk.Bounds.Location,picture.Width/(double)desk.Width,RectangleToScreen(pages.Bounds),OuterRadius)){cornersFailed=true;corners.Hide();ApplyPin();}
         }
         catch(Exception error) when(error is ArgumentException or InvalidOperationException or System.Runtime.InteropServices.COMException or ObjectDisposedException){corners.Hide();}
     }

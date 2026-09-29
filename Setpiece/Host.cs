@@ -305,6 +305,8 @@ internal sealed class Host : Form
     }
     internal void Emit(string name,JsonNode? data) { if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data?.DeepClone()}.ToJsonString()); }
     internal void NotifyBrowserCatalog()=>Emit("browsers",BrowserCatalog());
+    /** The desk window under a place on screen, while a workspace is launched. */
+    internal Surface? DeskAt(Rectangle bounds)=>surfaces.FirstOrDefault(s=>!s.IsDisposed&&s.Visible&&s.Bounds.Contains(bounds));
     /** The browser toolbar changed where fullscreen goes; the workspace's tiles for that browser follow, and Studio hears of it. */
     internal void BrowserFullscreenChanged(string name,bool constrain)
     {
@@ -376,6 +378,13 @@ internal sealed class Surface : Form
         var screen=Screen.FromRectangle(bounds).Bounds;
         string Percent(double value)=>value.ToString("0.######",System.Globalization.CultureInfo.InvariantCulture)+"%";
         return new JsonObject{["left"]=Percent(100d*(screen.Left-bounds.Left)/bounds.Width),["top"]=Percent(100d*(screen.Top-bounds.Top)/bounds.Height),["width"]=Percent(100d*screen.Width/bounds.Width),["height"]=Percent(100d*screen.Height/bounds.Height),["right"]="auto",["bottom"]="auto"};
+    }
+    /** A picture of the desk as it is drawn now, the size of its window. */
+    internal async Task<Bitmap?> Picture()
+    {
+        if(view.CoreWebView2 is null)return null;
+        using var stream=new MemoryStream();await view.CoreWebView2.CapturePreviewAsync(Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat.Png,stream);stream.Position=0;
+        return new Bitmap(stream);
     }
     public void Emit(string name,JsonNode data){if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
 }
