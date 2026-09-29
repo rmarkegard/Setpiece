@@ -27,14 +27,20 @@ internal sealed class BrowserSurface : Form
     private Rectangle tileBounds;
     private string extensionStatus="Loading extension…";
     private bool closing;
+    private readonly PageCorners corners;
+    private readonly System.Windows.Forms.Timer cornerTimer=new(){Interval=60};
+    /** Set when the corner windows cannot draw; the page then falls back to a (hard-edged) rounded region. */
+    private bool cornersFailed;
     public BrowserSurface(Host host,Storage storage,string name,Rectangle bounds,bool constrainFullscreen=false)
     {
         this.host=host;this.storage=storage;this.name=name;this.constrainFullscreen=constrainFullscreen;tileBounds=bounds;Bounds=bounds;Text="Setpiece · "+name;
         FormBorderStyle=FormBorderStyle.None;StartPosition=FormStartPosition.Manual;MinimumSize=new Size(280,160);BackColor=Color.Black;
         Controls.Add(pages);Controls.Add(chrome);
+        corners=new PageCorners(this);cornerTimer.Tick+=async(_,_)=>{cornerTimer.Stop();await RefreshCorners();};
+        VisibleChanged+=(_,_)=>{if(Visible)ScheduleCorners();else corners.Hide();};
         // Per-pixel transparency, as for widget windows: the card's own rounded, anti-aliased edge is the window's shape.
         HandleCreated+=(_,_)=>{Windows.ApplyRoundedCorners(Handle,false);Windows.ExtendGlass(Handle);};
-        Resize+=(_,_)=>{ApplyPin();Windows.ExtendGlass(Handle);UpdateViewport();};Move+=(_,_)=>UpdateViewport();
+        Resize+=(_,_)=>{ApplyPin();Windows.ExtendGlass(Handle);UpdateViewport();};Move+=(_,_)=>{UpdateViewport();ScheduleCorners();};
         FormClosing+=(_,e)=>{if(!closing){e.Cancel=true;Hide();}};
     }
     public void Place(Rectangle bounds,bool constrain)
@@ -97,11 +103,27 @@ internal sealed class BrowserSurface : Form
     private void ApplyPin()
     {
         chrome.Visible=!fullscreen||diagnostics;pages.Visible=!diagnostics;
+        if(fullscreen||diagnostics)corners.Hide();
         if(fullscreen&&!diagnostics){pages.Bounds=ClientRectangle;SetPageShape(0);pages.BringToFront();return;}
         // Until the toolbar reports its opening, leave room for the toolbar it is about to draw.
         var f=frame??(pinned?(132,8,8,8,12):(52,8,8,8,12));var scale=DeviceDpi/96d;int Px(double v)=>(int)Math.Round(v*scale);
         pages.Bounds=Rectangle.FromLTRB(Px(f.Left),Px(f.Top),Math.Max(Px(f.Left)+1,ClientSize.Width-Px(f.Right)),Math.Max(Px(f.Top)+1,ClientSize.Height-Px(f.Bottom)));
-        SetPageShape(Px(f.Radius));pages.BringToFront();
+        SetPageShape(cornersFailed?Px(f.Radius):0);pages.BringToFront();ScheduleCorners();
+    }
+    private void ScheduleCorners(){cornerTimer.Stop();cornerTimer.Start();}
+    /** Draws the smooth page corners from a fresh capture of the toolbar page. */
+    private async Task RefreshCorners()
+    {
+        if(!Visible||fullscreen||diagnostics||frame is null||cornersFailed||chrome.CoreWebView2 is null||chrome.Width<1){corners.Hide();return;}
+        try
+        {
+            using var stream=new MemoryStream();await chrome.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);stream.Position=0;
+            using var card=new Bitmap(stream);
+            if(!Visible||fullscreen||diagnostics){corners.Hide();return;}
+            var radius=(int)Math.Round(frame.Value.Radius*DeviceDpi/96d);
+            if(!corners.Show(card,chrome.PointToScreen(Point.Empty),card.Width/(double)chrome.Width,RectangleToScreen(pages.Bounds),radius)){cornersFailed=true;corners.Hide();ApplyPin();}
+        }
+        catch(Exception error) when(error is ArgumentException or InvalidOperationException or System.Runtime.InteropServices.COMException or ObjectDisposedException){corners.Hide();}
     }
     private void SetPageShape(int radius)
     {
@@ -128,6 +150,10 @@ internal sealed class BrowserSurface : Form
             case "frame":
                 double Read(string key)=>Math.Clamp(payload[key]?.GetValue<double>()??0,0,4000);
                 frame=(Read("top"),Read("left"),Read("right"),Read("bottom"),Math.Min(Read("radius"),64));ApplyPin();return null;
+            // Where fullscreen video goes: the tile, or the whole display. The workspace keeps the choice.
+            case "fullscreen-mode":
+                constrainFullscreen=!constrainFullscreen;if(fullscreen)Bounds=constrainFullscreen?tileBounds:Screen.FromRectangle(tileBounds).Bounds;
+                host.BrowserFullscreenChanged(name,constrainFullscreen);break;
             case "navigate":core?.Navigate(Address(payload["url"]!.GetValue<string>()));break;
             case "back":if(core?.CanGoBack==true)core.GoBack();break;
             case "forward":if(core?.CanGoForward==true)core.GoForward();break;
@@ -142,7 +168,6 @@ internal sealed class BrowserSurface : Form
                 if(tabs.Count==0)await Add("https://www.google.com/");else if(target==selected)Select(tabs[0]);break;
             case "pin":pinned=!pinned;ApplyPin();break;
             case "diagnostics":diagnostics=payload["open"]?.GetValue<bool>()??false;ApplyPin();break;
-            case "hide":Hide();break;
             case "drag":Windows.ReleaseCapture();Windows.SendMessage(Handle,0xA1,2,0);break;
             case "devtools":core?.OpenDevToolsWindow();break;
             default:throw new InvalidOperationException("Unknown browser action.");
@@ -151,7 +176,7 @@ internal sealed class BrowserSurface : Form
     }
     private Tab? Find(JsonObject payload){var id=payload["id"]?.GetValue<string>();return tabs.FirstOrDefault(t=>t.Id==id);}
     private static readonly Lazy<string> runtime=new(()=>CoreWebView2Environment.GetAvailableBrowserVersionString());
-    private JsonObject State()=>new(){["tabs"]=new JsonArray(tabs.Select(t=>(JsonNode)new JsonObject{["id"]=t.Id,["title"]=t.View.CoreWebView2.DocumentTitle??"New tab",["url"]=t.View.CoreWebView2.Source}).ToArray()),["selected"]=selected?.Id,["url"]=selected?.View.CoreWebView2.Source,["back"]=selected?.View.CoreWebView2.CanGoBack??false,["forward"]=selected?.View.CoreWebView2.CanGoForward??false,["pinned"]=pinned,["extension"]=extensionStatus,["error"]=selected?.Error,["runtime"]=runtime.Value};
+    private JsonObject State()=>new(){["tabs"]=new JsonArray(tabs.Select(t=>(JsonNode)new JsonObject{["id"]=t.Id,["title"]=t.View.CoreWebView2.DocumentTitle??"New tab",["url"]=t.View.CoreWebView2.Source}).ToArray()),["selected"]=selected?.Id,["url"]=selected?.View.CoreWebView2.Source,["back"]=selected?.View.CoreWebView2.CanGoBack??false,["forward"]=selected?.View.CoreWebView2.CanGoForward??false,["pinned"]=pinned,["constrain"]=constrainFullscreen,["extension"]=extensionStatus,["error"]=selected?.Error,["runtime"]=runtime.Value};
     // Unchanged state is not rewritten or rebroadcast. An unreadable file is preserved and logged, not overwritten.
     private void Persist()
     {
@@ -166,5 +191,5 @@ internal sealed class BrowserSurface : Form
     }
     private void EmitState(){if(chrome.CoreWebView2 is not null)Emit("browser",State());}
     public void Emit(string name,JsonNode data){if(chrome.CoreWebView2 is not null&&!IsDisposed)chrome.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
-    protected override void Dispose(bool disposing){closing=true;if(fullscreen&&!restoreBounds.IsEmpty)Bounds=restoreBounds;base.Dispose(disposing);}
+    protected override void Dispose(bool disposing){closing=true;if(disposing){cornerTimer.Dispose();corners.Dispose();}if(fullscreen&&!restoreBounds.IsEmpty)Bounds=restoreBounds;base.Dispose(disposing);}
 }

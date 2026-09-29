@@ -304,6 +304,17 @@ internal sealed class Host : Form
     }
     internal void Emit(string name,JsonNode? data) { if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data?.DeepClone()}.ToJsonString()); }
     internal void NotifyBrowserCatalog()=>Emit("browsers",BrowserCatalog());
+    /** The browser toolbar changed where fullscreen goes; the workspace's tiles for that browser follow, and Studio hears of it. */
+    internal void BrowserFullscreenChanged(string name,bool constrain)
+    {
+        if(active is null)return;
+        foreach(var tile in Tiles(active).Where(t=>t["ContentKind"]?.GetValue<string>()=="Web"))
+        {
+            var shared=tile["SharedWebName"]?.GetValue<string>();var tileName=string.IsNullOrWhiteSpace(shared)?"tile-"+tile["Id"]!.GetValue<string>():shared;
+            if(tileName.Equals(name,StringComparison.OrdinalIgnoreCase))tile["ConstrainFullscreenToTile"]=constrain;
+        }
+        Emit("profile",active);
+    }
     // Matches the UI's Material 3 surface role, so the window never flashes another color before the page paints.
     private Color SurfaceColor=>storage.Preferences()["mode"]?.GetValue<string>()=="light"?Color.FromArgb(252,248,255):Color.FromArgb(19,19,24);
     private void Broadcast(string name,JsonNode data){Emit(name,data);foreach(var surface in surfaces)surface.Emit(name,data);foreach(var browser in browsers.Values)browser.Emit(name,data);}

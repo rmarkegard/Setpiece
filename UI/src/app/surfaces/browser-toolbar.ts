@@ -8,7 +8,7 @@ import {StudioStore} from '../state/studio-store';
 import {IconComponent} from '../ui/icon';
 import {WallpaperComponent} from '../ui/wallpaper';
 
-interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:string}[];url?:string;pinned?:boolean;back?:boolean;forward?:boolean;error?:string;extension?:string;runtime?:string;}
+interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:string}[];url?:string;pinned?:boolean;constrain?:boolean;back?:boolean;forward?:boolean;error?:string;extension?:string;runtime?:string;}
 
 /**
  * A shared browser wears the widget card: same tone, radius, Glass or Solid and Colorful or Plain.
@@ -39,8 +39,8 @@ interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:strin
             <span class="now clip">{{title()}}</span>
           }
           <span class="drag" (pointerdown)="action('drag')"></span>
+          <button class="btn" [class.on]="state().constrain" [attr.aria-pressed]="!!state().constrain" [attr.aria-label]="state().constrain?'Fullscreen stays in the tile. Switch to the whole display':'Fullscreen fills the display. Switch to the tile'" [matTooltip]="state().constrain?'Fullscreen: inside the tile':'Fullscreen: whole display'" (click)="action('fullscreen-mode')"><sp-icon [name]="state().constrain?'fit_screen':'fullscreen'"/></button>
           <button class="btn" [attr.aria-label]="pinned()?'Collapse toolbar':'Show toolbar'" [matTooltip]="pinned()?'Collapse toolbar':'Show toolbar'" (click)="action('pin')"><sp-icon [name]="pinned()?'expand_less':'expand_more'"/></button>
-          <button class="btn" aria-label="Hide browser" matTooltip="Hide browser" (click)="action('hide')"><sp-icon name="visibility_off"/></button>
         </div>
         @if(pinned()){
           <div class="row nav">
@@ -110,6 +110,7 @@ interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:strin
     .btn{display:grid;place-items:center;flex:none;width:32px;height:32px;border:0;border-radius:50%;background:none;color:var(--muted);cursor:pointer;transition:background-color .2s var(--glide),color .2s var(--glide)}
     .btn:hover:not(:disabled){background:var(--inset2);color:var(--on)}
     .btn:disabled{opacity:.35;cursor:default}
+    .btn.on{background:var(--inset2);color:var(--hi)}
     .btn sp-icon{font-size:19px}
     .seg{display:flex;align-items:center;gap:0;padding:2px;border-radius:18px;background:var(--inset)}
     .field{position:relative;flex:1;display:flex;align-items:center;gap:8px;min-width:0;height:36px;padding:0 14px;border-radius:18px;background:var(--inset);color:var(--muted);cursor:text;transition:background-color .2s var(--glide),box-shadow .2s var(--glide)}
@@ -164,11 +165,13 @@ export class BrowserToolbar implements OnDestroy {
     this.bridge.call('browser',{action:'state'}).then(data=>this.receive(data)).catch(e=>this.state.set({error:(e as Error).message}));
     // The host lays the web page into the opening; it hears again whenever the opening moves.
     effect(()=>{const el=this.page().nativeElement;this.observer?.disconnect();this.observer=new ResizeObserver(()=>this.report());this.observer.observe(el);this.observer.observe(document.documentElement);});
-    effect(()=>{this.pinned();this.state().error;this.store.appearance();requestAnimationFrame(()=>this.report());});
+    // Colour changes fade in (.8s), so the corners are drawn again once they have settled.
+    effect(()=>{this.pinned();this.state().error;this.store.appearance();requestAnimationFrame(()=>this.report());setTimeout(()=>{this.reported='';this.report();},900);});
   }
   private report(){
     const el=this.page().nativeElement,r=el.getBoundingClientRect(),radius=parseFloat(getComputedStyle(el).borderTopLeftRadius)||0;
-    const frame={top:r.top,left:r.left,right:innerWidth-r.right,bottom:innerHeight-r.bottom,radius};
+    // The look rides along so the host redraws its smooth page corners when the card's colours change.
+    const frame={top:r.top,left:r.left,right:innerWidth-r.right,bottom:innerHeight-r.bottom,radius,look:JSON.stringify(this.store.appearance())};
     const key=JSON.stringify(frame);if(key===this.reported)return;this.reported=key;
     void this.bridge.call('browser',{action:'frame',...frame}).catch(()=>{this.reported='';});
   }

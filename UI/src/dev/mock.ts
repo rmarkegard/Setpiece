@@ -30,7 +30,7 @@ export function installMock(){
   const accent=query.get('accent');
   let preferences={...defaultAppearance,mode:query.get('mode')==='light'?'light':'dark',accent:accent&&/^[0-9a-f]{6}$/i.test(accent)?'#'+accent:defaultAppearance.accent,surface:query.get('surface')==='glass'?'glass':'solid',palette:query.get('palette')==='plain'?'plain':'colorful'};
   let note='Widget redesign\n• Motion only when something happens\n• Numbers roll, lists make room';
-  const browserState={name:query.get('browser')??'Media',selected:'t1',tabs:[{id:'t1',title:'Blue hour over the fjord, live - YouTube',url:'https://www.youtube.com/watch?v=blue-hour'},{id:'t2',title:'Material Design 3',url:'https://m3.material.io/'}],url:'https://www.youtube.com/watch?v=blue-hour',pinned:true,back:true,forward:false,extension:'uBlock Origin Lite 2025.1',runtime:'140.0.3485.54'};
+  const browserState={name:query.get('browser')??'Media',selected:'t1',tabs:[{id:'t1',title:'Blue hour over the fjord, live - YouTube',url:'https://www.youtube.com/watch?v=blue-hour'},{id:'t2',title:'Material Design 3',url:'https://m3.material.io/'}],url:'https://www.youtube.com/watch?v=blue-hour',pinned:true,constrain:false,back:true,forward:false,extension:'uBlock Origin Lite 2025.1',runtime:'140.0.3485.54'};
   const services=fixtures.services(query.get('mockCamera')??undefined);
   const systemBase={...services['system'].data};
 
@@ -64,6 +64,7 @@ export function installMock(){
     browser:({action,...rest}:{action:string;[key:string]:unknown})=>{
       if(action==='select')browserState.selected=String(rest['id']);
       if(action==='pin')browserState.pinned=!browserState.pinned;
+      if(action==='fullscreen-mode')browserState.constrain=!browserState.constrain;
       if(action==='navigate')browserState.url=String(rest['url']);
       if(action==='add'){const id='t'+(browserState.tabs.length+1);browserState.tabs.push({id,title:'New tab',url:'about:blank'});browserState.selected=id;}
       if(action==='close')browserState.tabs=browserState.tabs.filter(t=>t.id!==rest['id']);
