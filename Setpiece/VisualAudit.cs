@@ -9,25 +9,29 @@ namespace Setpiece.Rebuild;
 internal static class VisualAudit
 {
     private sealed record Scene(string Name,string Query,int Width,int Height,string? Service=null);
-    // Synthetic populated states exist only in the explicitly requested isolated audit.
-    private static JsonNode DesignFixture(string service){var result=JsonNode.Parse(service switch{
-        "system"=>"""{"status":"ready","title":"System","detail":"15.1 / 31.9 GB memory","data":{"cpu":18,"memory":47,"gpu":48,"temperature":46,"download":254000,"upload":7800}}""",
-        "weather"=>"""{"status":"ready","title":"16°","detail":"Oslo","data":{"feelsLike":14.5,"wind":24.8,"code":61},"items":[{"title":"19:00","detail":"16.8° · 100% rain"},{"title":"20:00","detail":"16.7° · 100% rain"},{"title":"21:00","detail":"16.7° · 91% rain"},{"title":"22:00","detail":"16.8° · 77% rain"},{"title":"23:00","detail":"16.9° · 63% rain"}]}""",
-        "bambu-lab"=>"""{"status":"ready","title":"Printing","detail":"A1 Mini","data":{"stage":"Layer by layer","progress":68,"minutes":24,"layer":198,"layers":291,"nozzle":219.578,"bed":59.783,"cameraStatus":"Camera unavailable in design sample"}}""",
-        "google-calendar"=>"""{"status":"ready","title":"Today","detail":"Your upcoming events","items":[{"title":"Design review with the team","detail":"10:30 · 45 min"},{"title":"Lunch with Sara","detail":"12:00 · City centre"},{"title":"Focus time","detail":"14:00 · 2 hours"}]}""",
-        "ruter"=>"""{"status":"ready","title":"Kjelsås stasjon","detail":"Departures nearby","items":[{"title":"54 · Tåsen","detail":"2 min"},{"title":"54 · Kværnerbyen","detail":"5 min"},{"title":"12 · Majorstuen","detail":"7 min"},{"title":"54 · Ekeberg hageby","detail":"11 min"}]}""",
-        "discord"=>"""{"status":"ready","title":"Setpiece Makers","detail":"4 members online","items":[{"title":"Ruben","detail":"online"},{"title":"Mira","detail":"online"},{"title":"Tess","detail":"idle"},{"title":"Jon","detail":"online"}]}""",
-        "spotify"=>"""{"status":"ready","title":"Night Drive","detail":"Chromatics · Kill for Love","data":{"progress":119000,"duration":280000,"playing":true}}""",
-        "email"=>"""{"status":"ready","title":"6 messages need attention","detail":"Unread in the last 24 hours","items":[{"title":"Quarterly update","detail":"Alex · 10 min ago"},{"title":"Design review","detail":"Mira · 25 min ago"},{"title":"Invoice 2841","detail":"Finance · 1 h ago"},{"title":"Weekend plans","detail":"Tess · 2 h ago"}]}""",
-        "news"=>"""{"status":"ready","title":"A quieter web is taking shape","detail":"The latest from VG","items":[{"title":"A quieter web is taking shape","detail":"New tools change the daily rhythm."},{"title":"The city prepares for a warm weekend","detail":"A forecast worth planning around."},{"title":"Researchers map the next generation of chips","detail":"The work continues across the field."},{"title":"Local teams meet in a close final","detail":"A late goal changed the match."}]}""",
-        "reddit"=>"""{"status":"ready","title":"r/technology","detail":"A conversation worth a moment","items":[{"title":"A new approach to local-first software","detail":"1.2k points · 318 comments"},{"title":"What are you building this week?","detail":"642 points · 129 comments"},{"title":"An open standard gets a new release","detail":"529 points · 84 comments"}]}""",
-        "battery"=>"""{"status":"ready","title":"81%","detail":"About 4 h 20 min remaining","data":{"level":81,"charging":false}}""",
-        "volume"=>"""{"status":"ready","title":"System volume","detail":"Windows output device","data":{"level":42,"peak":28,"muted":false}}""",
-        "codex"=>"""{"status":"ready","title":"AI Usage","detail":"Account limits","data":{"claude":{"windows":[{"name":"claude","minutes":300,"used":34},{"name":"claude","minutes":10080,"used":61}]},"codex":{"windows":[{"name":"codex","minutes":300,"used":8,"reset":1790000000},{"name":"codex","minutes":10080,"used":78,"reset":1790200000}]},"opencode":{"available":true,"sessions":51,"tokens":15236247,"cost":9.29},"go":{"windows":[{"name":"rolling","used":0},{"name":"weekly","used":0},{"name":"monthly","used":49}]}}}""",
-        _=>"""{"status":"disconnected","title":"Connect a service","detail":"Design review"}"""
-    })!;
-        if(service=="google-calendar"){var items=result["items"]!.AsArray();var original=items.Select(x=>x!.DeepClone()).ToArray();for(var i=0;i<21;i++)items.Add(original[i%original.Length].DeepClone());}
-        return result;
+    // Synthetic populated states exist only in the explicitly requested isolated audit. They mirror the
+    // development fixtures in UI/src/dev/fixtures.ts (the widget redesign's sample data), relative to now.
+    private static JsonNode DesignFixture(string service)
+    {
+        var now=DateTimeOffset.Now;string At(double minutes)=>now.AddMinutes(minutes).ToString("O");
+        string Day(int days,int hour,int minute)=>new DateTimeOffset(now.Date.AddDays(days).AddHours(hour).AddMinutes(minute),now.Offset).ToString("O");
+        var soon=now.AddHours(2);soon=soon.AddMinutes(soon.Minute<30?30-soon.Minute:60-soon.Minute).AddSeconds(-soon.Second);
+        return JsonNode.Parse(service switch{
+            "system"=>"""{"status":"ready","title":"18% CPU","detail":"15.1 / 31.9 GB memory","data":{"cpu":18,"memory":47,"gpu":31,"temperature":46,"download":254000,"upload":7800,"usedGb":15.1,"totalGb":31.9,"cpuName":"AMD Ryzen 7 7800X3D 8-Core Processor","gpuName":"NVIDIA GeForce RTX 4070"}}""",
+            "weather"=>$$"""{"status":"ready","title":"16°","detail":"Oslo","updated":"{{At(0)}}","data":{"feelsLike":14.5,"wind":12,"code":2,"high":18,"low":11},"items":[{{string.Join(",",new[]{16,17,17,16,14,12}.Select((t,i)=>$$"""{"title":"{{now.AddHours(i):HH}}:00","detail":"{{t}}° · 10% rain","temp":{{t}}}"""))}}]}""",
+            "bambu-lab"=>"""{"status":"ready","title":"Making something good","detail":"Bambu Lab A1 Mini","data":{"stage":"RUNNING","progress":68,"minutes":24,"layer":198,"layers":291,"nozzle":220,"bed":65,"job":"Benchy","filament":"PLA Matte","cameraStatus":"Camera unavailable in design sample"}}""",
+            "google-calendar"=>$$"""{"status":"ready","title":"Your next 6 months","detail":"Upcoming events","items":[{{string.Join(",",new[]{(soon.ToString("O"),"Dinner with Sara","Mathallen"),(Day(2,17,30),"Verity","Odeon Kino"),(Day(4,20,45),"Digger","Rockefeller"),(Day(11,9,0),"Setpiece 2.0 launch","Release day"),(Day(19,8,0),"Bygdøyløpet","10 km"),(Day(46,19,0),"Fotball","Ullevaal Stadion"),(Day(54,12,30),"Flight to London","OSL → LHR"),(Day(57,14,15),"Flight to Oslo","LHR → OSL"),(Day(81,18,0),"Julebord","Grand Hotel")}.Select((e,i)=>$$"""{"id":"event-{{i}}","title":"{{e.Item2}}","detail":"{{e.Item3}}","start":"{{e.Item1}}","place":"{{e.Item3}}"}"""))}}]}""",
+            "ruter"=>$$"""{"status":"ready","title":"Kjelsås stasjon","detail":"Live departures · Entur","items":[{{string.Join(",",new[]{(2,"54","Tåsen","bus","A"),(5,"54","Kværnerbyen","bus","A"),(7,"12","Majorstuen","tram","B"),(11,"54","Ekeberg hageby","bus","A"),(14,"R10","Drammen","rail","1"),(19,"25","Majorstuen","bus","C")}.Select(d=>$$"""{"id":"{{d.Item2}}-{{d.Item3}}","title":"{{d.Item2}} · {{d.Item3}}","detail":"{{d.Item1}} min","line":"{{d.Item2}}","destination":"{{d.Item3}}","mode":"{{d.Item4}}","platform":"{{d.Item5}}","minutes":{{d.Item1}},"time":"{{At(d.Item1)}}","delay":0}"""))}}]}""",
+            "discord"=>"""{"status":"ready","title":"Lounge","detail":"4 participants · Discord desktop","items":[{"id":"you","title":"You","detail":"In call"},{"id":"sara","title":"Sara","detail":"In call"},{"id":"jonas","title":"Jonas","detail":"In call"},{"id":"ingrid","title":"Ingrid","detail":"In call"}],"data":{"voice":true,"server":"Setpiece Crew","muted":false,"deafened":false}}""",
+            "spotify"=>"""{"status":"ready","title":"Night Drive","detail":"Chromatics","data":{"album":"Night Drive","track":"2Z8WuEywRWYTKe1NybPQEW","device":"Studio PC","progress":119000,"duration":280000,"playing":true,"liked":false}}""",
+            "email"=>$$"""{"status":"ready","title":"Unread, within reach","detail":"Google inbox · latest unread messages","data":{"count":4,"source":"Gmail · Primary"},"items":[{"title":"Re: Widget review notes","detail":"Sara Lie","from":"Sara Lie","time":"{{Day(0,9,12)}}"},{"title":"[setpiece] PR #8 is ready for review","detail":"GitHub","from":"GitHub","time":"{{Day(0,8,47)}}"},{"title":"Your filament order has shipped","detail":"Bambu Lab","from":"Bambu Lab","time":"{{Day(0,8,3)}}"},{"title":"Your monthly pass renews on Friday","detail":"Ruter","from":"Ruter","time":"{{Day(-((int)now.DayOfWeek==0?7:(int)now.DayOfWeek),18,20)}}"}]}""",
+            "news"=>$$"""{"status":"ready","title":"The latest from VG","detail":"Headlines from Norway","items":[{"title":"Rekordvarm september: Oslo slo 100 år gammel rekord","detail":"","category":"Nyheter","published":"{{At(-12)}}"},{"title":"Nordlyset kan bli synlig over hele Sør-Norge i natt","detail":"","category":"Vær","published":"{{At(-48)}}"},{"title":"Ny T-banelinje til Fornebu åpner tidligere enn planlagt","detail":"","category":"Nyheter","published":"{{At(-120)}}"},{"title":"Bodø/Glimt snudde kampen på overtid – full jubel på Aspmyra","detail":"","category":"Sport","published":"{{At(-180)}}"}]}""",
+            "reddit"=>$$"""{"status":"ready","title":"r/technology","detail":"Hot conversations","items":[{"title":"Researchers demo a laptop battery that charges in under five minutes","detail":"4210 points","score":4210,"created":{{now.AddHours(-5).ToUnixTimeSeconds()}}},{"title":"The quiet comeback of the dedicated music player","detail":"2870 points","score":2870,"created":{{now.AddHours(-3).ToUnixTimeSeconds()}}},{"title":"Open-source printer firmware adds live layer previews","detail":"1940 points","score":1940,"created":{{now.AddHours(-2).ToUnixTimeSeconds()}}},{"title":"A tiny e-ink dashboard that shows your whole day at a glance","detail":"860 points","score":860,"created":{{now.AddMinutes(-40).ToUnixTimeSeconds()}}}]}""",
+            "battery"=>"""{"status":"ready","title":"76%","detail":"3h 18m remaining","data":{"level":76,"charging":false,"plugged":false,"saver":false,"remaining":11880}}""",
+            "volume"=>"""{"status":"ready","title":"42%","detail":"Speakers (Realtek Audio)","data":{"level":42,"peak":28,"muted":false}}""",
+            "codex"=>"""{"status":"ready","title":"Room for your next idea","detail":"Claude and Codex limits, OpenCode activity","data":{"claude":{"windows":[{"name":"claude","minutes":300,"used":34,"resetText":"CLAUDE_RESET"},{"name":"claude","minutes":10080,"used":61}]},"codex":{"windows":[{"name":"codex","minutes":300,"used":8,"reset":CODEX_RESET},{"name":"codex","minutes":10080,"used":78}]},"opencode":{"available":true,"sessions":51,"tokens":15236247,"cost":9.29},"go":{"windows":[{"name":"rolling","used":3},{"name":"weekly","used":12},{"name":"monthly","used":49}]}}}""".Replace("CLAUDE_RESET",At(134.5)).Replace("CODEX_RESET",now.AddHours(4).ToUnixTimeSeconds().ToString()),
+            _=>"""{"status":"disconnected","title":"Connect a service","detail":"Design review"}"""
+        })!;
     }
     public static async Task Run(Host host,Storage storage,string output)
     {
@@ -52,7 +56,7 @@ internal static class VisualAudit
         var scenes=new List<Scene>();
         foreach(var route in new[]{"Studio","Widgets","Browsers","Appearance","Settings"})
             scenes.Add(new(route.ToLowerInvariant(),"route="+route,1440,route=="Widgets"?1500:route=="Appearance"?1500:route=="Settings"?1400:1000));
-        var widgets=new[]{"clock","system","google-calendar","discord","spotify","codex","weather","bambu-lab","ruter","news","notes","email","battery","volume","reddit","idle-game","market","focus","github","twitter"};
+        var widgets=new[]{"clock","system","google-calendar","discord","spotify","codex","weather","bambu-lab","ruter","news","notes","email","battery","volume","reddit","market","focus","github","twitter"};
         foreach(var widget in widgets)scenes.Add(new("widget-"+widget,"widget="+widget,440,440,widget));
         foreach(var widget in widgets)
         {
@@ -60,7 +64,6 @@ internal static class VisualAudit
             scenes.Add(new("tall-"+widget,"widget="+widget,280,660,widget));
         }
         foreach(var service in new[]{"weather","ruter","calendar","google","spotify","discord","reddit","news","email","codex","system","bambu-lab"})scenes.Add(new("guide-"+service,"guide="+service,1000,900));
-        scenes.Add(new("game-pilot","game=1",1000,800));scenes.Add(new("game-skills","game=1&skills=1",1000,800));
         scenes.Add(new("workspace","workspace=0",1440,900));
         if(design){scenes.Clear();foreach(var widget in widgets)foreach(var size in new[]{new Size(300,340),new Size(540,325),new Size(280,660),new Size(360,220),new Size(512,286),new Size(384,286),new Size(936,256),new Size(343,271),new Size(344,635)})scenes.Add(new($"design-{widget}-{size.Width}x{size.Height}","widget="+widget,size.Width,size.Height,widget));}
         var filterIndex=Array.IndexOf(arguments,"--capture-filter");
@@ -78,7 +81,7 @@ internal static class VisualAudit
         foreach(var theme in new[]{"terminal","luna"})foreach(var scene in scenes)
         {
             frame.ClientSize=new Size(scene.Width,scene.Height);
-            if(!design&&scene.Service is not null&&widgets.Take(16).Contains(scene.Service)&&scene.Service is not ("notes" or "idle-game"))await host.HandleCommand("service",new JsonObject{["service"]=scene.Service});
+            if(!design&&scene.Service is not null&&widgets.Take(15).Contains(scene.Service)&&scene.Service!="notes")await host.HandleCommand("service",new JsonObject{["service"]=scene.Service});
             var completion=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             void Complete(object? sender,CoreWebView2NavigationCompletedEventArgs args){if(args.IsSuccess)completion.TrySetResult();else completion.TrySetException(new IOException("Audit navigation failed: "+args.WebErrorStatus));}
             view.CoreWebView2.NavigationCompleted+=Complete;

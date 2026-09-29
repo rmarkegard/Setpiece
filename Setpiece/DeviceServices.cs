@@ -37,7 +37,11 @@ internal sealed class DeviceServices : IDisposable
     }
     public void StartSensors(bool elevated=false)
     {
-        if(sensorProcess is not null&&!sensorProcess.HasExited){if(!elevated)return;sensorProcess.Kill();sensorProcess.Dispose();}
+        if(sensorProcess is not null)
+        {
+            if(!sensorProcess.HasExited){if(!elevated)return;try{sensorProcess.Kill();}catch(Exception error) when(error is InvalidOperationException or System.ComponentModel.Win32Exception){}}
+            sensorProcess.Dispose();sensorProcess=null;
+        }
         var start=new ProcessStartInfo(Path.Combine(AppContext.BaseDirectory,"Sensors","Setpiece.Sensors.exe")){UseShellExecute=elevated,CreateNoWindow=!elevated,WindowStyle=ProcessWindowStyle.Hidden};
         if(elevated)start.Verb="runas";
         foreach(var arg in new[]{"--sensor-worker","--sensor-pipe",pipeName,"--sensor-parent",Environment.ProcessId.ToString()})start.ArgumentList.Add(arg);

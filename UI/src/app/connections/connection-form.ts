@@ -5,6 +5,7 @@ import {MatButtonToggleModule} from '@angular/material/button-toggle';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatInputModule} from '@angular/material/input';
 import {MatProgressBarModule} from '@angular/material/progress-bar';
+import {MatSlideToggleModule} from '@angular/material/slide-toggle';
 import {Bridge} from '../../bridge';
 import {StudioStore} from '../state/studio-store';
 import {infoFor,statusIcon,statusLabel} from '../state/services';
@@ -20,13 +21,12 @@ const redirect='http://127.0.0.1:43827/callback/';
 @Component({
   selector:'sp-connection-form',
   changeDetection:ChangeDetectionStrategy.OnPush,
-  imports:[FormsModule,MatButtonModule,MatButtonToggleModule,MatFormFieldModule,MatInputModule,MatProgressBarModule,IconComponent],
+  imports:[FormsModule,MatButtonModule,MatButtonToggleModule,MatFormFieldModule,MatInputModule,MatProgressBarModule,MatSlideToggleModule,IconComponent],
   templateUrl:'./connection-form.html',
   styleUrl:'./connection-form.scss'
 })
 export class ConnectionFormComponent {
   readonly id=input.required<string>();
-  readonly openGame=output<void>();
   readonly openAccount=output<void>();
 
   private readonly bridge=inject(Bridge);
@@ -41,6 +41,17 @@ export class ConnectionFormComponent {
   readonly result=signal<{ok:boolean;text:string}|null>(null);
   readonly stops=signal<{id:string;name:string;label:string}[]>([]);
   readonly places=signal<{name:string;timezone:string;label:string}[]>([]);
+  /** AI Usage: what each provider reports right now, so the settings show what is connected. */
+  readonly ai=signal<Record<string,any>>({});
+  readonly aiLoading=signal(false);
+  readonly aiProviders=computed(()=>{
+    const d=this.ai(),win=(k:string)=>(d[k]?.windows??[]).length>0,status=(k:string)=>d[k]?.status??(this.aiLoading()?'Checking…':win(k)?'Connected':'Not connected');
+    return [
+      {key:'claude',name:'Claude',connected:win('claude'),status:status('claude')},
+      {key:'codex',name:'Codex',connected:win('codex'),status:status('codex')},
+      {key:'go',name:'OpenCode',connected:win('go'),status:status('go')}
+    ];
+  });
   /** Field values, keyed as the host's `connect` command expects them. */
   form:Record<string,any>={};
 
@@ -56,10 +67,23 @@ export class ConnectionFormComponent {
       discordMode:c['DiscordCallConnected']?'call':'server',location:c['WeatherLocation']??'',serverId:c['DiscordServerId']??'',
       clientId:c[service==='google'?'GoogleClientId':service==='reddit'?'RedditClientId':service==='discord'?'DiscordClientId':'SpotifyClientId']??'',
       exclusions:(c['CalendarExcludedTitles']??[]).join('\n'),community:c['RedditCommunity']??'technology',host:c['BambuHost']??'',serial:c['BambuSerial']??'',
-      provider:c['InboxProvider']??'google',executable:c['CodexExecutable']??'',categoriesText:(c['NewsCategories']??[]).join(', '),
+      provider:c['InboxProvider']??'google',executable:c['CodexExecutable']??'',hidden:[...(c['AiHidden']??[])],goKey:'',categoriesText:(c['NewsCategories']??[]).join(', '),
       stopName:c['RuterStopName']??'',query:''
     };
     this.result.set(null);this.stops.set([]);this.places.set([]);
+    if(service==='codex')void this.loadAi();
+  }
+
+  async loadAi(){
+    this.aiLoading.set(true);
+    try{this.ai.set((await this.bridge.call('service',{service:'codex'}))?.data??{});}
+    catch(e){this.result.set({ok:false,text:(e as Error).message});}
+    finally{this.aiLoading.set(false);}
+  }
+  showProvider(key:string,shown:boolean){this.form['hidden']=shown?this.form['hidden'].filter((k:string)=>k!==key):[...this.form['hidden'],key];}
+  async claudeSignIn(){
+    try{await this.bridge.call('claude-sign-in');this.result.set({ok:true,text:'Claude Code opened. Sign in there, then choose Check again.'});}
+    catch(e){this.result.set({ok:false,text:(e as Error).message});}
   }
 
   async searchStops(){try{this.stops.set(await this.bridge.call('stop-search',{query:this.form['query']}));}catch(e){this.result.set({ok:false,text:(e as Error).message});}}
@@ -71,7 +95,7 @@ export class ConnectionFormComponent {
   async commit(){
     this.form['categories']=String(this.form['categoriesText']??'').split(',').map(s=>s.trim()).filter(Boolean);
     this.busy.set(true);this.result.set(null);
-    try{const reply=await this.bridge.call('connect',this.form);this.result.set({ok:true,text:[reply?.title,reply?.detail].filter(Boolean).join(' · ')||'Saved'});await this.store.refreshConnections();}
+    try{const reply=await this.bridge.call('connect',this.form);if(this.service()==='codex'){this.form['goKey']='';void this.loadAi();}this.result.set({ok:true,text:[reply?.title,reply?.detail].filter(Boolean).join(' · ')||'Saved'});await this.store.refreshConnections();}
     catch(e){this.result.set({ok:false,text:(e as Error).message});}
     finally{this.busy.set(false);}
   }

@@ -24,7 +24,7 @@ internal sealed class Host : Form
     public Host(Storage storage)
     {
         this.storage = storage;providers = new Providers(storage);
-        Text = "Setpiece";Size = new Size(1440, 960);MinimumSize = new Size(1040, 680);StartPosition = FormStartPosition.CenterScreen;FormBorderStyle = FormBorderStyle.None;BackColor = SurfaceColor;
+        Text = "Setpiece";if(Windows.AppIcon.Value is { } icon)Icon=icon;Size = new Size(1440, 960);MinimumSize = new Size(1040, 680);StartPosition = FormStartPosition.CenterScreen;FormBorderStyle = FormBorderStyle.None;BackColor = SurfaceColor;
         Controls.Add(view);Shown += async (_, _) => await Initialize();
         FormClosing+=(_,e)=>{if(!closingConfirmed&&AuditOutput is null&&view.CoreWebView2 is not null&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;Emit("request-close",null);}};
         FormClosed += (_, _) => { foreach (var surface in surfaces) surface.Dispose();foreach (var browser in browsers.Values)browser.Dispose();windows?.Dispose();providers.Dispose(); };
@@ -131,26 +131,25 @@ internal sealed class Host : Form
             case "volume": return providers.SetVolume(payload);
             case "discord-voice":return await providers.VoiceControl(payload);
             case "spotify-playback":return await providers.Playback(payload);
+            case "spotify-like":return await providers.SaveTrack(payload);
             case "manage-widget":Show();WindowState=FormWindowState.Normal;Activate();Emit("manage-widget",payload["id"]);return null;
             case "inspect-widget":Show();WindowState=FormWindowState.Normal;Activate();Emit("inspect-widget",payload["id"]);return null;
-            case "open-game":
-                var game=surfaces.FirstOrDefault(s=>s.Key=="scrapbots");if(game is null){game=new Surface(this,new Rectangle(Location.X+80,Location.Y+80,980,740),false){Key="scrapbots"};surfaces.Add(game);await game.Start("game=1");}game.Show();game.Activate();return null;
             case "service": return await providers.Read(payload["service"]!.GetValue<string>());
             case "connect":var connected=await providers.Connect(payload);Broadcast("connections",providers.PublicSettings());return connected;
             case "disconnect":providers.Disconnect(payload["service"]!.GetValue<string>());Broadcast("connections",providers.PublicSettings());return null;
+            case "claude-sign-in":AiUsage.OpenClaudeSignIn();return null;
             case "stop-search": return await providers.SearchStops(payload["query"]!.GetValue<string>());
             case "timezone-search": return await providers.SearchTimezones(payload["query"]?.GetValue<string>()??"");
             case "note-read": return storage.ReadOptional("notes-v2.json");
-            case "note-save": storage.SaveDocument("notes-v2.json",payload);return JsonValue.Create(DateTimeOffset.Now.ToString("O"));
-            case "game-read": return storage.ReadOptional("scrapbots-v2.json");
-            case "game-save": storage.SaveDocument("scrapbots-v2.json",payload);return null;
+            // Every open Notes widget (Studio and the desk) shows the same note, so a save reaches them all.
+            case "note-save": storage.SaveDocument("notes-v2.json",payload);Broadcast("note",payload);return JsonValue.Create(DateTimeOffset.Now.ToString("O"));
             case "brave-bookmarks": return BraveBookmarks.Import(storage);
             case "brave-bookmarks-read": return BraveBookmarks.Read(storage);
             case "external": OpenExternal(payload["url"]!.GetValue<string>());return null;
             case "window":
                 switch(payload["action"]!.GetValue<string>()) { case "drag":Windows.ReleaseCapture();Windows.SendMessage(Handle,0xA1,2,0);break;case "minimize":WindowState=FormWindowState.Minimized;break;case "maximize":MaximizedBounds=Screen.FromControl(this).WorkingArea;WindowState=WindowState==FormWindowState.Maximized?FormWindowState.Normal:FormWindowState.Maximized;break;case "close":Close();break;case "close-confirmed":closingConfirmed=true;Close();break; }
                 return null;
-            case "browser-open": await OpenBrowser(payload["name"]!.GetValue<string>(),payload["url"]?.GetValue<string>()??"https://www.youtube.com/",new Rectangle(Location.X+80,Location.Y+100,1000,700),null,false);return null;
+            case "browser-open": await OpenBrowser(payload["name"]!.GetValue<string>(),payload["url"]?.GetValue<string>()??"https://www.youtube.com/",new Rectangle(Location.X+80,Location.Y+100,1000,700),null,false,false);return null;
             case "browser-list":return BrowserCatalog();
             default: throw new InvalidOperationException("This action is not supported by this version of Setpiece.");
         }
@@ -176,7 +175,8 @@ internal sealed class Host : Form
     }
     private void AutoAssignMovedWindow(nint handle)
     {
-        if(!launched||active is null||!Windows.IsWindow(handle))return;
+        // A move that does not end in a tile must not leave its placement behind as a later assignment's restore point.
+        if(!launched||active is null||!Windows.IsWindow(handle)){windows!.ForgetPendingMove(handle);return;}
         var selected=active["MonitorIndices"]!.AsArray().Select(n=>n!.GetValue<int>()).ToHashSet();var pointer=Control.MousePosition;
         foreach(var board in active["MonitorBoards"]!.AsArray().OfType<JsonObject>())
         {
@@ -260,8 +260,9 @@ internal sealed class Host : Form
         if(active is null)return;launched=true;
         var kept=new HashSet<string>();
         var keptBrowsers=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var visible=Windows.Visible();var selected=active["MonitorIndices"]!.AsArray().Select(n=>n!.GetValue<int>()).ToHashSet();var reservedHandles=new HashSet<string>(StringComparer.OrdinalIgnoreCase);var unrestored=0;
-        foreach(var board in active["MonitorBoards"]!.AsArray().OfType<JsonObject>().Where(b=>selected.Contains(b["MonitorIndex"]!.GetValue<int>())))foreach(var tile in board["Zones"]!.AsArray().OfType<JsonObject>().Where(t=>t["ContentKind"]!.GetValue<string>()=="Application"))
+        // Window enumeration only serves restoring apps; live layout edits skip it.
+        var visible=restore?Windows.Visible():new JsonArray();var selected=active["MonitorIndices"]!.AsArray().Select(n=>n!.GetValue<int>()).ToHashSet();var reservedHandles=new HashSet<string>(StringComparer.OrdinalIgnoreCase);var unrestored=0;
+        if(restore)foreach(var board in active["MonitorBoards"]!.AsArray().OfType<JsonObject>().Where(b=>selected.Contains(b["MonitorIndex"]!.GetValue<int>())))foreach(var tile in board["Zones"]!.AsArray().OfType<JsonObject>().Where(t=>t["ContentKind"]!.GetValue<string>()=="Application"))
         {
             var id=tile["Id"]!.GetValue<string>();var name=tile["AssignedProcessName"]!.GetValue<string>();var title=tile["AssignedWindowTitle"]!.GetValue<string>();
             if(name.Length!=0&&windows!.Matches(id,name,title)&&windows.AttachedHandle(id) is nint handle)reservedHandles.Add(handle.ToString());
@@ -269,12 +270,12 @@ internal sealed class Host : Form
         foreach(var board in active["MonitorBoards"]!.AsArray().OfType<JsonObject>())
         {
             var index=board["MonitorIndex"]!.GetValue<int>();if(!selected.Contains(index)||index>=Screen.AllScreens.Length)continue;
-            await EnsureSurface("workspace-"+index,Screen.AllScreens[index].Bounds,true,$"workspace={index}",kept);
+            // The desk draws this display's wallpaper and widgets; applications and browsers sit above it.
+            await EnsureSurface("workspace-"+index,Screen.AllScreens[index].Bounds,$"workspace={index}",kept);
             foreach(var tile in board["Zones"]!.AsArray().OfType<JsonObject>())
             {
                 var kind=tile["ContentKind"]!.GetValue<string>();var bounds=WindowCoordinator.TileBounds(active,board,tile);
-                if(kind=="Widget") { await EnsureSurface("widget-"+tile["Id"]+"-"+tile["WidgetId"],bounds,false,"widget="+Uri.EscapeDataString(tile["WidgetId"]!.GetValue<string>())+"&display="+index,kept); }
-                else if(kind=="Web") { var shared=tile["SharedWebName"]?.GetValue<string>();var name=string.IsNullOrWhiteSpace(shared)?"tile-"+tile["Id"]!.GetValue<string>():shared;var url=tile["Web"]?["Tabs"]?.AsArray().FirstOrDefault()?["Url"]?.GetValue<string>()??"https://www.youtube.com/";keptBrowsers.Add(name);await OpenBrowser(name,url,bounds,tile["Web"]?.AsObject(),tile["ConstrainFullscreenToTile"]?.GetValue<bool>()??false); }
+                if(kind=="Web") { var shared=tile["SharedWebName"]?.GetValue<string>();var name=string.IsNullOrWhiteSpace(shared)?"tile-"+tile["Id"]!.GetValue<string>():shared;var url=tile["Web"]?["Tabs"]?.AsArray().FirstOrDefault()?["Url"]?.GetValue<string>()??"https://www.youtube.com/";keptBrowsers.Add(name);await OpenBrowser(name,url,bounds,tile["Web"]?.AsObject(),tile["ConstrainFullscreenToTile"]?.GetValue<bool>()??false,true); }
                 else if(restore)
                 {
                     var process=tile["AssignedProcessName"]!.GetValue<string>();if(string.IsNullOrWhiteSpace(process))continue;
@@ -287,23 +288,36 @@ internal sealed class Host : Form
         }
         foreach(var obsolete in surfaces.Where(s=>!kept.Contains(s.Key)).ToArray()){obsolete.Dispose();surfaces.Remove(obsolete);}
         foreach(var pair in browsers.Where(p=>!keptBrowsers.Contains(p.Key)).ToArray()){if(pair.Key.StartsWith("tile-",StringComparison.Ordinal)){pair.Value.Dispose();browsers.Remove(pair.Key);}else pair.Value.Hide();}
+        foreach(var surface in surfaces)surface.Settle();
         windows!.HideTaskbars(selected);PlaceActive();if(restore)NotifyUnrestored(unrestored);
     }
-    private async Task EnsureSurface(string key,Rectangle bounds,bool clickThrough,string query,HashSet<string> kept)
+    private async Task EnsureSurface(string key,Rectangle bounds,string query,HashSet<string> kept)
     {
         kept.Add(key);var surface=surfaces.FirstOrDefault(s=>s.Key==key);
-        if(surface is null){surface=new Surface(this,bounds,clickThrough){Key=key};surfaces.Add(surface);await surface.Start(query);}
+        if(surface is null){surface=new Surface(this,bounds){Key=key};surfaces.Add(surface);await surface.Start(query);}
         else{surface.Bounds=bounds;surface.Emit("profile",active!);}
     }
-    private async Task OpenBrowser(string name,string url,Rectangle bounds,JsonObject? initial=null,bool constrainFullscreen=false)
+    private async Task OpenBrowser(string name,string url,Rectangle bounds,JsonObject? initial=null,bool constrainFullscreen=false,bool docked=false)
     {
         name=storage.ReadOptional("browsers-v2.json").FirstOrDefault(p=>p.Key.Equals(name,StringComparison.OrdinalIgnoreCase)).Key??name.Trim();
-        if(browsers.TryGetValue(name,out var existing)){existing.Place(bounds,constrainFullscreen);existing.Show();return;}
-        var browser=new BrowserSurface(this,storage,name,bounds,constrainFullscreen);browsers[name]=browser;await browser.Start(url,initial);
+        if(browsers.TryGetValue(name,out var existing)){existing.Docked=docked;existing.Place(bounds,constrainFullscreen);existing.Show();existing.NotifyState();return;}
+        var browser=new BrowserSurface(this,storage,name,bounds,constrainFullscreen){Docked=docked};browsers[name]=browser;await browser.Start(url,initial);
     }
     internal void Emit(string name,JsonNode? data) { if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data?.DeepClone()}.ToJsonString()); }
     internal void NotifyBrowserCatalog()=>Emit("browsers",BrowserCatalog());
-    internal double CornerRadius=>storage.Preferences()["radius"]?.GetValue<double>()??24;
+    /** The desk window under a place on screen, while a workspace is launched. */
+    internal Surface? DeskAt(Rectangle bounds)=>surfaces.FirstOrDefault(s=>!s.IsDisposed&&s.Visible&&s.Bounds.Contains(bounds));
+    /** The browser toolbar changed where fullscreen goes; the workspace's tiles for that browser follow, and Studio hears of it. */
+    internal void BrowserFullscreenChanged(string name,bool constrain)
+    {
+        if(active is null)return;
+        foreach(var tile in Tiles(active).Where(t=>t["ContentKind"]?.GetValue<string>()=="Web"))
+        {
+            var shared=tile["SharedWebName"]?.GetValue<string>();var tileName=string.IsNullOrWhiteSpace(shared)?"tile-"+tile["Id"]!.GetValue<string>():shared;
+            if(tileName.Equals(name,StringComparison.OrdinalIgnoreCase))tile["ConstrainFullscreenToTile"]=constrain;
+        }
+        Emit("profile",active);
+    }
     // Matches the UI's Material 3 surface role, so the window never flashes another color before the page paints.
     private Color SurfaceColor=>storage.Preferences()["mode"]?.GetValue<string>()=="light"?Color.FromArgb(252,248,255):Color.FromArgb(19,19,24);
     private void Broadcast(string name,JsonNode data){Emit(name,data);foreach(var surface in surfaces)surface.Emit(name,data);foreach(var browser in browsers.Values)browser.Emit(name,data);}
@@ -319,40 +333,58 @@ internal sealed class Host : Form
     protected override CreateParams CreateParams { get {var p=base.CreateParams;p.Style|=0x00040000;return p;} }
 }
 
+/// <summary>
+/// The desk behind a launched workspace, one per display: the wallpaper and every widget in one page, so the
+/// display composes them once per frame. It always stays below applications, yet takes clicks and typing so
+/// the widgets work (Notes, volume, playback).
+/// </summary>
 internal sealed class Surface : Form
 {
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     internal string Key {get;init;}="";
-    private readonly Host host;private readonly bool clickThrough;private readonly WebView2 view=new(){Dock=DockStyle.Fill};private double radius;
-    public Surface(Host host,Rectangle bounds,bool clickThrough){this.host=host;this.clickThrough=clickThrough;radius=host.CornerRadius;Bounds=bounds;FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;if(!clickThrough)BackColor=Color.Black;Controls.Add(view);Text="Setpiece workspace";HandleCreated+=(_,_)=>UpdateShape();SizeChanged+=(_,_)=>UpdateShape();UpdateShape();}
+    private bool settling;
+    private readonly Host host;private readonly WebView2 view=new(){Dock=DockStyle.Fill};
+    public Surface(Host host,Rectangle bounds){this.host=host;Bounds=bounds;FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;BackColor=Color.FromArgb(19,19,24);Controls.Add(view);Text="Setpiece workspace";}
     protected override bool ShowWithoutActivation=>true;
-    protected override CreateParams CreateParams { get {var p=base.CreateParams;p.ExStyle|=0x80;if(clickThrough)p.ExStyle|=0x08000000|0x20|0x80000;return p;} }
+    // A tool window: never in the taskbar or Alt+Tab.
+    protected override CreateParams CreateParams { get {var p=base.CreateParams;p.ExStyle|=0x80;return p;} }
     public async Task Start(string query)
     {
-        if(!clickThrough)query+="&surface=1";
-        Show();
-        if(clickThrough){Windows.SetLayeredWindowAttributes(Handle,0,255,2);Windows.BehindApplications(Handle);}
+        Show();Settle();
         await host.Configure(view);
-        if(!clickThrough){try{view.DefaultBackgroundColor=Color.Transparent;}catch(Exception){}}
-        view.CoreWebView2.NavigationCompleted+=(_,_)=>UpdateViewport();LocationChanged+=(_,_)=>UpdateViewport();SizeChanged+=(_,_)=>UpdateViewport();view.CoreWebView2.Navigate("https://setpiece.local/index.html?"+query);
+        view.CoreWebView2.Navigate("https://setpiece.local/index.html?"+query);
     }
-    private void UpdateViewport()
+    /** Puts the desk in its layer: just above the Windows desktop, below every application. */
+    internal void Settle()
     {
-        if(clickThrough||Width<=0||Height<=0)return;
-        var screen=Screen.FromRectangle(Bounds).Bounds;
+        if(!IsHandleCreated||IsDisposed)return;
+        settling=true;
+        try{Windows.BehindApplications(Handle);}
+        finally{settling=false;}
+    }
+    protected override void WndProc(ref Message message)
+    {
+        // Nothing but Settle changes the layer: clicking or typing on the desk must not lift it over applications.
+        if(message.Msg==0x46&&!settling&&message.LParam!=0)
+        {
+            var position=System.Runtime.InteropServices.Marshal.PtrToStructure<Windows.WindowPos>(message.LParam);
+            position.Flags|=0x4;System.Runtime.InteropServices.Marshal.StructureToPtr(position,message.LParam,false);
+        }
+        base.WndProc(ref message);
+    }
+    /** Where the display's wallpaper falls inside a window, so a glass card can frost the part behind it. */
+    internal static JsonObject WallpaperViewport(Rectangle bounds)
+    {
+        var screen=Screen.FromRectangle(bounds).Bounds;
         string Percent(double value)=>value.ToString("0.######",System.Globalization.CultureInfo.InvariantCulture)+"%";
-        Emit("wallpaper-viewport",new JsonObject{["left"]=Percent(100d*(screen.Left-Left)/Width),["top"]=Percent(100d*(screen.Top-Top)/Height),["width"]=Percent(100d*screen.Width/Width),["height"]=Percent(100d*screen.Height/Height),["right"]="auto",["bottom"]="auto"});
+        return new JsonObject{["left"]=Percent(100d*(screen.Left-bounds.Left)/bounds.Width),["top"]=Percent(100d*(screen.Top-bounds.Top)/bounds.Height),["width"]=Percent(100d*screen.Width/bounds.Width),["height"]=Percent(100d*screen.Height/bounds.Height),["right"]="auto",["bottom"]="auto"};
     }
-    private void UpdateShape()
+    /** A picture of the desk as it is drawn now, the size of its window. */
+    internal async Task<Bitmap?> Picture()
     {
-        if(clickThrough||Width<1||Height<1)return;
-        // Widget windows are composited with per-pixel transparency (DWM glass),
-        // so the page's rounded card is the only visible shape and its corners
-        // anti-alias against whatever is behind the window. Keep the window itself
-        // rectangular and unrounded.
-        var old=Region;Region=null;old?.Dispose();
-        Windows.ApplyRoundedCorners(Handle,false);
-        Windows.ExtendGlass(Handle);
+        if(view.CoreWebView2 is null)return null;
+        using var stream=new MemoryStream();await view.CoreWebView2.CapturePreviewAsync(Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat.Png,stream);stream.Position=0;
+        return new Bitmap(stream);
     }
-    public void Emit(string name,JsonNode data){if(name=="appearance"){radius=data["radius"]?.GetValue<double>()??24;UpdateShape();}if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
+    public void Emit(string name,JsonNode data){if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
 }

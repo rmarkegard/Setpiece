@@ -32,7 +32,7 @@ Setpiece is a Windows workspace manager. It tiles your apps, live widgets and pe
 
 ## Widgets
 
-Sixteen widgets, each colored from your accent by category, with a shape of its own: **Daily** (Clock, Calendar, Weather, Ruter, Notes), **Connected** (Spotify, Discord, Inbox, VG News, Reddit), **Device** (System, Battery, Volume, AI Usage, Bambu Lab) and **Play** (Scrapbots). Each adapts to the size of its tile, and each is set up once for every workspace.
+Fifteen widgets, each colored from your accent by category, with a shape of its own: **Daily** (Clock, Calendar, Weather, Ruter, Notes), **Connected** (Spotify, Discord, Inbox, VG News, Reddit) and **Device** (System, Battery, Volume, AI Usage, Bambu Lab). Each adapts to the size of its tile, and each is set up once for every workspace.
 
 <p>
   <picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/widgets/light-clock.png"><img src="docs/screenshots/widgets/dark-clock.png" width="24%" alt="Clock widget"></picture>
@@ -61,7 +61,7 @@ Try it interactively on the [project page](https://rmarkegard.github.io/Setpiece
 
 - **Arrange your apps.** Assign open Windows apps to tiles; drag, resize, split and snap them on a live board. Drop a tile on another to swap them.
 - **Every display, its own layout.** Include the displays a workspace uses, portrait ones too, each at its real aspect ratio. Start from a layout preset, preview it, then apply.
-- **Widgets.** Sixteen live widgets with one setup flow, a live preview, and clear setup status.
+- **Widgets.** Fifteen live widgets with one setup flow, a live preview, and clear setup status.
 - **Shared browsers.** Named WebView2 sessions with persistent tabs and fullscreen contained inside a tile.
 - **Appearance.** Material 3 Expressive. Light or dark, one accent that recolors everything, surface and corner controls, and eleven wallpapers.
 - **Workspaces.** Save several, switch in one click, and never lose unsaved changes silently.
@@ -92,7 +92,7 @@ Set-Location ..
 .\build.ps1
 ```
 
-The build script creates the production UI and Release executable, runs the UI layout/domain/theme tests and native verification checks, and writes a transcript to `artifacts/production-build.log`. `-Relaunch` opens the resulting executable. `-DataRoot` selects an isolated profile for that relaunch.
+The build script creates the production UI and Release executable, runs the UI layout/domain/theme tests and the native test suite, and writes a transcript to `artifacts/production-build.log`. `-Relaunch` opens the resulting executable. `-DataRoot` selects an isolated profile for that relaunch.
 
 ## Run
 
@@ -102,7 +102,7 @@ The source build is at `Setpiece/bin/Release/net10.0-windows/Setpiece.exe`. Keep
 .\tools\package-release.ps1
 ```
 
-It builds and verifies a local archive at `release/Setpiece-2.0.0-windows-x64.zip`. Use `-SkipBuild` only when the current Release output has already been built and verified. The script does not publish or upload the archive.
+It builds and verifies a local archive at `release/Setpiece-2.0.1-windows-x64.zip`. Use `-SkipBuild` only when the current Release output has already been built and verified. The script does not publish or upload the archive.
 
 To build the per-user Windows installer, install Inno Setup 6 and run:
 
@@ -110,7 +110,7 @@ To build the per-user Windows installer, install Inno Setup 6 and run:
 .\tools\package-installer.ps1
 ```
 
-The script packages the same app and notices as the zip into `release/Setpiece-2.0.0-windows-x64-setup.exe`. Set `ISCC_PATH` if `ISCC.exe` is outside the usual install path. The installer creates Start menu and optional desktop shortcuts, and uninstall removes only the installed program files. The separate .NET Desktop and WebView2 runtimes remain prerequisites.
+The script packages the same app and notices as the zip into `release/Setpiece-2.0.1-windows-x64-setup.exe`. Set `ISCC_PATH` if `ISCC.exe` is outside the usual install path. The installer creates Start menu and optional desktop shortcuts, and uninstall removes only the installed program files. The separate .NET Desktop and WebView2 runtimes remain prerequisites.
 
 Settings → Updates checks the latest published GitHub Release on demand. When a newer three-part version has a matching installer asset with a SHA-256 digest, Setpiece can download, verify, and launch it. A release maintainer must upload the installer under the generated filename; draft and prerelease releases are ignored. The installed app does not update silently.
 
@@ -139,7 +139,6 @@ For isolated testing, pass a separate directory with `--data-root "C:\path\to\te
 ## Verify and prepare a reveal
 
 ```powershell
-dotnet run --project Verification/Setpiece.Verification.csproj -c Release
 dotnet test Setpiece.Tests/Setpiece.Tests.csproj -c Release
 dotnet run --project Verification.Integration/Setpiece.Verification.Integration.csproj -c Release -- --live
 ```

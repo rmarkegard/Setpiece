@@ -31,6 +31,22 @@
     </sp-section>
 
     <sp-section headline="Surfaces" icon="layers">
+      <div class="field">
+        <span class="label-large">Widget cards</span>
+        <mat-button-toggle-group [value]="store.appearance().surface" (change)="set('surface',$event.value)" aria-label="Widget card surface" hideSingleSelectionIndicator>
+          <mat-button-toggle value="solid"><sp-icon name="rectangle"/>Solid</mat-button-toggle>
+          <mat-button-toggle value="glass"><sp-icon name="blur_on"/>Glass</mat-button-toggle>
+        </mat-button-toggle-group>
+        <span class="body-small on-surface-variant">Glass frosts each card so your wallpaper glows through.</span>
+      </div>
+      <div class="field">
+        <span class="label-large">Widget colors</span>
+        <mat-button-toggle-group [value]="store.appearance().palette" (change)="set('palette',$event.value)" aria-label="Widget colors" hideSingleSelectionIndicator>
+          <mat-button-toggle value="colorful"><sp-icon name="palette"/>Colorful</mat-button-toggle>
+          <mat-button-toggle value="plain"><sp-icon name="contrast"/>Plain</mat-button-toggle>
+        </mat-button-toggle-group>
+        <span class="body-small on-surface-variant">Plain puts every card on one quiet surface; each widget keeps its color in the details.</span>
+      </div>
       @for(item of surfaces;track item.key){
         <label class="slider">
           <span class="slider-head"><span class="body-large">{{item.label}}</span><span class="value label-large">{{value(item.key)*100|number:'1.0-0'}}%</span></span>
@@ -49,9 +65,9 @@
   <aside class="preview" aria-label="Live preview">
     <div class="desk">
       <sp-wallpaper [id]="store.profile().WallpaperId" [moving]="false"/>
-      <div class="sample daily"><span class="label-medium">Friday 24 Oct</span><strong class="hero">10:24</strong></div>
-      <div class="sample device"><span class="label-medium">CPU</span><strong class="hero small">18%</strong><i class="bar"><b></b></i></div>
-      <div class="sample connected"><span class="label-medium">Now playing</span><strong class="title-medium">Night Drive</strong><span class="play"><sp-icon name="pause" [filled]="true"/></span></div>
+      <div class="sample daily sp wg ck"><span class="label-medium">Friday 24 Oct</span><strong class="hero">10:24</strong></div>
+      <div class="sample device sp wg sy"><span class="label-medium">CPU</span><strong class="hero small">18%</strong><i class="bar"><b></b></i></div>
+      <div class="sample connected sp wg mu trk-0"><span class="label-medium">Now playing</span><strong class="title-medium">Night Drive</strong><span class="play"><sp-icon name="pause" [filled]="true"/></span></div>
       <div class="sample app"><sp-icon name="web_asset"/><span class="label-medium">Your app</span></div>
     </div>
     <p class="body-small on-surface-variant">Live preview with your wallpaper, accent and surfaces.</p>

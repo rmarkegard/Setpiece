@@ -14,7 +14,7 @@ internal static class BraveBookmarks
     {
         var userData=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"BraveSoftware","Brave-Browser","User Data");
         if(!Directory.Exists(userData))throw new InvalidOperationException("Brave user data was not found for this Windows account.");
-        var items=new JsonArray();var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var items=new JsonArray();var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);var bar=new JsonArray();
         foreach(var file in Directory.EnumerateDirectories(userData).Select(folder=>Path.Combine(folder,"Bookmarks")).Where(File.Exists).OrderBy(p=>p,StringComparer.OrdinalIgnoreCase))
         {
             JsonObject document;try{document=JsonNode.Parse(File.ReadAllText(file))?.AsObject()??new JsonObject();}catch(Exception error) when(error is IOException or System.Text.Json.JsonException){continue;}
@@ -22,9 +22,32 @@ internal static class BraveBookmarks
             if(document["roots"] is JsonObject roots)foreach(var root in Roots)if(roots[root] is JsonObject node)Collect(node,"",profile,profileItems,seen);
             var icons=Favicons(Path.GetDirectoryName(file)!,profileItems.Select(i=>i["url"]!.GetValue<string>()).ToHashSet(StringComparer.OrdinalIgnoreCase));
             foreach(var item in profileItems){var url=item["url"]!.GetValue<string>();item["icon"]=icons.GetValueOrDefault(url)??Fallback(item["title"]!.GetValue<string>());items.Add(item);}
+            // The bar as Brave shows it: its bookmarks and folders in order, then Other and Mobile bookmarks as folders.
+            if(document["roots"] is JsonObject shelf)
+            {
+                if(shelf["bookmark_bar"] is JsonObject top)foreach(var node in Tree(top,icons))bar.Add(node);
+                foreach(var root in new[]{"other","synced"})if(shelf[root] is JsonObject folder&&Tree(folder,icons) is {Count:>0} children)bar.Add(new JsonObject{["type"]="folder",["title"]=folder["name"]?.GetValue<string>()??root,["children"]=children});
+            }
         }
         if(items.Count==0)throw new InvalidOperationException("No Brave bookmarks were found. Close Brave briefly if its profile is locked, then try again.");
-        var result=new JsonObject{["imported"]=DateTimeOffset.Now.ToString("O"),["count"]=items.Count,["items"]=items};storage.SaveDocument("brave-bookmarks-v1.json",result);return result;
+        var result=new JsonObject{["imported"]=DateTimeOffset.Now.ToString("O"),["count"]=items.Count,["items"]=items,["bar"]=bar};storage.SaveDocument("brave-bookmarks-v1.json",result);return result;
+    }
+
+    /** A folder's bookmarks and subfolders in Brave's order; empty folders are left out. */
+    internal static JsonArray Tree(JsonObject folder,IReadOnlyDictionary<string,string> icons)
+    {
+        var result=new JsonArray();if(folder["children"] is not JsonArray children)return result;
+        foreach(var node in children.OfType<JsonObject>())
+        {
+            var name=node["name"]?.GetValue<string>()??"";
+            if(node["type"]?.GetValue<string>()=="url")
+            {
+                var url=node["url"]?.GetValue<string>()??"";if(!Uri.TryCreate(url,UriKind.Absolute,out var uri)||uri.Scheme is not ("http" or "https"))continue;
+                result.Add(new JsonObject{["type"]="url",["title"]=name,["url"]=url,["host"]=uri.Host,["icon"]=icons.GetValueOrDefault(url)??Fallback(name)});
+            }
+            else if(Tree(node,icons) is {Count:>0} inner)result.Add(new JsonObject{["type"]="folder",["title"]=name,["children"]=inner});
+        }
+        return result;
     }
 
     private static void Collect(JsonObject node,string folder,string profile,List<JsonObject> items,HashSet<string> seen)

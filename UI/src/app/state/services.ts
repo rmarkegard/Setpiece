@@ -21,7 +21,6 @@ export const serviceInfo:Record<string,ServiceInfo>={
   weather:{service:'weather',intro:'Choose a city or place for local conditions. No account needed.',action:'Save',canDisconnect:true,status:c=>has(c['WeatherLocation'])?'connected':'needs-setup'},
   ruter:{service:'ruter',intro:'Find the stop you leave from, and see its next departures.',action:'Save',canDisconnect:true,status:c=>has(c['RuterStopName'])?'connected':'needs-setup'},
   'google-calendar':{service:'calendar',intro:'Use a private calendar feed, or your connected Google account.',action:'Connect',canDisconnect:true,status:c=>c['CalendarFeedConnected']||c['GoogleConnected']?'connected':'needs-setup'},
-  calendar:{service:'calendar',intro:'Use a private calendar feed, or your connected Google account.',action:'Connect',canDisconnect:true,status:c=>c['CalendarFeedConnected']||c['GoogleConnected']?'connected':'needs-setup'},
   google:{service:'google',intro:'Lets Calendar and Inbox read your events and mail. Read-only.',action:'Connect',canDisconnect:true,status:c=>c['GoogleConnected']?'connected':'needs-setup'},
   spotify:{service:'spotify',intro:'Shows what is playing, with playback controls.',action:'Connect',canDisconnect:true,status:c=>c['SpotifyConnected']?'connected':'needs-setup'},
   discord:{service:'discord',intro:'Follow a public server, or join your own voice calls.',action:'Connect',canDisconnect:true,status:c=>c['DiscordConnected']||c['DiscordCallConnected']?'connected':'needs-setup'},
@@ -29,12 +28,11 @@ export const serviceInfo:Record<string,ServiceInfo>={
   reddit:{service:'reddit',intro:'Pick a community to follow.',action:'Save',canDisconnect:true,status:c=>has(c['RedditCommunity'])?'connected':'needs-setup'},
   email:{service:'email',intro:'Read unread mail from Gmail or the classic Outlook desktop app.',action:'Save',canDisconnect:true,status:c=>c['InboxProvider']==='outlook'||c['GoogleConnected']?'connected':'needs-setup'},
   'bambu-lab':{service:'bambu-lab',intro:'Connect your printer over your local network.',action:'Connect',canDisconnect:true,status:c=>has(c['BambuHost'])?'connected':'needs-setup'},
-  codex:{service:'codex',intro:'Reads Claude limits with your Claude Code sign-in, Codex limits through its local app server, and OpenCode activity from its database.',action:'Save',canDisconnect:false,status:()=>'ready'},
+  codex:{service:'codex',intro:'Shows Claude, Codex and OpenCode Go limits. Choose which appear on the widget and connect the ones that are missing.',action:'Save',canDisconnect:false,status:()=>'ready'},
   system:{service:'system',intro:'CPU and memory work right away. GPU and temperature sensors need a separate collector.',action:'Enable sensors',canDisconnect:false,status:()=>'optional'},
   volume:{service:'volume',intro:'Change output volume and mute right in the widget. Pick devices in Windows Sound settings.',action:null,canDisconnect:false,status:()=>'ready'},
   battery:{service:'battery',intro:'Uses live Windows power information. Nothing to set up.',action:null,canDisconnect:false,status:()=>'ready'},
-  notes:{service:'notes',intro:'Notes save automatically to your Setpiece data folder on this PC.',action:null,canDisconnect:false,status:()=>'ready'},
-  'idle-game':{service:'idle-game',intro:'Collect salvage in the scrapyard and spend it in your workshop.',action:null,canDisconnect:false,status:()=>'ready'}
+  notes:{service:'notes',intro:'Notes save automatically to your Setpiece data folder on this PC.',action:null,canDisconnect:false,status:()=>'ready'}
 };
 
 export function infoFor(id:string):ServiceInfo|undefined{return serviceInfo[id];}

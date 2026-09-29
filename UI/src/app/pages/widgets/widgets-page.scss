@@ -29,7 +29,6 @@
   --mark-shape: var(--shape-lg);
   &[data-category='Connected'] { --mark-bg: var(--mat-sys-secondary-container); --mark-fg: var(--mat-sys-on-secondary-container); --mark-shape: var(--shape-lg) var(--shape-lg) var(--shape-lg) var(--shape-xs); }
   &[data-category='Device'] { --mark-bg: var(--mat-sys-tertiary-container); --mark-fg: var(--mat-sys-on-tertiary-container); --mark-shape: var(--shape-lg) var(--shape-xs) var(--shape-lg) var(--shape-lg); }
-  &[data-category='Play'] { --mark-bg: var(--mat-sys-play-container); --mark-fg: var(--mat-sys-on-play-container); --mark-shape: var(--shape-full); }
   &[data-category='Preview'] { --mark-bg: var(--mat-sys-surface-container-highest); --mark-fg: var(--mat-sys-on-surface-variant); }
 }
 // The whole card opens details; real buttons sit above this layer.

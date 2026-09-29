@@ -16,6 +16,8 @@ export const routes:{name:Route;label:string;icon:string}[]=[
 const routeAliases:Record<string,Route>={Connections:'Widgets',Apps:'Studio'};
 
 export interface Bookmark {title:string;displayTitle:string;host:string;url:string;icon:string;folder:string;profile:string;}
+/** The bookmark bar as Brave shows it: bookmarks and folders in order. */
+export type BookmarkNode={type:'url';title:string;displayTitle:string;host:string;url:string;icon:string}|{type:'folder';title:string;children:BookmarkNode[]};
 export interface SharedBrowser {name:string;tabs:number;url:string;}
 
 /**
@@ -31,9 +33,8 @@ export class StudioStore {
   readonly query=new URLSearchParams(location.search);
   readonly widgetId=this.query.get('widget');
   readonly workspace=this.query.has('workspace');
-  readonly gameSurface=this.query.has('game');
   readonly browserName=this.query.get('browser');
-  readonly isStudio=!this.widgetId&&!this.workspace&&!this.gameSurface&&!this.browserName;
+  readonly isStudio=!this.widgetId&&!this.workspace&&!this.browserName;
 
   readonly route=signal<Route>('Studio');
   readonly profile=signal<Profile>(newProfile('My workspace'));
@@ -55,6 +56,7 @@ export class StudioStore {
   readonly runtime=signal('');
   readonly sharedBrowsers=signal<SharedBrowser[]>([]);
   readonly bookmarks=signal<Bookmark[]>([]);
+  readonly bookmarkBar=signal<BookmarkNode[]>([]);
   readonly wallpaperViewport=signal<Record<string,string>>({});
   readonly ready=signal(false);
 
@@ -80,7 +82,8 @@ export class StudioStore {
   dialogs:{closeUnsaved:()=>void;manage:(id:string)=>void;inspect:(id:string)=>void;guide:(service:string)=>void}={closeUnsaved:()=>{},manage:()=>{},inspect:()=>{},guide:()=>{}};
 
   constructor(){
-    if(this.query.has('surface'))document.body.classList.add('widget-surface');
+    // Widget windows and the browser card are transparent: the card itself is the only visible shape.
+    if(this.query.has('surface')||this.browserName)document.body.classList.add('widget-surface');
     applyAppearance(defaultAppearance);
     this.bridge.listen(e=>this.receive(e));
   }
@@ -233,7 +236,6 @@ export class StudioStore {
     try{const assigned=await this.bridge.call<Profile>('assign',{id:tile.Id,handle:window.handle,profile:next});this.commit(this.profile());this.profile.set(assigned);this.notify('Application assigned');}
     catch(e){this.error.set((e as Error).message);}
   }
-  assignByHandle(handle:string,tileId=this.selected()){const app=this.apps().find(a=>a.handle===handle);if(app)void this.assign(app,tileId);}
   detach(id:string){
     this.profile.update(p=>{const next=structuredClone(p);for(const board of next.MonitorBoards){const tile=board.Zones.find(t=>t.Id===id);if(tile){tile.AssignedProcessName='';tile.AssignedWindowTitle='';}}return next;});
     this.notify('Application detached. The tile keeps its place.');
@@ -254,12 +256,13 @@ export class StudioStore {
     this.route.set('Studio');
   }
   manageWidget(id:string){
-    if(this.widgetId){void this.execute('manage-widget',{id});return;}
-    if(widgets.find(w=>w.id===id)?.preview||id==='twitter'){this.route.set('Widgets');return;}
+    // Outside Studio (a widget window or the desk) the main window opens the settings.
+    if(this.widgetId||this.workspace){void this.execute('manage-widget',{id});return;}
+    const known=widgets.find(w=>w.id===id);
+    if(known?.preview||known?.retired){this.route.set('Widgets');return;}
     this.dialogs.manage(id);
   }
-  expandWidget(id:string){if(this.widgetId)void this.execute('inspect-widget',{id});else this.dialogs.inspect(id);}
-  playGame(){if(this.widgetId)void this.execute('open-game');else this.dialogs.manage('idle-game');}
+  expandWidget(id:string){if(this.widgetId||this.workspace)void this.execute('inspect-widget',{id});else this.dialogs.inspect(id);}
   async refreshConnections(){try{const data=await this.bridge.call('bootstrap');this.connections.set(data.connections??{});}catch{}}
 
   // Appearance and wallpaper.
@@ -276,10 +279,24 @@ export class StudioStore {
       return {...item,host,displayTitle:isAddress?'':title};
     });
   }
-  async loadBookmarks(){try{const data=await this.bridge.call<any>('brave-bookmarks-read');this.bookmarks.set(this.normalizeBookmarks(data.items??[]));}catch{}}
+  normalizeBar(nodes:any[]):BookmarkNode[]{
+    return (nodes??[]).map(node=>node.type==='folder'?{type:'folder' as const,title:String(node.title??''),children:this.normalizeBar(node.children)}:{...this.normalizeBookmarks([node])[0],type:'url' as const});
+  }
+  private showBookmarks(data:any){
+    this.bookmarks.set(this.normalizeBookmarks(data.items??[]));
+    // An import from before folders were kept has no bar: its bookmarks stand in, one level.
+    this.bookmarkBar.set(Array.isArray(data.bar)?this.normalizeBar(data.bar):this.normalizeBar((data.items??[]).map((item:any)=>({...item,type:'url'}))));
+  }
+  async loadBookmarks(){
+    try{
+      const data=await this.bridge.call<any>('brave-bookmarks-read');this.showBookmarks(data);
+      // Bookmarks imported before folders were kept are read again once, so the bar gains its folders.
+      if((data.items??[]).length&&!Array.isArray(data.bar))this.showBookmarks(await this.bridge.call<any>('brave-bookmarks'));
+    }catch{}
+  }
   async importBookmarks(){
     this.busy.set(true);
-    try{const data=await this.bridge.call<any>('brave-bookmarks');this.bookmarks.set(this.normalizeBookmarks(data.items??[]));this.notify(`${data.count} Brave bookmarks imported`);}
+    try{const data=await this.bridge.call<any>('brave-bookmarks');this.showBookmarks(data);this.notify(`${data.count} Brave bookmarks imported`);}
     catch(e){this.error.set((e as Error).message);}
     finally{this.busy.set(false);}
   }

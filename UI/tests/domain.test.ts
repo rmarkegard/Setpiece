@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,readdirSync} from 'node:fs';
-import {wallpaperNames} from '../src/domain.ts';
+import {wallpaperNames,widgetDefinition} from '../src/domain.ts';
 import {newTile,preset,splitTile,removeTile,swapTiles,assertLayout,History,fittingGap,moveTile,resizeTile,vacantTile,vacantRegionAt,dropTile,tilePercentBounds} from '../src/domain.ts';
 
 test('every selectable wallpaper ships and agrees with native validation',()=>{
@@ -18,6 +18,10 @@ test('every selectable wallpaper ships and agrees with native validation',()=>{
     assert.equal(bytes.readUInt16BE(0),0xffd8,id+' must be a JPEG');
     assert.ok(bytes.length>10000,id+' must contain artwork');
   }
+});
+
+test('retired widgets in saved profiles keep their name',()=>{
+  for(const [id,name] of [['idle-game','Scrapbots'],['twitter','X / Twitter']]){const definition=widgetDefinition(id);assert.equal(definition.retired,true);assert.equal(definition.name,name);}
 });
 
 test('large gaps adapt to narrow tiles on a smaller display',()=>{

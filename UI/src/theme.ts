@@ -1,10 +1,14 @@
 import {argbFromHex,hexFromArgb,Hct,SchemeTonalSpot,MaterialDynamicColors,TonalPalette,DynamicScheme} from '@material/material-color-utilities';
 
 // Theme identity is independent of color, leaving room for distinct themes later.
-export interface Appearance {scheme:string;mode:'dark'|'light';accent:string;opacity:number;dim:number;glow:number;radius:number;reducedMotion:boolean;uiScale:number;fontScale:number;}
+export interface Appearance {scheme:string;mode:'dark'|'light';accent:string;opacity:number;dim:number;glow:number;radius:number;reducedMotion:boolean;uiScale:number;fontScale:number;surface:WidgetSurface;palette:WidgetPalette;}
+/** Solid cards, or frosted glass that lets the wallpaper glow through. */
+export type WidgetSurface='solid'|'glass';
+/** Colorful gives every widget its own tone; plain puts them all on one neutral surface. */
+export type WidgetPalette='colorful'|'plain';
 export const defaultAccent='#5e5ce6';
 export const accentColors=[{name:'Iris',color:defaultAccent},{name:'Sage',color:'#517c60'},{name:'Ocean',color:'#316b85'},{name:'Rose',color:'#ad526f'},{name:'Clay',color:'#96694c'},{name:'Amber',color:'#a87919'}];
-export const defaultAppearance:Appearance={scheme:'setpiece',mode:'dark',accent:defaultAccent,opacity:1,dim:.3,glow:.1,radius:24,reducedMotion:false,uiScale:1,fontScale:1};
+export const defaultAppearance:Appearance={scheme:'setpiece',mode:'dark',accent:defaultAccent,opacity:1,dim:.3,glow:.1,radius:24,reducedMotion:false,uiScale:1,fontScale:1,surface:'solid',palette:'colorful'};
 const legacySeeds:Record<string,string>={terminal:'#517c60',luna:'#686299',tidal:'#316b85',clay:'#96694c'};
 const validColor=(value:unknown):value is string=>typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value);
 // User scale preferences. Both are clamped to a usable range and snapped to 0.05 so
@@ -16,7 +20,7 @@ const scaleValue=(value:unknown,min:number,max:number):number=>{const n=typeof v
 export function normalizeAppearance(value:Partial<Appearance>|null|undefined):Appearance{
   const prefs={...defaultAppearance,...value};
   const accent=validColor(value?.accent)?value.accent.toLowerCase():legacySeeds[prefs.scheme]??defaultAccent;
-  return {...prefs,scheme:'setpiece',mode:prefs.mode==='light'?'light':'dark',accent,uiScale:scaleValue(prefs.uiScale,uiScaleRange.min,uiScaleRange.max),fontScale:scaleValue(prefs.fontScale,fontScaleRange.min,fontScaleRange.max)};
+  return {...prefs,scheme:'setpiece',mode:prefs.mode==='light'?'light':'dark',accent,surface:prefs.surface==='glass'?'glass':'solid',palette:prefs.palette==='plain'?'plain':'colorful',uiScale:scaleValue(prefs.uiScale,uiScaleRange.min,uiScaleRange.max),fontScale:scaleValue(prefs.fontScale,fontScaleRange.min,fontScaleRange.max)};
 }
 
 /**
@@ -35,34 +39,21 @@ export function colorRoles(seed:string,dark:boolean):Record<string,string>{
     neutralVariantPalette:TonalPalette.fromHueAndChroma(source.hue,9)});
   const roles:Record<string,string>={};
   for(const [name,value] of Object.entries(MaterialDynamicColors))if(value&&typeof value==='object'&&'getArgb' in value){const role=name.replace(/[A-Z]/g,c=>'-'+c.toLowerCase());roles[role]=hexFromArgb(value.getArgb(scheme));}
-  // Play is the one fixed hue: a bright game green, still toned like any other container.
-  const play=TonalPalette.fromHueAndChroma(150,40);
-  roles['play-container']=hexFromArgb(play.tone(dark?30:90));
-  roles['on-play-container']=hexFromArgb(play.tone(dark?90:10));
-  roles['play']=hexFromArgb(play.tone(dark?80:40));
   return roles;
 }
 
-/** Widget categories map onto color roles so every widget follows the accent. */
-export type WidgetCategory='Daily'|'Connected'|'Device'|'Play'|'Preview'|'Retired';
-export const categoryRoles:Record<WidgetCategory,{container:string;onContainer:string;accent:string}>={
-  Daily:{container:'primary-container',onContainer:'on-primary-container',accent:'primary'},
-  Connected:{container:'secondary-container',onContainer:'on-secondary-container',accent:'secondary'},
-  Device:{container:'tertiary-container',onContainer:'on-tertiary-container',accent:'tertiary'},
-  Play:{container:'play-container',onContainer:'on-play-container',accent:'play'},
-  Preview:{container:'surface-container-highest',onContainer:'on-surface',accent:'on-surface-variant'},
-  Retired:{container:'surface-container-highest',onContainer:'on-surface-variant',accent:'outline'}
-};
-export function categoryRole(category:string){return categoryRoles[category as WidgetCategory]??categoryRoles.Preview;}
-
+export type WidgetCategory='Daily'|'Connected'|'Device'|'Preview'|'Retired';
+/** The family tone a widget falls back to while it loads, needs setup or has nothing to show. */
+export function widgetFamily(category:string){return ({Daily:'daily',Connected:'connected',Device:'device'} as Record<string,string>)[category]??'preview';}
 /**
- * Expressive corner shapes per category, as [top-left, top-right, bottom-right, bottom-left]
- * multiples of the corner token. One smaller corner gives each family a recognizable silhouette.
+ * Each widget's own tone class (the card color, spun around the colour wheel from the accent),
+ * chosen so neighbours on a desk never match. Colors live in styles/widgets.css.
  */
-export const categoryShapes:Record<WidgetCategory,[number,number,number,number]>={
-  Daily:[1,1,1,1],Connected:[1,1,1,.25],Device:[1,.25,1,1],Play:[1.5,1.5,1.5,1.5],Preview:[1,1,1,1],Retired:[1,1,1,1]
+export const widgetTones:Record<string,string>={
+  clock:'ck','google-calendar':'cal',weather:'wx',spotify:'mu','bambu-lab':'bb',system:'sy',ruter:'ru',news:'nw',
+  codex:'ai',notes:'nt',battery:'bt',volume:'vo',discord:'dz',email:'ib',reddit:'rd'
 };
-export function categoryShape(category:string){return categoryShapes[category as WidgetCategory]??categoryShapes.Preview;}
+export function widgetTone(id:string){return widgetTones[id]??'';}
 
 /** The user's corner radius drives the whole shape scale; 24px is the Material default. */
 export function shapeScale(radius:number){const r=Number.isFinite(radius)?Math.min(radiusRange.max,Math.max(radiusRange.min,radius)):24;return r/24;}
@@ -71,6 +62,8 @@ export function applyAppearance(value:Appearance){
   const prefs=normalizeAppearance(value),roles=colorRoles(prefs.accent,prefs.mode==='dark');
   const root=document.documentElement;for(const [role,color] of Object.entries(roles))root.style.setProperty('--mat-sys-'+role,color);
   root.style.colorScheme=prefs.mode;root.dataset['mode']=prefs.mode;
+  // Widgets derive every tone from the accent in CSS (oklch relative colour), so any hex works.
+  root.style.setProperty('--accent',prefs.accent);root.classList.toggle('glass',prefs.surface==='glass');root.classList.toggle('plain',prefs.palette==='plain');
   root.style.setProperty('--surface-opacity',String(prefs.opacity));root.style.setProperty('--wallpaper-dim',String(prefs.dim));root.style.setProperty('--glow',String(prefs.glow));root.style.setProperty('--user-radius',prefs.radius+'px');root.style.setProperty('--shape-scale',String(shapeScale(prefs.radius)));root.classList.toggle('reduced-motion',prefs.reducedMotion);
   // Structural sizes (space, shape, chrome) ride --ui-scale; the rem root rides --font-scale.
   root.style.setProperty('--ui-scale',String(prefs.uiScale));root.style.setProperty('--font-scale',String(prefs.fontScale));

@@ -18,7 +18,9 @@ export function fittingGap(gap:number,margin:number,tiles:Tile[],width:number,he
   return Math.min(gap,...tiles.map(t=>Math.max(0,Math.min(t.Width*(width-2*margin),t.Height*(height-2*margin))-1)));
 }
 export interface AppWindow { handle:string; title:string; process:string; }
-export interface ServiceState { status:'loading'|'ready'|'empty'|'disconnected'|'error'|'offline'; title:string; detail:string; updated?:string; data?:Record<string,unknown>; items?:{title:string;detail:string;url?:string}[]; }
+/** A list entry from a service. Widgets that need structure (a start time, a score) read extra fields. */
+export interface ServiceItem { title:string; detail:string; url?:string; [field:string]:unknown; }
+export interface ServiceState { status:'loading'|'ready'|'empty'|'disconnected'|'error'|'offline'; title:string; detail:string; updated?:string; data?:Record<string,unknown>; items?:ServiceItem[]; }
 export interface WidgetDefinition { id:string; name:string; icon:string; category:string; description:string; preview?:boolean; retired?:boolean; }
 // Icons are Material Symbols ligature names.
 export const widgets:WidgetDefinition[] = [
@@ -37,11 +39,12 @@ export const widgets:WidgetDefinition[] = [
   {id:'battery',name:'Battery',icon:'battery_full',category:'Device',description:'Power for the work ahead.'},
   {id:'volume',name:'Volume',icon:'volume_up',category:'Device',description:'Find the right level.'},
   {id:'reddit',name:'Reddit',icon:'dynamic_feed',category:'Connected',description:'Conversations worth a moment.'},
-  {id:'idle-game',name:'Scrapbots',icon:'smart_toy',category:'Play',description:'Explore. Battle. Bring your salvage home.'},
   {id:'market',name:'Markets',icon:'show_chart',category:'Preview',description:'A watchlist concept.',preview:true},
   {id:'focus',name:'Focus',icon:'timer',category:'Preview',description:'A space to concentrate.',preview:true},
   {id:'github',name:'GitHub',icon:'commit',category:'Preview',description:'Your contributions, in view.',preview:true},
-  {id:'twitter',name:'X / Twitter',icon:'block',category:'Retired',description:'This integration has been retired.',retired:true}
+  {id:'twitter',name:'X / Twitter',icon:'block',category:'Retired',description:'This integration has been retired.',retired:true},
+  // Kept so saved Scrapbots tiles show a retired widget instead of an unknown one.
+  {id:'idle-game',name:'Scrapbots',icon:'block',category:'Retired',description:'This widget has been retired.',retired:true}
 ];
 export function widgetDefinition(id:string):WidgetDefinition{return widgets.find(w=>w.id===id)??{id,name:'Unknown widget',icon:'widgets',category:'Retired',description:'This widget is no longer available.',retired:true};}
 /** Layout presets offered by the Layouts menu. Each is built by preset() below. */

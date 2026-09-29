@@ -23,7 +23,6 @@ export const wallpaperUrl=(id:string)=>`${assetBase()}Wallpapers/${id}.jpg`;
     @keyframes drift{0%,100%{transform:scale(1.025) translate(-.35%,-.2%)}50%{transform:scale(1.065) translate(.35%,.2%)}}
     @keyframes breathe{from{background-position:0% 0%;filter:saturate(.85)}to{background-position:100% 100%;filter:saturate(1.15)}}
     :host-context(.reduced-motion) .art{animation:none}
-    @media(prefers-reduced-motion:reduce){.art.moving{animation:none}}
   `
 })
 export class WallpaperComponent {

@@ -10,7 +10,7 @@
       <span class="value label-large">{{store.appearance().fontScale|number:'1.2-2'}}×</span>
       <mat-slider row-below [min]="fontRange.min" [max]="fontRange.max" step="0.05"><input matSliderThumb aria-label="Text size" [value]="store.appearance().fontScale" (valueChange)="store.appearanceChange('fontScale',$event)"></mat-slider>
     </sp-row>
-    <sp-row headline="Reduce motion" supporting="Keep transitions and wallpapers still." icon="motion_photos_off">
+    <sp-row headline="Reduce motion" supporting="Keep widgets, transitions and wallpapers still. Setpiece follows this, not Windows animation effects." icon="motion_photos_off">
       <mat-slide-toggle aria-label="Reduce motion" [checked]="store.appearance().reducedMotion" (change)="store.appearanceChange('reducedMotion',$event.checked)"/>
     </sp-row>
   </sp-section>

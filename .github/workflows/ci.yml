@@ -28,4 +28,4 @@ jobs:
         working-directory: UI
       - run: node --test UI/tests/domain.test.ts UI/tests/widget-layout.test.ts UI/tests/theme.test.ts
       - run: dotnet build Setpiece/Setpiece.csproj -c Release
-      - run: dotnet run --project Verification/Setpiece.Verification.csproj -c Release
+      - run: dotnet test Setpiece.Tests/Setpiece.Tests.csproj -c Release

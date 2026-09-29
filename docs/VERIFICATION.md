@@ -4,7 +4,7 @@ Updated 24 September 2026. This report describes the latest documented productio
 
 ## Production build
 
-Run `.\build.ps1` from the project root on Windows. The script builds the Angular production bundle and .NET Release host, runs the UI domain/layout/theme tests, and runs the native verification project.
+Run `.\build.ps1` from the project root on Windows. The script builds the Angular production bundle and .NET Release host, runs the UI domain/layout/theme tests, and runs the native xUnit tests in `Setpiece.Tests`.
 
 Latest result on Windows 11 x64, .NET SDK 10.0.400, Node.js 24.19.0, and pnpm 11.19.0:
 

@@ -35,9 +35,6 @@ export function widgetContentLimit(id:string,width:number,height:number):number 
       if(width<260||height<220)return 1;
       if(width<440||height<420)return 2;
       return 4;
-    case 'idle-game':
-      if(width<220||height<220)return 7;
-      return width>=440&&height>=420?28:14;
     case 'github':
       if(width<240||height<220)return 16;
       return width>=440&&height>=420?40:28;

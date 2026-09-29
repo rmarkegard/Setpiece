@@ -44,9 +44,21 @@ internal static class PrinterService
         var stage=Field(print,"gcode_state");var title=stage switch{"RUNNING"=>"Making something good","PAUSE"=>"Print paused","FINISH"=>"Ready to collect","FAILED"=>"The print needs attention","IDLE"=>"Ready when you are",_=>"Printer connected"};
         var data=new JsonObject();foreach(var pair in new Dictionary<string,string>{{"progress","mc_percent"},{"minutes","mc_remaining_time"},{"layer","layer_num"},{"layers","total_layer_num"},{"nozzle","nozzle_temper"},{"bed","bed_temper"}})data[pair.Key]=print[pair.Value]?.DeepClone();
         data["stage"]=stage;data["cameraStatus"]="Enable LAN Liveview on the printer for a camera preview.";
+        data["job"]=Field(print,"subtask_name");data["filament"]=Filament(print);
         if(Field(settings,"BambuCameraCertificateSha256").Length>0)
         {try{var jpeg=await Camera(settings,timeout.Token);data["image"]="data:image/jpeg;base64,"+Convert.ToBase64String(jpeg);data["cameraStatus"]="LAN camera · refreshed with telemetry";}catch(Exception error) when(error is IOException or SocketException or OperationCanceledException or System.Security.Authentication.AuthenticationException){data["cameraStatus"]="Camera unavailable. Printer telemetry is connected.";}}
         return Providers.State("ready",title,"Bambu Lab A1 Mini",data:data);
+    }
+    /// <summary>The loaded filament, as the AMS names it ("PLA Matte"), or the external spool's type.</summary>
+    internal static string Filament(JsonObject print)
+    {
+        var ams=print["ams"];var now=ams?["tray_now"]?.GetValue<string>();
+        foreach(var unit in ams?["ams"]?.AsArray()??[])foreach(var tray in unit?["tray"]?.AsArray()??[])
+        {
+            var id=tray?["id"]?.GetValue<string>();var slot=int.TryParse(unit?["id"]?.GetValue<string>(),out var u)&&int.TryParse(id,out var t)?(u*4+t).ToString():null;
+            if(slot is not null&&slot==now)return tray?["tray_sub_brands"]?.GetValue<string>() is {Length:>0} brand?brand:tray?["tray_type"]?.GetValue<string>()??"";
+        }
+        return print["vt_tray"]?["tray_type"]?.GetValue<string>()??"";
     }
     private static async Task<JsonObject> Status(JsonObject settings,CancellationToken token)
     {
