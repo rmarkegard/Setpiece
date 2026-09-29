@@ -270,11 +270,11 @@ internal sealed class Host : Form
         foreach(var board in active["MonitorBoards"]!.AsArray().OfType<JsonObject>())
         {
             var index=board["MonitorIndex"]!.GetValue<int>();if(!selected.Contains(index)||index>=Screen.AllScreens.Length)continue;
-            await EnsureSurface("workspace-"+index,Screen.AllScreens[index].Bounds,true,$"workspace={index}",kept);
+            await EnsureSurface("workspace-"+index,Screen.AllScreens[index].Bounds,true,$"workspace={index}",kept);var floor=surfaces.First(s=>s.Key=="workspace-"+index);
             foreach(var tile in board["Zones"]!.AsArray().OfType<JsonObject>())
             {
                 var kind=tile["ContentKind"]!.GetValue<string>();var bounds=WindowCoordinator.TileBounds(active,board,tile);
-                if(kind=="Widget") { await EnsureSurface("widget-"+tile["Id"]+"-"+tile["WidgetId"],bounds,false,"widget="+Uri.EscapeDataString(tile["WidgetId"]!.GetValue<string>())+"&display="+index,kept); }
+                if(kind=="Widget") { await EnsureSurface("widget-"+tile["Id"]+"-"+tile["WidgetId"],bounds,false,"widget="+Uri.EscapeDataString(tile["WidgetId"]!.GetValue<string>())+"&display="+index,kept,floor); }
                 else if(kind=="Web") { var shared=tile["SharedWebName"]?.GetValue<string>();var name=string.IsNullOrWhiteSpace(shared)?"tile-"+tile["Id"]!.GetValue<string>():shared;var url=tile["Web"]?["Tabs"]?.AsArray().FirstOrDefault()?["Url"]?.GetValue<string>()??"https://www.youtube.com/";keptBrowsers.Add(name);await OpenBrowser(name,url,bounds,tile["Web"]?.AsObject(),tile["ConstrainFullscreenToTile"]?.GetValue<bool>()??false); }
                 else if(restore)
                 {
@@ -288,13 +288,16 @@ internal sealed class Host : Form
         }
         foreach(var obsolete in surfaces.Where(s=>!kept.Contains(s.Key)).ToArray()){obsolete.Dispose();surfaces.Remove(obsolete);}
         foreach(var pair in browsers.Where(p=>!keptBrowsers.Contains(p.Key)).ToArray()){if(pair.Key.StartsWith("tile-",StringComparison.Ordinal)){pair.Value.Dispose();browsers.Remove(pair.Key);}else pair.Value.Hide();}
+        // Layers, bottom up: wallpaper, widgets, then every other window.
+        foreach(var surface in surfaces.Where(s=>s.Floor is null))surface.Settle();
+        foreach(var surface in surfaces.Where(s=>s.Floor is not null))surface.Settle();
         windows!.HideTaskbars(selected);PlaceActive();if(restore)NotifyUnrestored(unrestored);
     }
-    private async Task EnsureSurface(string key,Rectangle bounds,bool clickThrough,string query,HashSet<string> kept)
+    private async Task EnsureSurface(string key,Rectangle bounds,bool clickThrough,string query,HashSet<string> kept,Surface? floor=null)
     {
         kept.Add(key);var surface=surfaces.FirstOrDefault(s=>s.Key==key);
-        if(surface is null){surface=new Surface(this,bounds,clickThrough){Key=key};surfaces.Add(surface);await surface.Start(query);}
-        else{surface.Bounds=bounds;surface.Emit("profile",active!);}
+        if(surface is null){surface=new Surface(this,bounds,clickThrough){Key=key,Floor=floor};surfaces.Add(surface);await surface.Start(query);}
+        else{surface.Floor=floor;surface.Bounds=bounds;surface.Emit("profile",active!);}
     }
     private async Task OpenBrowser(string name,string url,Rectangle bounds,JsonObject? initial=null,bool constrainFullscreen=false)
     {
@@ -334,6 +337,10 @@ internal sealed class Surface : Form
 {
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     internal string Key {get;init;}="";
+    /** A widget's wallpaper window: the widget sits directly above it, and below every application. */
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    internal Surface? Floor {get;set;}
+    private bool settling;
     private readonly Host host;private readonly bool clickThrough;private readonly WebView2 view=new(){Dock=DockStyle.Fill};
     public Surface(Host host,Rectangle bounds,bool clickThrough){this.host=host;this.clickThrough=clickThrough;Bounds=bounds;FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;if(!clickThrough)BackColor=Color.Black;Controls.Add(view);Text="Setpiece workspace";HandleCreated+=(_,_)=>UpdateShape();SizeChanged+=(_,_)=>UpdateShape();UpdateShape();}
     protected override bool ShowWithoutActivation=>true;
@@ -342,10 +349,34 @@ internal sealed class Surface : Form
     {
         if(!clickThrough)query+="&surface=1";
         Show();
-        if(clickThrough){Windows.SetLayeredWindowAttributes(Handle,0,255,2);Windows.BehindApplications(Handle);}
+        if(clickThrough)Windows.SetLayeredWindowAttributes(Handle,0,255,2);
+        Settle();
         await host.Configure(view);
         if(!clickThrough){try{view.DefaultBackgroundColor=Color.Transparent;}catch(Exception){}}
         view.CoreWebView2.NavigationCompleted+=(_,_)=>UpdateViewport();LocationChanged+=(_,_)=>UpdateViewport();SizeChanged+=(_,_)=>UpdateViewport();view.CoreWebView2.Navigate("https://setpiece.local/index.html?"+query);
+    }
+    /** Puts the window in its layer: the wallpaper just above the desktop, a widget just above its wallpaper. */
+    internal void Settle()
+    {
+        if(!IsHandleCreated||IsDisposed)return;
+        settling=true;
+        try
+        {
+            if(clickThrough||Floor is null||!Floor.IsHandleCreated){Windows.BehindApplications(Handle);return;}
+            var above=Windows.GetWindow(Floor.Handle,3);
+            if(above!=Handle)Windows.SetWindowPos(Handle,above==0?1:above,0,0,0,0,0x13);
+        }
+        finally{settling=false;}
+    }
+    protected override void WndProc(ref Message message)
+    {
+        // Nothing but Settle changes the layer: clicking or typing in a widget must not lift it over applications.
+        if(message.Msg==0x46&&!settling&&message.LParam!=0)
+        {
+            var position=System.Runtime.InteropServices.Marshal.PtrToStructure<Windows.WindowPos>(message.LParam);
+            position.Flags|=0x4;System.Runtime.InteropServices.Marshal.StructureToPtr(position,message.LParam,false);
+        }
+        base.WndProc(ref message);
     }
     private void UpdateViewport()
     {

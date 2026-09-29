@@ -10,6 +10,7 @@ internal static class Windows
     internal delegate bool WindowVisitor(nint window, nint state);
     internal delegate void EventCallback(nint hook, uint kind, nint window, int objectId, int childId, uint thread, uint time);
     [StructLayout(LayoutKind.Sequential)] internal struct Rect { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] internal struct WindowPos { public nint Window, InsertAfter; public int X, Y, Width, Height; public uint Flags; }
     [StructLayout(LayoutKind.Sequential)] internal struct Placement {public int Length,Flags,Show;public Point Min,Max;public Rect Normal;}
     [DllImport("user32.dll")] internal static extern bool GetWindowPlacement(nint window,ref Placement placement);
     [DllImport("user32.dll")] internal static extern bool SetWindowPlacement(nint window,ref Placement placement);
