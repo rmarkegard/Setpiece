@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeAppearance,defaultAppearance,colorRoles,accentColors,categoryRoles,categoryShape,shapeScale,type Appearance} from '../src/theme.ts';
+import {normalizeAppearance,defaultAppearance,colorRoles,accentColors,widgetFamily,widgetTone,widgetTones,shapeScale,type Appearance} from '../src/theme.ts';
+import {widgets} from '../src/domain.ts';
 
 for(const [scheme,accent] of Object.entries({terminal:'#517c60',luna:'#686299',tidal:'#316b85',clay:'#96694c'})){
   test(`migrates ${scheme} without losing mode or surface preferences`,()=>{
@@ -48,14 +49,19 @@ test('both modes retain readable text for preset and extreme custom accents',()=
     }
   }
 });
-test('every widget category keeps readable text on its container for any accent',()=>{
-  for(const accent of [...accentColors.map(a=>a.color),'#ffffff','#000000','#ffff00','#00ff00'])for(const dark of [false,true]){
-    const roles=colorRoles(accent,dark);
-    for(const [category,role] of Object.entries(categoryRoles)){
-      assert.ok(roles[role.container]&&roles[role.onContainer],`${category} roles exist`);
-      assert.ok(contrast(roles[role.container],roles[role.onContainer])>=4.5,`${accent} ${dark?'dark':'light'} ${category}`);
-    }
-  }
+test('widget surface and palette default, recover from bad values and stay idempotent',()=>{
+  assert.equal(defaultAppearance.surface,'solid');assert.equal(defaultAppearance.palette,'colorful');
+  assert.equal(prefs({surface:'glass'}).surface,'glass');assert.equal(prefs({palette:'plain'}).palette,'plain');
+  assert.equal(prefs({surface:'frosted'}).surface,'solid');assert.equal(prefs({palette:7}).palette,'colorful');
+  const chosen=prefs({surface:'glass',palette:'plain',mode:'light'});
+  assert.deepEqual(normalizeAppearance(chosen),chosen);
+});
+test('every live widget has its own tone, and each family has a fallback',()=>{
+  const live=widgets.filter(w=>!w.preview&&!w.retired);
+  for(const widget of live)assert.ok(widgetTone(widget.id),widget.id+' has a tone');
+  assert.equal(Object.keys(widgetTones).length,live.length);
+  assert.equal(widgetFamily('Daily'),'daily');assert.equal(widgetFamily('Connected'),'connected');assert.equal(widgetFamily('Device'),'device');
+  assert.equal(widgetFamily('Preview'),'preview');assert.equal(widgetFamily('Retired'),'preview');assert.equal(widgetTone('unknown'),'');
 });
 test('the accent is kept as the primary key color and recolors secondary and tertiary',()=>{
   const iris=colorRoles('#5e5ce6',true),sage=colorRoles('#517c60',true);
@@ -65,5 +71,4 @@ test('the accent is kept as the primary key color and recolors secondary and ter
 test('shape scale follows the corner radius preference and clamps',()=>{
   assert.equal(shapeScale(24),1);assert.equal(shapeScale(12),.5);
   assert.equal(shapeScale(99),32/24);assert.equal(shapeScale(Number.NaN),1);
-  assert.deepEqual(categoryShape('Unknown'),categoryShape('Preview'));
 });

@@ -18,7 +18,9 @@ export function fittingGap(gap:number,margin:number,tiles:Tile[],width:number,he
   return Math.min(gap,...tiles.map(t=>Math.max(0,Math.min(t.Width*(width-2*margin),t.Height*(height-2*margin))-1)));
 }
 export interface AppWindow { handle:string; title:string; process:string; }
-export interface ServiceState { status:'loading'|'ready'|'empty'|'disconnected'|'error'|'offline'; title:string; detail:string; updated?:string; data?:Record<string,unknown>; items?:{title:string;detail:string;url?:string}[]; }
+/** A list entry from a service. Widgets that need structure (a start time, a score) read extra fields. */
+export interface ServiceItem { title:string; detail:string; url?:string; [field:string]:unknown; }
+export interface ServiceState { status:'loading'|'ready'|'empty'|'disconnected'|'error'|'offline'; title:string; detail:string; updated?:string; data?:Record<string,unknown>; items?:ServiceItem[]; }
 export interface WidgetDefinition { id:string; name:string; icon:string; category:string; description:string; preview?:boolean; retired?:boolean; }
 // Icons are Material Symbols ligature names.
 export const widgets:WidgetDefinition[] = [

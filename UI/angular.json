@@ -14,7 +14,7 @@
             "browser": "src/main.ts",
             "index": "src/index.html",
             "tsConfig": "tsconfig.json",
-            "styles": ["src/styles.scss"],
+            "styles": ["src/styles.scss", "src/styles/widgets.css"],
             "outputPath": "dist",
             "assets": [{"glob":"**/*","input":"public","output":"/"}]
           },
