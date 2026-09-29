@@ -23,9 +23,13 @@ internal static class InboxService
         {
             var id=message!["id"]!.GetValue<string>();var metadata=await Get("messages/"+Uri.EscapeDataString(id)+"?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date");
             var headers=metadata["payload"]?["headers"]?.AsArray();string Header(string name)=>headers?.FirstOrDefault(h=>h?["name"]?.GetValue<string>().Equals(name,StringComparison.OrdinalIgnoreCase)==true)?["value"]?.GetValue<string>()??"";
-            items.Add(new JsonObject{["title"]=Header("Subject"),["detail"]=Header("From"),["url"]="https://mail.google.com/mail/u/0/#inbox/"+Uri.EscapeDataString(id)});
+            var entry=new JsonObject{["title"]=Header("Subject"),["detail"]=Header("From"),["from"]=WidgetData.SenderName(Header("From")),["unread"]=true,["url"]="https://mail.google.com/mail/u/0/#inbox/"+Uri.EscapeDataString(id)};
+            if(metadata["internalDate"]?.GetValue<string>() is string ms&&long.TryParse(ms,out var sent))entry["time"]=DateTimeOffset.FromUnixTimeMilliseconds(sent).ToLocalTime().ToString("O");
+            items.Add(entry);
         }
-        return Providers.State(items.Count>0?"ready":"empty",items.Count>0?"Unread, within reach":"You're all caught up",items.Count>0?"Google inbox · latest unread messages":"No unread messages in your inbox.",items);
+        // The inbox widget celebrates zero itself, so an empty inbox is still a ready state.
+        var count=list["resultSizeEstimate"]?.GetValue<int>()??items.Count;
+        return Providers.State("ready",items.Count>0?"Unread, within reach":"You're all caught up",items.Count>0?"Google inbox · latest unread messages":"No unread messages in your inbox.",items,new JsonObject{["count"]=Math.Max(count,items.Count),["source"]="Gmail · Inbox"});
     }
     private static async Task<JsonObject> Outlook()
     {
@@ -42,11 +46,11 @@ internal static class InboxService
                 for(var i=1;i<=Math.Min(count,8);i++)
                 {
                     dynamic item=unread.Item(i);
-                    try{items.Add(new JsonObject{["title"]=(string)item.Subject,["detail"]=(string)item.SenderName+" · "+((DateTime)item.ReceivedTime).ToString("ddd HH:mm"),["url"]="https://outlook.office.com/mail/inbox"});}
+                    try{var received=(DateTime)item.ReceivedTime;items.Add(new JsonObject{["title"]=(string)item.Subject,["detail"]=(string)item.SenderName+" · "+received.ToString("ddd HH:mm"),["from"]=(string)item.SenderName,["time"]=new DateTimeOffset(received).ToString("O"),["unread"]=true,["url"]="https://outlook.office.com/mail/inbox"});}
                     catch(COMException){}
                     finally{if(Marshal.IsComObject(item))Marshal.ReleaseComObject(item);}
                 }
-                completion.SetResult(Providers.State(count>0?"ready":"empty",count>0?$"{count} unread messages":"You're all caught up","Outlook desktop",items));
+                completion.SetResult(Providers.State("ready",count>0?$"{count} unread messages":"You're all caught up","Outlook desktop",items,new JsonObject{["count"]=count,["source"]="Outlook · Inbox"}));
             }
             catch(Exception error){completion.TrySetResult(Providers.State("error","Outlook could not be read",error is COMException?"Open classic Outlook and allow read access when it asks. New Outlook can be opened in a browser tile.":"Outlook is busy or unavailable. Open it and retry."));}
             finally{while(objects.TryPop(out var value))if(Marshal.IsComObject(value))Marshal.ReleaseComObject(value);}

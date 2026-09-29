@@ -108,10 +108,9 @@ internal sealed class Providers : IDisposable
     {
         if(settings["WeatherLatitude"] is null||settings["WeatherLongitude"] is null)return State("disconnected","Your local forecast","Choose a city to see local conditions.");
         var lat=settings["WeatherLatitude"]!.GetValue<double>().ToString(CultureInfo.InvariantCulture);var lon=settings["WeatherLongitude"]!.GetValue<double>().ToString(CultureInfo.InvariantCulture);
-        var data=await Get($"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability&forecast_days=2&timezone=auto");
-        var current=data["current"]!.AsObject();var temp=current["temperature_2m"]!.GetValue<double>();var items=new JsonArray();var hours=data["hourly"]!;var locationNow=DateTime.UtcNow.AddSeconds(data["utc_offset_seconds"]?.GetValue<int>()??0);
-        for(var i=0;i<hours["time"]!.AsArray().Count;i++){var time=DateTime.Parse(hours["time"]![i]!.GetValue<string>(),CultureInfo.InvariantCulture);if(time<locationNow.AddMinutes(-locationNow.Minute))continue;items.Add(new JsonObject{["title"]=time.ToString("HH:mm"),["detail"]=hours["temperature_2m"]![i]+"° · "+hours["precipitation_probability"]![i]+"% rain"});if(items.Count==5)break;}
-        return State("ready",$"{temp:0}°",Text(settings,"WeatherLocation"),items,new JsonObject{["feelsLike"]=current["apparent_temperature"]!.DeepClone(),["wind"]=current["wind_speed_10m"]!.DeepClone(),["code"]=current["weather_code"]!.DeepClone(),["source"]="Open-Meteo"});
+        var data=await Get($"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability&daily=temperature_2m_max,temperature_2m_min&forecast_days=2&timezone=auto");
+        var (title,hours,values)=WidgetData.Weather(data);
+        return State("ready",title,Text(settings,"WeatherLocation"),hours,values);
     }
     public async Task<JsonArray> SearchStops(string query)
     {
@@ -123,18 +122,16 @@ internal sealed class Providers : IDisposable
     private async Task<JsonObject> Departures(JsonObject settings)
     {
         var stop=Text(settings,"RuterStopId");if(stop.Length==0)return State("disconnected","Where are you headed?","Choose the stop you leave from.");
-        const string query="query Departures($stop: String!) { stopPlace(id: $stop) { name estimatedCalls(numberOfDepartures: 8, timeRange: 7200) { expectedDepartureTime destinationDisplay { frontText } serviceJourney { line { publicCode } } } } }";
+        const string query="query Departures($stop: String!) { stopPlace(id: $stop) { name estimatedCalls(numberOfDepartures: 8, timeRange: 7200) { expectedDepartureTime aimedDepartureTime destinationDisplay { frontText } quay { publicCode } serviceJourney { id line { publicCode transportMode } } } } }";
         using var request=new HttpRequestMessage(HttpMethod.Post,"https://api.entur.io/journey-planner/v3/graphql"){Content=new StringContent(new JsonObject{["query"]=query,["variables"]=new JsonObject{["stop"]=stop}}.ToJsonString(),Encoding.UTF8,"application/json")};request.Headers.Add("ET-Client-Name","setpiece-workspace");
         using var response=await http.SendAsync(request);response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
-        var place=data["data"]?["stopPlace"]??throw new InvalidDataException("Stop not found.");var items=new JsonArray();
-        foreach(var departure in place["estimatedCalls"]!.AsArray()){var minutes=Math.Max(0,(int)Math.Ceiling((DateTimeOffset.Parse(departure!["expectedDepartureTime"]!.GetValue<string>())-DateTimeOffset.Now).TotalMinutes));items.Add(new JsonObject{["title"]=departure["serviceJourney"]!["line"]!["publicCode"]+" · "+departure["destinationDisplay"]!["frontText"],["detail"]=minutes==0?"Now":minutes+" min"});}
+        var place=data["data"]?["stopPlace"]??throw new InvalidDataException("Stop not found.");var items=WidgetData.Departures(place,DateTimeOffset.Now);
         return State(items.Count==0?"empty":"ready",place["name"]!.GetValue<string>(),items.Count==0?"No departures in the next two hours.":"Live departures · Entur",items);
     }
     private async Task<JsonObject> News(JsonObject settings)
     {
         using var response=await http.GetAsync("https://www.vg.no/rss/feed/?format=rss");response.EnsureSuccessStatusCode();using var stream=await response.Content.ReadAsStreamAsync();using var reader=XmlReader.Create(stream,new XmlReaderSettings{DtdProcessing=DtdProcessing.Prohibit,XmlResolver=null});var document=XDocument.Load(reader);
-        var filters=settings["NewsCategories"]?.AsArray().Select(n=>n!.GetValue<string>()).ToArray()??[];var items=new JsonArray();
-        foreach(var item in document.Descendants("item").Where(i=>filters.Length==0||i.Elements("category").Any(c=>filters.Contains(c.Value,StringComparer.OrdinalIgnoreCase))).Take(8))items.Add(new JsonObject{["title"]=item.Element("title")?.Value??"VG",["detail"]=System.Text.RegularExpressions.Regex.Replace(WebUtility.HtmlDecode(item.Element("description")?.Value??""),"<[^>]+>",""),["url"]=item.Element("link")?.Value??"https://www.vg.no"});
+        var filters=settings["NewsCategories"]?.AsArray().Select(n=>n!.GetValue<string>()).ToArray()??[];var items=WidgetData.News(document,filters);
         return State(items.Count==0?"empty":"ready","The latest from VG",items.Count==0?"No stories match your selected categories.":"Headlines from Norway",items);
     }
     private async Task<JsonObject> Reddit(JsonObject settings)
@@ -145,34 +142,25 @@ internal sealed class Providers : IDisposable
         if(authenticated)request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",await OAuth.Token(http,storage,"Reddit",settings));
         using var response=await http.SendAsync(request);
         if(!authenticated&&response.StatusCode==HttpStatusCode.Forbidden)return State("disconnected","Connect Reddit","Reddit requires authorization on this network. Add your installed-app client ID in the widget settings.");
-        response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync())!;var items=new JsonArray();
-        foreach(var child in data["data"]!["children"]!.AsArray()){var post=child!["data"]!;items.Add(new JsonObject{["title"]=post["title"]!.DeepClone(),["detail"]=post["score"]+" points · "+post["num_comments"]+" comments",["url"]="https://www.reddit.com"+post["permalink"]});}return State("ready","r/"+community,"Hot conversations",items);
+        response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync())!;return State("ready","r/"+community,"Hot conversations",WidgetData.Reddit(data));
     }
     private async Task<JsonObject> Discord(JsonObject settings)
     {
         if(Text(settings,"DiscordCallToken").Length>0)return await ReadVoice(settings);
         var server=Text(settings,"DiscordServerId");if(server.Length==0)return State("disconnected","A place for your people","Connect a server with its widget enabled.");var data=await Get("https://discord.com/api/guilds/"+Uri.EscapeDataString(server)+"/widget.json");
-        var items=new JsonArray();foreach(var member in data["members"]!.AsArray().Take(6))items.Add(new JsonObject{["title"]=member!["username"]!.DeepClone(),["detail"]=member["status"]?.DeepClone()});return State("ready",data["name"]!.GetValue<string>(),data["presence_count"]+" members online",items);
+        var items=new JsonArray();foreach(var member in data["members"]!.AsArray().Take(6))items.Add(new JsonObject{["id"]=member!["id"]?.DeepClone(),["title"]=member["username"]!.DeepClone(),["detail"]=member["status"]?.DeepClone()});return State("ready",data["name"]!.GetValue<string>(),data["presence_count"]+" members online",items);
     }
     private async Task<JsonObject> Calendar(JsonObject settings)
     {
-        var feed=Text(settings,"CalendarFeedUrl");var excluded=settings["CalendarExcludedTitles"]?.AsArray().Select(n=>n!.GetValue<string>()).ToArray()??[];var items=new JsonArray();
-        if(feed.Length>0)
-        {
-            var calendar=Ical.Net.Calendar.Load(await http.GetStringAsync(feed))??throw new InvalidDataException("Empty calendar.");var now=DateTime.UtcNow;
-            foreach(var occurrence in calendar.GetOccurrences(new Ical.Net.DataTypes.CalDateTime(now)).TakeWhile(o=>o.Period.StartTime.AsUtc<now.AddMonths(6)))
-            {
-                if(occurrence.Source is not Ical.Net.CalendarComponents.CalendarEvent entry||excluded.Any(t=>(entry.Summary??"").Contains(t,StringComparison.OrdinalIgnoreCase)))continue;
-                items.Add(new JsonObject{["title"]=entry.Summary??"Untitled event",["detail"]=occurrence.Period.StartTime.AsUtc.ToLocalTime().ToString("ddd HH:mm")+" · "+entry.Location});if(items.Count>=50)break;
-            }
-        }
+        var feed=Text(settings,"CalendarFeedUrl");var excluded=settings["CalendarExcludedTitles"]?.AsArray().Select(n=>n!.GetValue<string>()).ToArray()??[];JsonArray items;
+        if(feed.Length>0)items=WidgetData.CalendarFeed(await http.GetStringAsync(feed),excluded,DateTime.UtcNow);
         else
         {
             if(Text(settings,"GoogleRefreshToken").Length==0)return State("disconnected","Make time for what matters","Connect Google or add a calendar feed.");
             var token=await OAuth.Token(http,storage,"Google",settings);
             var from=DateTimeOffset.UtcNow;var through=from.AddMonths(6);
-            using var request=new HttpRequestMessage(HttpMethod.Get,"https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=50&timeMin="+Uri.EscapeDataString(from.ToString("O"))+"&timeMax="+Uri.EscapeDataString(through.ToString("O")));request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);using var response=await http.SendAsync(request);response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
-            foreach(var item in data["items"]!.AsArray()){var title=item!["summary"]?.GetValue<string>()??"Untitled event";if(excluded.Any(t=>title.Contains(t,StringComparison.OrdinalIgnoreCase)))continue;items.Add(new JsonObject{["title"]=title,["detail"]=item["start"]?["dateTime"]?.GetValue<string>()??item["start"]?["date"]?.GetValue<string>()??"All day"});if(items.Count>=50)break;}
+            using var request=new HttpRequestMessage(HttpMethod.Get,"https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=150&timeMin="+Uri.EscapeDataString(from.ToString("O"))+"&timeMax="+Uri.EscapeDataString(through.ToString("O")));request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);using var response=await http.SendAsync(request);response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync())!;
+            items=WidgetData.GoogleEvents(data,excluded);
         }
         return State(items.Count==0?"empty":"ready","Your next 6 months",items.Count==0?"Your calendar is clear.":"Upcoming events",items);
     }
@@ -181,16 +169,40 @@ internal sealed class Providers : IDisposable
         if(Text(settings,"SpotifyRefreshToken").Length==0)return State("disconnected","Find your soundtrack","Connect Spotify to see what's playing.");var token=await OAuth.Token(http,storage,"Spotify",settings);
         using var request=new HttpRequestMessage(HttpMethod.Get,"https://api.spotify.com/v1/me/player");request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);using var response=await http.SendAsync(request);
         if(response.StatusCode==HttpStatusCode.NoContent)return State("empty","Nothing playing yet","Start something in Spotify.");response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync())!;var item=data["item"];
-        if(item is null)return State("empty","Nothing playing yet","Start something in Spotify.");return State("ready",item["name"]!.GetValue<string>(),string.Join(", ",item["artists"]?.AsArray().Select(a=>a!["name"]!.GetValue<string>())??[]),data:new JsonObject{["playing"]=data["is_playing"]?.DeepClone(),["progress"]=data["progress_ms"]?.DeepClone(),["duration"]=item["duration_ms"]?.DeepClone(),["image"]=item["album"]?["images"]?.AsArray().FirstOrDefault()?["url"]?.DeepClone()});
+        if(item is null)return State("empty","Nothing playing yet","Start something in Spotify.");
+        var track=item["id"]?.GetValue<string>()??"";
+        return State("ready",item["name"]!.GetValue<string>(),string.Join(", ",item["artists"]?.AsArray().Select(a=>a!["name"]!.GetValue<string>())??[]),data:new JsonObject{["playing"]=data["is_playing"]?.DeepClone(),["progress"]=data["progress_ms"]?.DeepClone(),["duration"]=item["duration_ms"]?.DeepClone(),["image"]=item["album"]?["images"]?.AsArray().FirstOrDefault()?["url"]?.DeepClone(),
+            ["album"]=item["album"]?["name"]?.DeepClone(),["track"]=track,["device"]=data["device"]?["name"]?.DeepClone(),["liked"]=track.Length>0&&await Saved(token,track)});
+    }
+    /// <summary>Whether the track is in the listener's library. Older connections lack the permission, which reads as not saved.</summary>
+    private async Task<bool> Saved(string token,string track)
+    {
+        using var request=new HttpRequestMessage(HttpMethod.Get,"https://api.spotify.com/v1/me/tracks/contains?ids="+Uri.EscapeDataString(track));request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);
+        using var response=await http.SendAsync(request);if(!response.IsSuccessStatusCode)return false;
+        return JsonNode.Parse(await response.Content.ReadAsStringAsync())?[0]?.GetValue<bool>()??false;
+    }
+    /// <summary>Saves the playing track to the library, or removes it.</summary>
+    public async Task<JsonObject> SaveTrack(JsonObject request)
+    {
+        var settings=storage.Connections();var token=await OAuth.Token(http,storage,"Spotify",settings);var current=await Read("spotify");
+        var track=current["data"]?["track"]?.GetValue<string>();if(string.IsNullOrEmpty(track))throw new InvalidDataException("Start a track in Spotify first.");
+        var liked=request["liked"]?.GetValue<bool>()??true;
+        using var message=new HttpRequestMessage(liked?HttpMethod.Put:HttpMethod.Delete,"https://api.spotify.com/v1/me/tracks?ids="+Uri.EscapeDataString(track));message.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);
+        using var response=await http.SendAsync(message);
+        if(response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)throw new InvalidDataException("Reconnect Spotify to let Setpiece save tracks to your library.");
+        response.EnsureSuccessStatusCode();cache.TryRemove("spotify",out _);return await Read("spotify");
     }
     [StructLayout(LayoutKind.Sequential)] private struct Memory {public uint Length,Load;public ulong Total,Available,PageTotal,PageAvailable,VirtualTotal,VirtualAvailable,Extended;}
     [DllImport("kernel32.dll")] private static extern bool GlobalMemoryStatusEx(ref Memory value);
     [DllImport("kernel32.dll")] private static extern bool GetSystemTimes(out long idle,out long kernel,out long user);
     private long priorIdle,priorTotal;
+    private static readonly Lazy<string> processorName=new(WidgetData.ProcessorName);
+    [StructLayout(LayoutKind.Sequential)] private struct PowerStatus {public byte AcLine,Flag,Percent,SystemStatus;public int LifeTime,FullLifeTime;}
+    [DllImport("kernel32.dll")] private static extern bool GetSystemPowerStatus(out PowerStatus status);
     private async Task<JsonObject> SystemData()
     {
         var memory=new Memory{Length=(uint)Marshal.SizeOf<Memory>()};GlobalMemoryStatusEx(ref memory);GetSystemTimes(out var idle,out var kernel,out var user);if(priorTotal==0){priorIdle=idle;priorTotal=kernel+user;await Task.Delay(200);GetSystemTimes(out idle,out kernel,out user);}var total=kernel+user;var delta=total-priorTotal;var cpu=priorTotal==0?0:100d*(1d-(idle-priorIdle)/(double)Math.Max(1,delta));priorIdle=idle;priorTotal=total;
-        var data=new JsonObject{["cpu"]=Math.Clamp(cpu,0,100),["memory"]=memory.Load,["usedGb"]=(memory.Total-memory.Available)/1073741824d,["totalGb"]=memory.Total/1073741824d};
+        var data=new JsonObject{["cpu"]=Math.Clamp(cpu,0,100),["memory"]=memory.Load,["usedGb"]=(memory.Total-memory.Available)/1073741824d,["totalGb"]=memory.Total/1073741824d,["cpuName"]=processorName.Value};
         foreach(var pair in devices.Network())data[pair.Key]=pair.Value?.DeepClone();foreach(var pair in await devices.Sensors())data[pair.Key]=pair.Value?.DeepClone();
         return State("ready",$"{cpu:0}% CPU",$"{data["usedGb"]!.GetValue<double>():0.0} / {data["totalGb"]!.GetValue<double>():0.0} GB memory",data:data);
     }
@@ -198,7 +210,10 @@ internal sealed class Providers : IDisposable
     {
         var status=SystemInformation.PowerStatus;
         if(status.BatteryChargeStatus.HasFlag(BatteryChargeStatus.NoSystemBattery))return State("empty","Plugged into your workspace","No battery is installed on this device.");
-        return State("ready",$"{status.BatteryLifePercent*100:0}%",status.PowerLineStatus==PowerLineStatus.Online?"Connected to power":status.BatteryLifeRemaining<0?"On battery · time estimate unavailable":$"{status.BatteryLifeRemaining/3600}h {status.BatteryLifeRemaining%3600/60}m remaining",data:new JsonObject{["level"]=status.BatteryLifePercent*100});
+        // Battery saver is bit 0 of SystemStatusFlag, which PowerStatus does not expose.
+        var saver=GetSystemPowerStatus(out var power)&&(power.SystemStatus&1)!=0;var plugged=status.PowerLineStatus==PowerLineStatus.Online;
+        return State("ready",$"{status.BatteryLifePercent*100:0}%",plugged?"Connected to power":status.BatteryLifeRemaining<0?"On battery · time estimate unavailable":$"{status.BatteryLifeRemaining/3600}h {status.BatteryLifeRemaining%3600/60}m remaining",
+            data:new JsonObject{["level"]=status.BatteryLifePercent*100,["plugged"]=plugged,["charging"]=status.BatteryChargeStatus.HasFlag(BatteryChargeStatus.Charging),["saver"]=saver,["remaining"]=plugged?null:status.BatteryLifeRemaining});
     }
     public JsonObject SetVolume(JsonObject request){cache.TryRemove("volume",out _);return DeviceServices.Volume(request["level"]?.GetValue<double>(),request["muted"]?.GetValue<bool>());}
     private async Task<JsonObject> ReadVoice(JsonObject settings,JsonObject? changes=null)

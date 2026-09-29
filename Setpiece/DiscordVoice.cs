@@ -65,9 +65,12 @@ internal sealed class DiscordVoice : IAsyncDisposable
         if(call?["voice_states"] is JsonArray members)foreach(var member in members.OfType<JsonObject>())
         {
             var flags=member["voice_state"];bool Flag(string name)=>flags?[name]?.GetValue<bool>()??false;
-            participants.Add(new JsonObject{["title"]=member["nick"]?.GetValue<string>()??member["user"]?["username"]?.GetValue<string>()??"Participant",["detail"]=Flag("self_deaf")||Flag("deaf")?"Deafened":Flag("self_mute")||Flag("mute")?"Muted":"In call"});
+            participants.Add(new JsonObject{["id"]=member["user"]?["id"]?.DeepClone(),["title"]=member["nick"]?.GetValue<string>()??member["user"]?["username"]?.GetValue<string>()??"Participant",["detail"]=Flag("self_deaf")||Flag("deaf")?"Deafened":Flag("self_mute")||Flag("mute")?"Muted":"In call"});
         }
-        return Providers.State(call is null?"empty":"ready",call?["name"]?.GetValue<string>()??"Not in a call",call is null?"Join a voice channel in Discord.":participants.Count+" participants · Discord desktop",participants,new JsonObject{["voice"]=true,["muted"]=voice?["mute"]?.DeepClone(),["deafened"]=voice?["deaf"]?.DeepClone()});
+        // The card's header names the server the call is in.
+        string? server=null;
+        if(call?["guild_id"]?.GetValue<string>() is {Length:>0} guild){try{server=(await Request("GET_GUILD",new JsonObject{["guild_id"]=guild}))?["name"]?.GetValue<string>();}catch(InvalidDataException){}}
+        return Providers.State(call is null?"empty":"ready",call?["name"]?.GetValue<string>()??"Not in a call",call is null?"Join a voice channel in Discord.":participants.Count+" participants · Discord desktop",participants,new JsonObject{["voice"]=true,["server"]=server,["muted"]=voice?["mute"]?.DeepClone(),["deafened"]=voice?["deaf"]?.DeepClone()});
     }
     public async ValueTask DisposeAsync(){deadline.Cancel();deadline.Dispose();await channel.DisposeAsync();}
 }

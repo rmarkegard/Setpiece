@@ -131,6 +131,7 @@ internal sealed class Host : Form
             case "volume": return providers.SetVolume(payload);
             case "discord-voice":return await providers.VoiceControl(payload);
             case "spotify-playback":return await providers.Playback(payload);
+            case "spotify-like":return await providers.SaveTrack(payload);
             case "manage-widget":Show();WindowState=FormWindowState.Normal;Activate();Emit("manage-widget",payload["id"]);return null;
             case "inspect-widget":Show();WindowState=FormWindowState.Normal;Activate();Emit("inspect-widget",payload["id"]);return null;
             case "service": return await providers.Read(payload["service"]!.GetValue<string>());
