@@ -29,7 +29,7 @@ internal sealed class BrowserSurface : Form
     private bool closing;
     private readonly PageCorners corners;
     private readonly System.Windows.Forms.Timer cornerTimer=new(){Interval=60};
-    /** Set when the corner windows cannot draw; the page then falls back to a (hard-edged) rounded region. */
+    /** Set when the corner windows cannot draw; the page then keeps only its hard-edged rounded region. */
     private bool cornersFailed;
     public BrowserSurface(Host host,Storage storage,string name,Rectangle bounds,bool constrainFullscreen=false)
     {
@@ -70,13 +70,28 @@ internal sealed class BrowserSurface : Form
     }
     private async Task Add(string url,string? id=null)
     {
+        var address=Address(url);var tab=await CreateTab(id);
+        tab.View.CoreWebView2.Navigate(address);Select(tab);Persist();
+    }
+    /** A new, not yet navigated tab. A page's popup (a sign-in window, say) is handed one of these, so it keeps its opener. */
+    private async Task<Tab> CreateTab(string? id=null)
+    {
         if(tabs.Count>=20)throw new InvalidOperationException("Close a tab before opening another (20 maximum).");
-        var address=Address(url);var view=new WebView2{Dock=DockStyle.Fill,Visible=false};pages.Controls.Add(view);
+        var view=new WebView2{Dock=DockStyle.Fill,Visible=false};pages.Controls.Add(view);
         await host.Configure(view,false);
         var core=view.CoreWebView2;var tab=new Tab(id??Guid.NewGuid().ToString("N"),view);tabs.Add(tab);
         core.Settings.AreDevToolsEnabled=true;
         core.NavigationStarting+=(_,e)=>{if(!Uri.TryCreate(e.Uri,UriKind.Absolute,out var uri)||uri.Scheme is not ("http" or "https" or "about" or "blob"))e.Cancel=true;tab.Error=null;EmitState();};
-        core.NewWindowRequested+=async(_,e)=>{e.Handled=true;try{await Add(e.Uri);}catch(Exception error){tab.Error=error.Message;EmitState();}};
+        // Popups open as tabs, but as the page's own new window: "Sign in with Google" and similar flows
+        // talk back to the page that opened them, and close themselves when they are done.
+        core.NewWindowRequested+=async(_,e)=>
+        {
+            var deferral=e.GetDeferral();
+            try{var popup=await CreateTab();e.NewWindow=popup.View.CoreWebView2;e.Handled=true;Select(popup);Persist();}
+            catch(Exception error) when(error is InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException){e.Handled=true;tab.Error=error.Message;EmitState();}
+            finally{deferral.Complete();}
+        };
+        core.WindowCloseRequested+=async(_,_)=>await Close(tab);
         core.ContextMenuRequested+=(_,e)=>
         {
             var link=e.ContextMenuTarget.LinkUri;if(!Uri.TryCreate(link,UriKind.Absolute,out var target)||target.Scheme is not ("http" or "https"))return;
@@ -97,7 +112,13 @@ internal sealed class BrowserSurface : Form
             extensionStatus=extension is null?"uBlock Origin Lite is unavailable. Rebuild to restore the bundled extension.":extension.Name+" · enabled";
         }
         catch(Exception error){extensionStatus="Extension could not start: "+error.Message;}
-        core.Navigate(address);Select(tab);Persist();
+        return tab;
+    }
+    private async Task Close(Tab target)
+    {
+        var index=tabs.IndexOf(target);if(index<0)return;tabs.RemoveAt(index);var wasSelected=target==selected;target.View.Dispose();
+        if(tabs.Count==0)await Add("https://www.google.com/");else if(wasSelected)Select(tabs[Math.Max(0,index-1)]);
+        Persist();EmitState();
     }
     private void Select(Tab tab){selected=tab;foreach(var item in tabs)item.View.Visible=item==tab;tab.View.BringToFront();SetFullscreen(tab.View.CoreWebView2.ContainsFullScreenElement);EmitState();}
     private void ApplyPin()
@@ -108,7 +129,9 @@ internal sealed class BrowserSurface : Form
         // Until the toolbar reports its opening, leave room for the toolbar it is about to draw.
         var f=frame??(pinned?(132,8,8,8,12):(52,8,8,8,12));var scale=DeviceDpi/96d;int Px(double v)=>(int)Math.Round(v*scale);
         pages.Bounds=Rectangle.FromLTRB(Px(f.Left),Px(f.Top),Math.Max(Px(f.Left)+1,ClientSize.Width-Px(f.Right)),Math.Max(Px(f.Top)+1,ClientSize.Height-Px(f.Bottom)));
-        SetPageShape(cornersFailed?Px(f.Radius):0);pages.BringToFront();ScheduleCorners();
+        // The region trims the page to its rounded shape (hard-edged, and needed: a square corner would poke past
+        // the card's own rounded edge); the corner windows then lay the smooth edge over it.
+        SetPageShape(Px(f.Radius));pages.BringToFront();ScheduleCorners();
     }
     private void ScheduleCorners(){cornerTimer.Stop();cornerTimer.Start();}
     /** Draws the smooth page corners from a fresh capture of the toolbar page. */
@@ -125,11 +148,25 @@ internal sealed class BrowserSurface : Form
         }
         catch(Exception error) when(error is ArgumentException or InvalidOperationException or System.Runtime.InteropServices.COMException or ObjectDisposedException){corners.Hide();}
     }
+    /**
+     * Trims the page's corners. With the smooth corner windows on top, the cut sits 2px outside the true
+     * curve (a region only keeps whole pixels, and cut exactly it bites into the curve's soft edge);
+     * without them it follows the curve itself.
+     */
     private void SetPageShape(int radius)
     {
-        var old=pages.Region;
-        if(radius<=1||pages.Width<2*radius||pages.Height<2*radius)pages.Region=null;
-        else{using var path=new System.Drawing.Drawing2D.GraphicsPath();var d=radius*2;var w=pages.Width;var h=pages.Height;path.AddArc(0,0,d,d,180,90);path.AddArc(w-d,0,d,d,270,90);path.AddArc(w-d,h-d,d,d,0,90);path.AddArc(0,h-d,d,d,90,90);path.CloseFigure();pages.Region=new Region(path);}
+        var old=pages.Region;var w=pages.Width;var h=pages.Height;
+        if(radius<=1||w<2*radius||h<2*radius)pages.Region=null;
+        else
+        {
+            var cut=cornersFailed?radius:radius+2;var region=new Region(new Rectangle(0,0,w,h));
+            foreach(var (cx,cy,sx,sy) in new[]{(radius,radius,0,0),(w-radius,radius,w-radius,0),(w-radius,h-radius,w-radius,h-radius),(radius,h-radius,0,h-radius)})
+            {
+                using var circle=new System.Drawing.Drawing2D.GraphicsPath();circle.AddEllipse(cx-cut,cy-cut,cut*2,cut*2);
+                using var corner=new Region(new Rectangle(sx,sy,radius,radius));corner.Exclude(circle);region.Exclude(corner);
+            }
+            pages.Region=region;
+        }
         old?.Dispose();
     }
     private void UpdateViewport(){if(chrome.CoreWebView2 is not null&&Width>0&&Height>0)Emit("wallpaper-viewport",Surface.WallpaperViewport(Bounds));}
@@ -162,10 +199,7 @@ internal sealed class BrowserSurface : Form
             case "add":await Add("https://www.google.com/");break;
             // A repeated click can name a tab that has already closed; it is ignored rather than reported.
             case "select":if(Find(payload) is { } chosen)Select(chosen);break;
-            case "close":
-                if(Find(payload) is not { } target)break;
-                tabs.Remove(target);target.View.Dispose();
-                if(tabs.Count==0)await Add("https://www.google.com/");else if(target==selected)Select(tabs[0]);break;
+            case "close":if(Find(payload) is { } target)await Close(target);break;
             case "pin":pinned=!pinned;ApplyPin();break;
             case "diagnostics":diagnostics=payload["open"]?.GetValue<bool>()??false;ApplyPin();break;
             case "drag":Windows.ReleaseCapture();Windows.SendMessage(Handle,0xA1,2,0);break;
