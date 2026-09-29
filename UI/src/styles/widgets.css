@@ -920,3 +920,6 @@
   .ru-due .odo { font-size: 38px; }
   .cal-row .cal-chip { display: none; }
 }
+/* In short tiles these parts keep their content's height, so the card zooms to fit instead of overlapping them. */
+@container (max-height: 230px) { .wx-top { flex-shrink: 0; } }
+.dz-voice { min-height: min-content; }
