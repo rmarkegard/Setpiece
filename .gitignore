@@ -9,6 +9,7 @@
 /release/.staging/
 /release/demo-data/
 /release/*.zip
+/release/*.exe
 *.user
 *.tmp
 *.log
