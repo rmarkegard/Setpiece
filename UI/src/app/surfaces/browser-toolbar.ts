@@ -82,7 +82,8 @@ interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:strin
   styles:`
     :host{display:block;position:relative;isolation:isolate;height:100vh;overflow:hidden}
     .behind{position:absolute;inset:0;overflow:hidden;clip-path:inset(0 round calc(28px * var(--shape-scale,1)))}
-    .br{position:relative;height:100vh;flex-direction:column;border-radius:calc(28px * var(--shape-scale,1));box-shadow:none;
+    /* The card clips to its own shape (clip-path, not only overflow): the glass highlight otherwise kept the corner it was first drawn with. */
+    .br{position:relative;height:100vh;flex-direction:column;border-radius:calc(28px * var(--shape-scale,1));clip-path:inset(0 round calc(28px * var(--shape-scale,1)));box-shadow:none;transition:background-color .8s var(--glide);
       --c:var(--t-accent);--on:var(--t-accent-on);--hi:var(--t-accent-hi);--v:var(--t-accent-v);
       --inner:max(4px,calc(28px * var(--shape-scale,1) - 8px))}
     .top{display:flex;flex-direction:column;flex:none;padding:6px 8px 0}
