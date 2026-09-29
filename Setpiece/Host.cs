@@ -270,12 +270,12 @@ internal sealed class Host : Form
         foreach(var board in active["MonitorBoards"]!.AsArray().OfType<JsonObject>())
         {
             var index=board["MonitorIndex"]!.GetValue<int>();if(!selected.Contains(index)||index>=Screen.AllScreens.Length)continue;
-            await EnsureSurface("workspace-"+index,Screen.AllScreens[index].Bounds,true,$"workspace={index}",kept);var floor=surfaces.First(s=>s.Key=="workspace-"+index);
+            // The desk draws this display's wallpaper and widgets; applications and browsers sit above it.
+            await EnsureSurface("workspace-"+index,Screen.AllScreens[index].Bounds,$"workspace={index}",kept);
             foreach(var tile in board["Zones"]!.AsArray().OfType<JsonObject>())
             {
                 var kind=tile["ContentKind"]!.GetValue<string>();var bounds=WindowCoordinator.TileBounds(active,board,tile);
-                if(kind=="Widget") { await EnsureSurface("widget-"+tile["Id"]+"-"+tile["WidgetId"],bounds,false,"widget="+Uri.EscapeDataString(tile["WidgetId"]!.GetValue<string>())+"&display="+index,kept,floor); }
-                else if(kind=="Web") { var shared=tile["SharedWebName"]?.GetValue<string>();var name=string.IsNullOrWhiteSpace(shared)?"tile-"+tile["Id"]!.GetValue<string>():shared;var url=tile["Web"]?["Tabs"]?.AsArray().FirstOrDefault()?["Url"]?.GetValue<string>()??"https://www.youtube.com/";keptBrowsers.Add(name);await OpenBrowser(name,url,bounds,tile["Web"]?.AsObject(),tile["ConstrainFullscreenToTile"]?.GetValue<bool>()??false); }
+                if(kind=="Web") { var shared=tile["SharedWebName"]?.GetValue<string>();var name=string.IsNullOrWhiteSpace(shared)?"tile-"+tile["Id"]!.GetValue<string>():shared;var url=tile["Web"]?["Tabs"]?.AsArray().FirstOrDefault()?["Url"]?.GetValue<string>()??"https://www.youtube.com/";keptBrowsers.Add(name);await OpenBrowser(name,url,bounds,tile["Web"]?.AsObject(),tile["ConstrainFullscreenToTile"]?.GetValue<bool>()??false); }
                 else if(restore)
                 {
                     var process=tile["AssignedProcessName"]!.GetValue<string>();if(string.IsNullOrWhiteSpace(process))continue;
@@ -288,16 +288,14 @@ internal sealed class Host : Form
         }
         foreach(var obsolete in surfaces.Where(s=>!kept.Contains(s.Key)).ToArray()){obsolete.Dispose();surfaces.Remove(obsolete);}
         foreach(var pair in browsers.Where(p=>!keptBrowsers.Contains(p.Key)).ToArray()){if(pair.Key.StartsWith("tile-",StringComparison.Ordinal)){pair.Value.Dispose();browsers.Remove(pair.Key);}else pair.Value.Hide();}
-        // Layers, bottom up: wallpaper, widgets, then every other window.
-        foreach(var surface in surfaces.Where(s=>s.Floor is null))surface.Settle();
-        foreach(var surface in surfaces.Where(s=>s.Floor is not null))surface.Settle();
+        foreach(var surface in surfaces)surface.Settle();
         windows!.HideTaskbars(selected);PlaceActive();if(restore)NotifyUnrestored(unrestored);
     }
-    private async Task EnsureSurface(string key,Rectangle bounds,bool clickThrough,string query,HashSet<string> kept,Surface? floor=null)
+    private async Task EnsureSurface(string key,Rectangle bounds,string query,HashSet<string> kept)
     {
         kept.Add(key);var surface=surfaces.FirstOrDefault(s=>s.Key==key);
-        if(surface is null){surface=new Surface(this,bounds,clickThrough){Key=key,Floor=floor};surfaces.Add(surface);await surface.Start(query);}
-        else{surface.Floor=floor;surface.Bounds=bounds;surface.Emit("profile",active!);}
+        if(surface is null){surface=new Surface(this,bounds){Key=key};surfaces.Add(surface);await surface.Start(query);}
+        else{surface.Bounds=bounds;surface.Emit("profile",active!);}
     }
     private async Task OpenBrowser(string name,string url,Rectangle bounds,JsonObject? initial=null,bool constrainFullscreen=false)
     {
@@ -333,44 +331,38 @@ internal sealed class Host : Form
     protected override CreateParams CreateParams { get {var p=base.CreateParams;p.Style|=0x00040000;return p;} }
 }
 
+/// <summary>
+/// The desk behind a launched workspace, one per display: the wallpaper and every widget in one page, so the
+/// display composes them once per frame. It always stays below applications, yet takes clicks and typing so
+/// the widgets work (Notes, volume, playback).
+/// </summary>
 internal sealed class Surface : Form
 {
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     internal string Key {get;init;}="";
-    /** A widget's wallpaper window: the widget sits directly above it, and below every application. */
-    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
-    internal Surface? Floor {get;set;}
     private bool settling;
-    private readonly Host host;private readonly bool clickThrough;private readonly WebView2 view=new(){Dock=DockStyle.Fill};
-    public Surface(Host host,Rectangle bounds,bool clickThrough){this.host=host;this.clickThrough=clickThrough;Bounds=bounds;FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;if(!clickThrough)BackColor=Color.Black;Controls.Add(view);Text="Setpiece workspace";HandleCreated+=(_,_)=>UpdateShape();SizeChanged+=(_,_)=>UpdateShape();UpdateShape();}
+    private readonly Host host;private readonly WebView2 view=new(){Dock=DockStyle.Fill};
+    public Surface(Host host,Rectangle bounds){this.host=host;Bounds=bounds;FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;BackColor=Color.FromArgb(19,19,24);Controls.Add(view);Text="Setpiece workspace";}
     protected override bool ShowWithoutActivation=>true;
-    protected override CreateParams CreateParams { get {var p=base.CreateParams;p.ExStyle|=0x80;if(clickThrough)p.ExStyle|=0x08000000|0x20|0x80000;return p;} }
+    // A tool window: never in the taskbar or Alt+Tab.
+    protected override CreateParams CreateParams { get {var p=base.CreateParams;p.ExStyle|=0x80;return p;} }
     public async Task Start(string query)
     {
-        if(!clickThrough)query+="&surface=1";
-        Show();
-        if(clickThrough)Windows.SetLayeredWindowAttributes(Handle,0,255,2);
-        Settle();
+        Show();Settle();
         await host.Configure(view);
-        if(!clickThrough){try{view.DefaultBackgroundColor=Color.Transparent;}catch(Exception){}}
-        view.CoreWebView2.NavigationCompleted+=(_,_)=>UpdateViewport();LocationChanged+=(_,_)=>UpdateViewport();SizeChanged+=(_,_)=>UpdateViewport();view.CoreWebView2.Navigate("https://setpiece.local/index.html?"+query);
+        view.CoreWebView2.Navigate("https://setpiece.local/index.html?"+query);
     }
-    /** Puts the window in its layer: the wallpaper just above the desktop, a widget just above its wallpaper. */
+    /** Puts the desk in its layer: just above the Windows desktop, below every application. */
     internal void Settle()
     {
         if(!IsHandleCreated||IsDisposed)return;
         settling=true;
-        try
-        {
-            if(clickThrough||Floor is null||!Floor.IsHandleCreated){Windows.BehindApplications(Handle);return;}
-            var above=Windows.GetWindow(Floor.Handle,3);
-            if(above!=Handle)Windows.SetWindowPos(Handle,above==0?1:above,0,0,0,0,0x13);
-        }
+        try{Windows.BehindApplications(Handle);}
         finally{settling=false;}
     }
     protected override void WndProc(ref Message message)
     {
-        // Nothing but Settle changes the layer: clicking or typing in a widget must not lift it over applications.
+        // Nothing but Settle changes the layer: clicking or typing on the desk must not lift it over applications.
         if(message.Msg==0x46&&!settling&&message.LParam!=0)
         {
             var position=System.Runtime.InteropServices.Marshal.PtrToStructure<Windows.WindowPos>(message.LParam);
@@ -378,28 +370,12 @@ internal sealed class Surface : Form
         }
         base.WndProc(ref message);
     }
-    private void UpdateViewport()
-    {
-        if(clickThrough||Width<=0||Height<=0)return;
-        Emit("wallpaper-viewport",WallpaperViewport(Bounds));
-    }
     /** Where the display's wallpaper falls inside a window, so a glass card can frost the part behind it. */
     internal static JsonObject WallpaperViewport(Rectangle bounds)
     {
         var screen=Screen.FromRectangle(bounds).Bounds;
         string Percent(double value)=>value.ToString("0.######",System.Globalization.CultureInfo.InvariantCulture)+"%";
         return new JsonObject{["left"]=Percent(100d*(screen.Left-bounds.Left)/bounds.Width),["top"]=Percent(100d*(screen.Top-bounds.Top)/bounds.Height),["width"]=Percent(100d*screen.Width/bounds.Width),["height"]=Percent(100d*screen.Height/bounds.Height),["right"]="auto",["bottom"]="auto"};
-    }
-    private void UpdateShape()
-    {
-        if(clickThrough||Width<1||Height<1)return;
-        // Widget windows are composited with per-pixel transparency (DWM glass),
-        // so the page's rounded card is the only visible shape and its corners
-        // anti-alias against whatever is behind the window. Keep the window itself
-        // rectangular and unrounded.
-        var old=Region;Region=null;old?.Dispose();
-        Windows.ApplyRoundedCorners(Handle,false);
-        Windows.ExtendGlass(Handle);
     }
     public void Emit(string name,JsonNode data){if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
 }

@@ -253,12 +253,13 @@ export class StudioStore {
     this.route.set('Studio');
   }
   manageWidget(id:string){
-    if(this.widgetId){void this.execute('manage-widget',{id});return;}
+    // Outside Studio (a widget window or the desk) the main window opens the settings.
+    if(this.widgetId||this.workspace){void this.execute('manage-widget',{id});return;}
     const known=widgets.find(w=>w.id===id);
     if(known?.preview||known?.retired){this.route.set('Widgets');return;}
     this.dialogs.manage(id);
   }
-  expandWidget(id:string){if(this.widgetId)void this.execute('inspect-widget',{id});else this.dialogs.inspect(id);}
+  expandWidget(id:string){if(this.widgetId||this.workspace)void this.execute('inspect-widget',{id});else this.dialogs.inspect(id);}
   async refreshConnections(){try{const data=await this.bridge.call('bootstrap');this.connections.set(data.connections??{});}catch{}}
 
   // Appearance and wallpaper.

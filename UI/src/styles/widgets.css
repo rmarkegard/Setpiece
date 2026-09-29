@@ -880,6 +880,9 @@
    ========================================================================== */
 /* Concept widgets that are not live yet wear the ink tone. */
 .wg.preview { --c: var(--t-ink); --on: var(--t-ink-on); --hi: var(--t-ink-hi); --v: var(--t-ink-v); border-radius: 28px; }
+/* On the desk and in the browser card, glass frosts a still, pre-blurred copy of the wallpaper (see
+   surfaces.ts): a live backdrop blur is redone whenever anything in the card moves. */
+.glass sp-workspace-backdrop .wg, .glass sp-browser-toolbar .wg { -webkit-backdrop-filter: none; backdrop-filter: none; }
 /* The volume meter shows the live signal: when nothing is playing, it rests. */
 .vo.silent .vo-meter i { animation: none; transform: scaleY(.1); }
 /* Setpiece's Reduce motion setting: no event motion, no ambient loops. Windows' "Animation effects" is not
