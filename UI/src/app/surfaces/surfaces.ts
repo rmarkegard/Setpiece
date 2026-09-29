@@ -6,22 +6,31 @@ import {IconComponent} from '../ui/icon';
 import {WallpaperComponent} from '../ui/wallpaper';
 import {WidgetFrame} from '../widgets/widget-frame';
 
-/** A launched widget: its own transparent window, so the card is the only visible shape. */
+/**
+ * A launched widget: its own transparent window, so the card is the only visible shape.
+ * For design review, ?review&w=&h= instead lays the card on a plain board at an exact size.
+ */
 @Component({
   selector:'sp-widget-window',
   changeDetection:ChangeDetectionStrategy.OnPush,
   imports:[NgStyle,WallpaperComponent,WidgetFrame],
   template:`
-    <sp-wallpaper [id]="store.profile().WallpaperId" [moving]="store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion" [ngStyle]="store.wallpaperViewport()"/>
-    <sp-widget [id]="store.widgetId!" [scale]="scale()" (expand)="store.expandWidget(store.widgetId!)" (manage)="store.manageWidget(store.widgetId!)"/>`,
+    @if(review;as size){
+      <div class="sp review"><sp-widget [id]="store.widgetId!" [style.width.px]="size.w" [style.height.px]="size.h" [canExpand]="false" [canManage]="false"/></div>
+    } @else {
+      <sp-wallpaper [id]="store.profile().WallpaperId" [moving]="store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion" [ngStyle]="store.wallpaperViewport()"/>
+      <sp-widget [id]="store.widgetId!" [scale]="scale()" (expand)="store.expandWidget(store.widgetId!)" (manage)="store.manageWidget(store.widgetId!)"/>
+    }`,
   styles:`
     :host{display:block;position:relative;isolation:isolate;height:100vh;overflow:hidden}
     :host-context(.widget-surface) sp-wallpaper{display:none}
     sp-widget{position:relative;z-index:var(--z-content);height:100%}
+    .review{box-sizing:border-box;height:100vh;padding:24px;background-color:var(--desk);background-image:radial-gradient(color-mix(in oklab,var(--ink) 10%,transparent) 1px,transparent 1.3px);background-size:18px 18px}
   `
 })
 export class WidgetWindow {
   readonly store=inject(StudioStore);
+  readonly review=this.store.query.has('review')?{w:Number(this.store.query.get('w'))||303,h:Number(this.store.query.get('h'))||251}:null;
   readonly scale=computed(()=>this.store.profile().MonitorBoards.find(b=>b.MonitorIndex===Number(this.store.query.get('display')))?.WidgetScale??1);
 }
 
