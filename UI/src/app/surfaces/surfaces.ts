@@ -9,7 +9,8 @@ import {WidgetFrame} from '../widgets/widget-frame';
 /**
  * A launched widget: its own transparent window, so the card is the only visible shape.
  * A glass card needs something to frost, so under Glass the window also paints its slice of
- * the wallpaper, clipped to the card, for the card's backdrop blur to work on.
+ * the wallpaper, clipped to the card, for the card's backdrop blur to work on. That slice holds still:
+ * under the blur the drift is invisible, and animating it would re-blur every card on every frame.
  * For design review, ?review&w=&h= instead lays the card on a plain board at an exact size.
  */
 @Component({
@@ -20,7 +21,7 @@ import {WidgetFrame} from '../widgets/widget-frame';
     @if(review;as size){
       <div class="sp review"><sp-widget [id]="store.widgetId!" [style.width.px]="size.w" [style.height.px]="size.h" [canExpand]="false" [canManage]="false"/></div>
     } @else {
-      <div class="behind" [class.glass]="store.appearance().surface==='glass'"><sp-wallpaper [id]="store.profile().WallpaperId" [moving]="store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion" [ngStyle]="store.wallpaperViewport()"/></div>
+      <div class="behind" [class.glass]="store.appearance().surface==='glass'"><sp-wallpaper [id]="store.profile().WallpaperId" [ngStyle]="store.wallpaperViewport()"/></div>
       <sp-widget [id]="store.widgetId!" [scale]="scale()" (expand)="store.expandWidget(store.widgetId!)" (manage)="store.manageWidget(store.widgetId!)"/>
     }`,
   styles:`

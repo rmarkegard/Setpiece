@@ -31,6 +31,9 @@ internal sealed class BrowserSurface : Form
     private readonly System.Windows.Forms.Timer cornerTimer=new(){Interval=60};
     /** Set when the corner windows cannot draw; the page then keeps only its hard-edged rounded region. */
     private bool cornersFailed;
+    /** What the page's shape was last cut for, so an unchanged layout does not re-clip the playing page. */
+    private (Size Size,int Radius,bool Failed)? shaped;
+    private string look="";
     public BrowserSurface(Host host,Storage storage,string name,Rectangle bounds,bool constrainFullscreen=false)
     {
         this.host=host;this.storage=storage;this.name=name;this.constrainFullscreen=constrainFullscreen;tileBounds=bounds;Bounds=bounds;Text="Setpiece · "+name;
@@ -125,13 +128,15 @@ internal sealed class BrowserSurface : Form
     {
         chrome.Visible=!fullscreen||diagnostics;pages.Visible=!diagnostics;
         if(fullscreen||diagnostics)corners.Hide();
-        if(fullscreen&&!diagnostics){pages.Bounds=ClientRectangle;SetPageShape(0);pages.BringToFront();return;}
+        if(fullscreen&&!diagnostics){pages.Bounds=ClientRectangle;SetPageShape(0);shaped=null;pages.BringToFront();return;}
         // Until the toolbar reports its opening, leave room for the toolbar it is about to draw.
         var f=frame??(pinned?(132,8,8,8,12):(52,8,8,8,12));var scale=DeviceDpi/96d;int Px(double v)=>(int)Math.Round(v*scale);
-        pages.Bounds=Rectangle.FromLTRB(Px(f.Left),Px(f.Top),Math.Max(Px(f.Left)+1,ClientSize.Width-Px(f.Right)),Math.Max(Px(f.Top)+1,ClientSize.Height-Px(f.Bottom)));
+        var bounds=Rectangle.FromLTRB(Px(f.Left),Px(f.Top),Math.Max(Px(f.Left)+1,ClientSize.Width-Px(f.Right)),Math.Max(Px(f.Top)+1,ClientSize.Height-Px(f.Bottom)));
+        var moved=pages.Bounds!=bounds;if(moved)pages.Bounds=bounds;
+        var shape=(bounds.Size,Px(f.Radius),cornersFailed);pages.BringToFront();if(!moved&&shaped==shape)return;shaped=shape;
         // The region trims the page to its rounded shape (hard-edged, and needed: a square corner would poke past
         // the card's own rounded edge); the corner windows then lay the smooth edge over it.
-        SetPageShape(Px(f.Radius));pages.BringToFront();ScheduleCorners();
+        SetPageShape(Px(f.Radius));ScheduleCorners();
     }
     private void ScheduleCorners(){cornerTimer.Stop();cornerTimer.Start();}
     /** Draws the smooth page corners from a fresh capture of the toolbar page. */
@@ -186,7 +191,10 @@ internal sealed class BrowserSurface : Form
             case "state":break;
             case "frame":
                 double Read(string key)=>Math.Clamp(payload[key]?.GetValue<double>()??0,0,4000);
-                frame=(Read("top"),Read("left"),Read("right"),Read("bottom"),Math.Min(Read("radius"),64));ApplyPin();return null;
+                frame=(Read("top"),Read("left"),Read("right"),Read("bottom"),Math.Min(Read("radius"),64));ApplyPin();
+                // New colours fade in over .8s: draw the corners now and again once they have settled.
+                var newLook=payload["look"]?.GetValue<string>()??"";if(newLook!=look){look=newLook;ScheduleCorners();_=Task.Delay(1000).ContinueWith(_=>{if(IsHandleCreated&&!IsDisposed)BeginInvoke(ScheduleCorners);},TaskScheduler.Default);}
+                return null;
             // Where fullscreen video goes: the tile, or the whole display. The workspace keeps the choice.
             case "fullscreen-mode":
                 constrainFullscreen=!constrainFullscreen;if(fullscreen)Bounds=constrainFullscreen?tileBounds:Screen.FromRectangle(tileBounds).Bounds;

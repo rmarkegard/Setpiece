@@ -20,7 +20,7 @@ interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:strin
   changeDetection:ChangeDetectionStrategy.OnPush,
   imports:[NgStyle,FormsModule,MatButtonModule,MatTooltipModule,IconComponent,WallpaperComponent],
   template:`
-    @if(glass()){<div class="behind"><sp-wallpaper [id]="store.profile().WallpaperId" [moving]="store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion" [ngStyle]="store.wallpaperViewport()"/></div>}
+    @if(glass()){<div class="behind"><sp-wallpaper [id]="store.profile().WallpaperId" [ngStyle]="store.wallpaperViewport()"/></div>}
     <section class="sp wg br" [class.pinned]="pinned()" aria-label="Browser">
       <div class="top">
         <div class="row tabs">
@@ -147,6 +147,7 @@ export class BrowserToolbar implements OnDestroy {
   readonly showDiagnostics=signal(false);
   readonly editing=signal(false);
   readonly glass=computed(()=>this.store.appearance().surface==='glass');
+  readonly error=computed(()=>this.state().error);
   readonly title=computed(()=>{const s=this.state();return s.tabs?.find(t=>t.id===s.selected)?.title??'';});
   private readonly address=signal(this.store.query.get('url')??'https://www.youtube.com/');
   readonly secure=computed(()=>this.address().startsWith('https://'));
@@ -165,8 +166,8 @@ export class BrowserToolbar implements OnDestroy {
     this.bridge.call('browser',{action:'state'}).then(data=>this.receive(data)).catch(e=>this.state.set({error:(e as Error).message}));
     // The host lays the web page into the opening; it hears again whenever the opening moves.
     effect(()=>{const el=this.page().nativeElement;this.observer?.disconnect();this.observer=new ResizeObserver(()=>this.report());this.observer.observe(el);this.observer.observe(document.documentElement);});
-    // Colour changes fade in (.8s), so the corners are drawn again once they have settled.
-    effect(()=>{this.pinned();this.state().error;this.store.appearance();requestAnimationFrame(()=>this.report());setTimeout(()=>{this.reported='';this.report();},900);});
+    // Only what moves the opening or recolours the card: the page's title and history changing must not.
+    effect(()=>{this.pinned();this.error();this.store.appearance();requestAnimationFrame(()=>this.report());});
   }
   private report(){
     const el=this.page().nativeElement,r=el.getBoundingClientRect(),radius=parseFloat(getComputedStyle(el).borderTopLeftRadius)||0;
