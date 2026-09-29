@@ -137,10 +137,12 @@ internal sealed class Host : Form
             case "service": return await providers.Read(payload["service"]!.GetValue<string>());
             case "connect":var connected=await providers.Connect(payload);Broadcast("connections",providers.PublicSettings());return connected;
             case "disconnect":providers.Disconnect(payload["service"]!.GetValue<string>());Broadcast("connections",providers.PublicSettings());return null;
+            case "claude-sign-in":AiUsage.OpenClaudeSignIn();return null;
             case "stop-search": return await providers.SearchStops(payload["query"]!.GetValue<string>());
             case "timezone-search": return await providers.SearchTimezones(payload["query"]?.GetValue<string>()??"");
             case "note-read": return storage.ReadOptional("notes-v2.json");
-            case "note-save": storage.SaveDocument("notes-v2.json",payload);return JsonValue.Create(DateTimeOffset.Now.ToString("O"));
+            // Every open Notes widget (Studio and the desk) shows the same note, so a save reaches them all.
+            case "note-save": storage.SaveDocument("notes-v2.json",payload);Broadcast("note",payload);return JsonValue.Create(DateTimeOffset.Now.ToString("O"));
             case "brave-bookmarks": return BraveBookmarks.Import(storage);
             case "brave-bookmarks-read": return BraveBookmarks.Read(storage);
             case "external": OpenExternal(payload["url"]!.GetValue<string>());return null;

@@ -145,6 +145,7 @@ export class VolumeBody implements OnDestroy {
 const spanClass:Record<Span,string>={'5h':'fh',Week:'wk',Month:'mn'};
 const spanOrder:Span[]=['5h','Week','Month'];
 
+const allSources=[{key:'claude',name:'Claude'},{key:'codex',name:'Codex'},{key:'go',name:'OpenCode'}];
 /** AI usage: a ring per provider; the inner ring is the five-hour window, the outer ones the week and month. */
 @Component({
   selector:'sp-usage-body',
@@ -152,7 +153,7 @@ const spanOrder:Span[]=['5h','Week','Month'];
   imports:[OdoComponent],
   template:`
     <div class="spread"><span class="eyebrow"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9M12 3v9h9A9 9 0 0 0 12 3z"></path></svg>AI usage</span>@if(resetIn()){<span class="chip"><span>5h resets in {{resetIn()}}</span></span>}</div>
-    <div class="ai-rings">
+    <div class="ai-rings" [style.--ai-n]="providers().length">
       @for(p of providers();track p.key){
         <div class="ai-p" [class]="p.cls" role="img" [attr.aria-label]="p.aria">
           <div class="ai-ring">
@@ -178,12 +179,13 @@ const spanOrder:Span[]=['5h','Week','Month'];
 export class UsageBody {
   readonly w=inject(WidgetContext);
   readonly burst=signal(false);
-  private readonly sources=[{key:'claude',name:'Claude'},{key:'codex',name:'Codex'},{key:'go',name:'OpenCode'}];
+  /** The providers you chose to show in the widget settings. */
+  private readonly sources=computed(()=>{const hidden=(this.w.state().data?.["hidden"] as string[]|undefined)??[];return allSources.filter(s=>!hidden.includes(s.key));});
   private windows(key:string){
     const list=((this.w.state().data?.[key] as {windows?:QuotaWindow[]})?.windows??[]).map(win=>({win,span:quotaSpan(win)})).filter(x=>x.span) as {win:QuotaWindow;span:Span}[];
     return spanOrder.map(span=>list.find(x=>x.span===span)).filter(x=>!!x) as {win:QuotaWindow;span:Span}[];
   }
-  readonly providers=computed(()=>this.sources.map(s=>{
+  readonly providers=computed(()=>this.sources().map(s=>{
     const list=this.windows(s.key),hot=list.some(x=>x.win.used>=90),three=list.length===3;
     // Rings from the outside in: month (or week), week, then the five hours.
     const radii=[37,28.5,20],outer=list.slice().reverse();
@@ -196,7 +198,7 @@ export class UsageBody {
   /** The soonest five-hour reset among the providers that report one. */
   readonly resetIn=computed(()=>{
     const now=this.w.now().getTime();let soonest=Infinity;
-    for(const s of this.sources)for(const x of this.windows(s.key))if(x.span==='5h'){
+    for(const s of this.sources())for(const x of this.windows(s.key))if(x.span==='5h'){
       const at=typeof x.win.reset==='number'?x.win.reset*1000:Date.parse(x.win.resetText??'');
       if(Number.isFinite(at)&&at>now)soonest=Math.min(soonest,at);
     }
@@ -204,7 +206,7 @@ export class UsageBody {
     const minutes=Math.max(1,Math.round((soonest-now)/60000));return Math.floor(minutes/60)+'h '+String(minutes%60).padStart(2,'0')+'m';
   });
   constructor(){
-    onChange(()=>this.sources.map(s=>this.windows(s.key).map(x=>Math.round(x.win.used))),(now,before)=>{
+    onChange(()=>this.sources().map(s=>this.windows(s.key).map(x=>Math.round(x.win.used))),(now,before)=>{
       const drops=now.some((list,i)=>list[0]!==undefined&&before[i]?.[0]!==undefined&&before[i][0]-list[0]>=20);
       if(drops){this.w.fire('reset',1500);this.burst.set(false);setTimeout(()=>{this.burst.set(true);setTimeout(()=>this.burst.set(false),1200);},30);}
       else if(now.some((list,i)=>list.some((v,j)=>v>=90&&(before[i]?.[j]??0)<90)))this.w.fire('burn',1600);

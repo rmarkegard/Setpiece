@@ -8,6 +8,8 @@ import {WidgetFrame} from '../widgets/widget-frame';
 
 /**
  * A launched widget: its own transparent window, so the card is the only visible shape.
+ * A glass card needs something to frost, so under Glass the window also paints its slice of
+ * the wallpaper, clipped to the card, for the card's backdrop blur to work on.
  * For design review, ?review&w=&h= instead lays the card on a plain board at an exact size.
  */
 @Component({
@@ -18,12 +20,13 @@ import {WidgetFrame} from '../widgets/widget-frame';
     @if(review;as size){
       <div class="sp review"><sp-widget [id]="store.widgetId!" [style.width.px]="size.w" [style.height.px]="size.h" [canExpand]="false" [canManage]="false"/></div>
     } @else {
-      <sp-wallpaper [id]="store.profile().WallpaperId" [moving]="store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion" [ngStyle]="store.wallpaperViewport()"/>
+      <div class="behind" [class.glass]="store.appearance().surface==='glass'"><sp-wallpaper [id]="store.profile().WallpaperId" [moving]="store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion" [ngStyle]="store.wallpaperViewport()"/></div>
       <sp-widget [id]="store.widgetId!" [scale]="scale()" (expand)="store.expandWidget(store.widgetId!)" (manage)="store.manageWidget(store.widgetId!)"/>
     }`,
   styles:`
     :host{display:block;position:relative;isolation:isolate;height:100vh;overflow:hidden}
-    :host-context(.widget-surface) sp-wallpaper{display:none}
+    .behind{position:absolute;inset:0;overflow:hidden;clip-path:inset(0 round calc(28px * var(--shape-scale,1)))}
+    :host-context(.widget-surface) .behind:not(.glass){display:none}
     sp-widget{position:relative;z-index:var(--z-content);height:100%}
     .review{box-sizing:border-box;height:100vh;padding:24px;background-color:var(--desk);background-image:radial-gradient(color-mix(in oklab,var(--ink) 10%,transparent) 1px,transparent 1.3px);background-size:18px 18px}
   `
@@ -36,7 +39,8 @@ export class WidgetWindow {
 
 /**
  * The click-through backdrop behind a launched workspace: wallpaper, plus a quiet label
- * on tiles still waiting for an app.
+ * on tiles still waiting for an app. Widget tiles get none: their own window covers the
+ * tile, and a glass card would show the label through it.
  */
 @Component({
   selector:'sp-workspace-backdrop',
@@ -46,7 +50,7 @@ export class WidgetWindow {
     <sp-wallpaper [id]="store.profile().WallpaperId" [moving]="store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion"/>
     @for(tile of store.board().Zones;track tile.Id){
       <div class="tile" [attr.data-kind]="tile.ContentKind" [class.waiting]="tile.ContentKind==='Application'&&!tile.AssignedProcessName" [ngStyle]="bounds(tile)">
-        @if(tile.ContentKind!=='Application'||!tile.AssignedProcessName){
+        @if(tile.ContentKind==='Web'||tile.ContentKind==='Application'&&!tile.AssignedProcessName){
           <span class="label label-large"><sp-icon [name]="icon(tile)"/>{{label(tile,$index)}}</span>
         }
       </div>

@@ -24,9 +24,9 @@ internal sealed class Providers : IDisposable
         try
         {
             var settings=storage.Connections();var result=new JsonObject();
-            foreach(var key in new[]{"WeatherLocation","WeatherLatitude","WeatherLongitude","RuterStopId","RuterStopName","NewsSource","NewsCategories","CalendarExcludedTitles","ClockTimeZones","ClockLocationLabels","DiscordServerId","DiscordClientId","BambuHost","BambuSerial","RedditCommunity","RedditClientId","GoogleClientId","SpotifyClientId","InboxProvider","CodexExecutable"})result[key]=settings[key]?.DeepClone();
+            foreach(var key in new[]{"WeatherLocation","WeatherLatitude","WeatherLongitude","RuterStopId","RuterStopName","NewsSource","NewsCategories","CalendarExcludedTitles","ClockTimeZones","ClockLocationLabels","DiscordServerId","DiscordClientId","BambuHost","BambuSerial","RedditCommunity","RedditClientId","GoogleClientId","SpotifyClientId","InboxProvider","CodexExecutable","AiHidden"})result[key]=settings[key]?.DeepClone();
             foreach(var service in new[]{"Google","Spotify","Discord","Reddit"})result[service+"Connected"]=!string.IsNullOrEmpty(Text(settings,service=="Discord"?"DiscordServerId":service+"RefreshToken"));
-            result["CalendarFeedConnected"]=!string.IsNullOrEmpty(Text(settings,"CalendarFeedUrl"));result["DiscordCallConnected"]=Text(settings,"DiscordCallToken").Length>0;return result;
+            result["CalendarFeedConnected"]=!string.IsNullOrEmpty(Text(settings,"CalendarFeedUrl"));result["OpenCodeGoKeySaved"]=Text(settings,"OpenCodeGoKey").Length>0;result["DiscordCallConnected"]=Text(settings,"DiscordCallToken").Length>0;return result;
         }
         catch(System.Security.Cryptography.CryptographicException){return new JsonObject{["error"]="Saved connections could not be decrypted for this Windows account. The file is preserved."};}
     }
@@ -96,7 +96,10 @@ internal sealed class Providers : IDisposable
             case "reddit":var community=Text(request,"community");if(community.Length==0||!community.All(c=>char.IsAsciiLetterOrDigit(c)||c=='_'))throw new InvalidDataException("Enter a subreddit name using letters, numbers or underscores.");changes["RedditCommunity"]=community;if(Text(request,"clientId").Length>0){await OAuth.Connect(http,storage,"Reddit",Text(request,"clientId"),"");}break;
             case "bambu-lab":changes=await PrinterService.Connect(request);break;
             case "email":var provider=Text(request,"provider");if(provider is not ("google" or "outlook"))throw new InvalidDataException("Choose Google or Outlook.");changes["InboxProvider"]=provider;break;
-            case "codex":var path=Text(request,"executable");if(path.Length>0&&(!File.Exists(path)||!Path.GetExtension(path).Equals(".exe",StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException("Choose the installed codex.exe file.");changes["CodexExecutable"]=path;break;
+            case "codex":var path=Text(request,"executable");if(path.Length>0&&(!File.Exists(path)||!Path.GetExtension(path).Equals(".exe",StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException("Choose the installed codex.exe file.");changes["CodexExecutable"]=path;
+                changes["AiHidden"]=new JsonArray((request["hidden"]?.AsArray()??[]).Select(n=>n?.GetValue<string>()).Where(k=>k is "claude" or "codex" or "go").Distinct().Select(k=>(JsonNode)JsonValue.Create(k)!).ToArray());
+                // A blank key keeps the saved one; OpenCode's own sign-in is used when neither is set.
+                if(Text(request,"goKey").Length>0)changes["OpenCodeGoKey"]=Text(request,"goKey");break;
             case "system":devices.StartSensors(true);cache.TryRemove("system",out _);return State("ready","Collector requested","Allow the Windows prompt to enable supported temperature sensors.");
             case "google":return await OAuth.Connect(http,storage,"Google",Text(request,"clientId"),Text(request,"clientSecret"));
             case "spotify":return await OAuth.Connect(http,storage,"Spotify",Text(request,"clientId"),"");
@@ -255,7 +258,7 @@ internal sealed class Providers : IDisposable
             "spotify"=>["SpotifyAccessToken","SpotifyRefreshToken","SpotifyExpiresAt"],
             "reddit"=>["RedditAccessToken","RedditRefreshToken","RedditExpiresAt"],
             "calendar"=>["CalendarFeedUrl"],"discord"=>["DiscordServerId","DiscordCallToken","DiscordAccessToken","DiscordRefreshToken","DiscordExpiresAt"],"weather"=>["WeatherLatitude","WeatherLongitude","WeatherLocation"],
-            "ruter"=>["RuterStopId","RuterStopName"],"bambu-lab"=>["BambuHost","BambuAccessCode","BambuCertificateSha256","BambuCameraCertificateSha256"],"email"=>["InboxProvider"],
+            "ruter"=>["RuterStopId","RuterStopName"],"bambu-lab"=>["BambuHost","BambuAccessCode","BambuCertificateSha256","BambuCameraCertificateSha256"],"email"=>["InboxProvider"],"codex"=>["OpenCodeGoKey"],
             _=>Array.Empty<string>()};
         var changes=new JsonObject();foreach(var field in fields)changes[field]=null;storage.UpdateConnections(changes);cache.Clear();
     }

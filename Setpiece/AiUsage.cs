@@ -10,10 +10,10 @@ internal static class AiUsage
 {
     public static async Task<JsonObject> Read(HttpClient http,JsonObject settings)
     {
-        var claudeTask=Claude(http);var codexTask=Codex(settings);var localTask=Task.Run(LocalOpenCode);var goTask=OpenCodeGo(http);
+        var claudeTask=Claude(http);var codexTask=Codex(settings);var localTask=Task.Run(LocalOpenCode);var goTask=OpenCodeGo(http,settings["OpenCodeGoKey"]?.GetValue<string>());
         await Task.WhenAll(claudeTask,codexTask,localTask,goTask);
         var claude=await claudeTask;var codex=await codexTask;var local=await localTask;var go=await goTask;
-        var data=new JsonObject{["claude"]=claude,["codex"]=codex,["opencode"]=local,["go"]=go};
+        var data=new JsonObject{["claude"]=claude,["codex"]=codex,["opencode"]=local,["go"]=go,["hidden"]=settings["AiHidden"]?.DeepClone()??new JsonArray()};
         var ready=claude["windows"]?.AsArray().Count>0||codex["windows"]?.AsArray().Count>0||local["available"]?.GetValue<bool>()==true||go["windows"]?.AsArray().Count>0;
         return Providers.State(ready?"ready":"disconnected","Room for your next idea","Claude and Codex limits, OpenCode activity",data:data);
     }
@@ -37,6 +37,22 @@ internal static class AiUsage
             return new JsonObject{["status"]=windows.Count>0?"Connected through Claude Code":"No Claude quota windows returned.",["windows"]=windows};
         }
         catch(Exception error) when(error is IOException or JsonException or InvalidOperationException or HttpRequestException or OperationCanceledException){result["status"]="Claude limits are unavailable. Open Claude Code, sign in, and retry.";return result;}
+    }
+    /** Claude Code saves the sign-in this widget reads. The desktop app bundles it; the CLI may also be installed on its own. */
+    internal static string? FindClaudeCode()
+    {
+        foreach(var directory in (Environment.GetEnvironmentVariable("PATH")??"").Split(Path.PathSeparator))
+        {try{var path=Path.Combine(directory.Trim('"'),"claude.exe");if(File.Exists(path))return path;}catch(ArgumentException){}}
+        var local=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".local","bin","claude.exe");if(File.Exists(local))return local;
+        var bundled=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"Claude","claude-code");
+        return Directory.Exists(bundled)?Directory.EnumerateDirectories(bundled).Select(d=>Path.Combine(d,"claude.exe")).Where(File.Exists).OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault():null;
+    }
+    /** Opens Claude Code in its own console, where it walks you through signing in. */
+    internal static void OpenClaudeSignIn()
+    {
+        var path=FindClaudeCode()??throw new InvalidOperationException("Claude Code was not found. Install it from claude.com/claude-code, then try again.");
+        var start=new ProcessStartInfo(path){UseShellExecute=true,WorkingDirectory=Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)};start.ArgumentList.Add("auth");start.ArgumentList.Add("login");
+        using var _=Process.Start(start);
     }
     private static string? FindCodex(JsonObject settings)
     {
@@ -106,16 +122,19 @@ internal static class AiUsage
         }
         catch(Exception error) when(error is SqliteException or IOException or JsonException or InvalidOperationException){return new JsonObject{["available"]=false,["status"]="OpenCode activity could not be read. Close a busy database and retry."};}
     }
-    private static async Task<JsonObject> OpenCodeGo(HttpClient http)
+    private static async Task<JsonObject> OpenCodeGo(HttpClient http,string? savedKey)
     {
-        var result=new JsonObject{["status"]="Sign in to OpenCode Go to show its limits.",["windows"]=new JsonArray()};
-        var file=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".local","share","opencode","auth.json");if(!File.Exists(file))return result;
+        var result=new JsonObject{["status"]="Sign in to OpenCode Go in OpenCode, or paste a Go API key in the widget settings.",["windows"]=new JsonArray()};
+        var file=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".local","share","opencode","auth.json");
         try
         {
-            using var stream=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite);var auth=await JsonNode.ParseAsync(stream);var key=auth?["opencode-go"]?["key"]?.GetValue<string>();if(string.IsNullOrWhiteSpace(key))return result;
+            // A key saved in Setpiece wins; otherwise the one OpenCode saved when you signed in to Go.
+            var key=savedKey;
+            if(string.IsNullOrWhiteSpace(key)&&File.Exists(file)){using var stream=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite);var auth=await JsonNode.ParseAsync(stream);key=auth?["opencode-go"]?["key"]?.GetValue<string>();}
+            if(string.IsNullOrWhiteSpace(key))return result;
             using var request=new HttpRequestMessage(HttpMethod.Get,"https://opencode.ai/zen/go/v1/usage");request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",key);using var response=await http.SendAsync(request);response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync());
             var windows=new JsonArray();if(data?["usage"] is JsonObject usage)foreach(var pair in usage)if(pair.Value?["percent"] is JsonValue percent&&percent.TryGetValue<double>(out var used))windows.Add(new JsonObject{["name"]=pair.Key,["used"]=Math.Clamp(used,0,100),["resetText"]=pair.Value["resetsAt"]?.DeepClone()});
-            return new JsonObject{["status"]=windows.Count>0?"OpenCode Go limits":"No Go quota windows returned.",["windows"]=windows};
+            return new JsonObject{["status"]=windows.Count>0?"Connected to OpenCode Go":"No Go quota windows returned.",["windows"]=windows};
         }
         catch(Exception error) when(error is IOException or JsonException or HttpRequestException or OperationCanceledException){result["status"]="Go limits are unavailable. Local activity remains available.";return result;}
     }

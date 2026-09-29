@@ -11,7 +11,6 @@ import {OdoComponent,flashSet,onChange,slotList} from '../motion';
   imports:[OdoComponent],
   template:`
     <div class="ck-main">
-      <span class="ck-rip r1"></span><span class="ck-rip r2"></span><span class="ck-rip r3"></span>
       <div class="spread"><span class="eyebrow">{{dateLabel()}}</span><span class="chip"><span>Week {{week()}}</span></span></div>
       <div>
         <div class="ck-time hero" role="img" [attr.aria-label]="hh()+':'+mm()">
@@ -58,7 +57,6 @@ export class ClockBody {
       return {zone:z.zone,name:z.name,t,day,off:(diff>0?'+':diff<0?'−':'')+Math.abs(diff)+'h',x:(20+16*Math.cos(th)).toFixed(2),y:(21-16*Math.sin(th)).toFixed(2)};
     });
   });
-  constructor(){onChange(()=>this.w.now().getHours(),()=>this.w.fire('chime',2600));}
 }
 
 interface CalendarEvent {key:string;title:string;place:string;start:number;}
@@ -108,12 +106,11 @@ export class CalendarBody {
   private readonly reminder=flashSet(2600);
   private readonly next=computed(()=>{const now=this.w.now().getTime();return this.events().find(e=>e.start>now);});
   readonly rows=computed(()=>{
-    const now=this.w.now(),today=now.toDateString(),next=this.next(),knock=this.reminder.keys(),struck=this.struck.keys(),list=this.shown();
+    const now=this.w.now(),today=now.toDateString(),next=this.next(),knock=this.reminder.keys(),struck=this.struck.keys();
     return this.slots().map(slot=>{
-      const e=slot.item,d=new Date(e.start),prev=slot.rank>0&&!slot.gone?list[slot.rank-1]:undefined;
-      const same=!!prev&&new Date(prev.start).toDateString()===d.toDateString(),isNext=!slot.gone&&next?.key===e.key;
+      const e=slot.item,d=new Date(e.start),isNext=!slot.gone&&next?.key===e.key;
       const chip=knock.has(e.key)?'Reminder':isNext?untilLabel(e.start-now.getTime()):'';
-      const cls=['slot cal-row',e.start<now.getTime()?'past':'',slot.gone?'gone':'',struck.has(e.key)?'strike':'',same?'same':'',d.toDateString()===today?'today':'',isNext?'next':'',slot.fresh?'fresh':'',knock.has(e.key)?'knock':''].filter(Boolean).join(' ');
+      const cls=['slot cal-row',e.start<now.getTime()?'past':'',slot.gone?'gone':'',struck.has(e.key)?'strike':'',d.toDateString()===today?'today':'',isNext?'next':'',slot.fresh?'fresh':'',knock.has(e.key)?'knock':''].filter(Boolean).join(' ');
       return {key:slot.key,cls,y:slot.rank*ROW,day:d.getDate(),mon:d.toLocaleDateString('en-GB',{month:'short'}).toUpperCase(),title:e.title,
         sub:d.toLocaleDateString('en-GB',{weekday:'short'})+' '+pad(d.getHours())+':'+pad(d.getMinutes())+(e.place?' · '+e.place:''),chip};
     });

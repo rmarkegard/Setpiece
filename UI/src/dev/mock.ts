@@ -54,7 +54,7 @@ export function installMock(){
     'timezone-search':({query}:{query:string})=>[{name:query,timezone:'Asia/Shanghai',label:query+', China'},{name:query+' Heights',timezone:'America/Chicago',label:query+' Heights, USA'}],
     'check-update':()=>({current:'2.0.0',latest:'2.1.0'}),'install-update':()=>null,
     connect:({service}:{service:string})=>({title:'Connected',detail:service+' is ready to use'}),disconnect:()=>null,
-    'note-read':()=>({text:note}),'note-save':({text}:{text:string})=>{note=text;return null;},
+    'claude-sign-in':()=>null,'note-read':()=>({text:note}),'note-save':({text}:{text:string})=>{note=text;event('note',{text});return null;},
     volume:(change:{level?:number;muted?:boolean})=>{Object.assign(services['volume'].data!,change);return structuredClone(services['volume']);},
     'discord-voice':()=>services['discord'],
     'spotify-playback':({action}:{action:string})=>{const data=services['spotify'].data!;if(action==='play'||action==='pause')data['playing']=action==='play';return structuredClone(services['spotify']);},

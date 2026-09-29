@@ -50,6 +50,15 @@ mat-button-toggle sp-icon { font-size: 18px; margin-right: var(--space-2); }
 .results > :last-child, .places > :last-child { border-bottom-left-radius: var(--shape-lg); border-bottom-right-radius: var(--shape-lg); }
 .results { margin-bottom: var(--space-2); }
 
+// AI Usage: one row per provider, then how to connect each.
+.providers { margin-bottom: var(--space-2); }
+.provider sp-icon { color: var(--mat-sys-primary); }
+.provider-setup { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-2); }
+.provider-setup mat-form-field { width: 100%; }
+.provider-setup p { margin: 0; }
+.provider-setup button sp-icon, .refresh sp-icon { font-size: 18px; margin-right: var(--space-2); }
+.refresh { align-self: flex-start; }
+
 .picked, .note {
   display: flex;
   align-items: center;

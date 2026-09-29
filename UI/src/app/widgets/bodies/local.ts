@@ -31,6 +31,8 @@ export class NotesBody implements OnInit,OnDestroy {
   readonly words=computed(()=>{const t=this.text().trim();return t?t.split(/\s+/).filter(x=>x!=='•'&&x!=='-').length:0;});
   private revision=0;
   private pending?:ReturnType<typeof setTimeout>;
+  /** A save from another window (Studio or the desk) arrives here; typing in progress in this one wins. */
+  private readonly unsubscribe=this.bridge.listen(e=>{if(e.event==='note'&&!this.saving()&&typeof e.data?.text==='string')this.text.set(e.data.text);});
   constructor(){effect(()=>this.w.cardClass.set(this.saving()?'saving':''));}
   ngOnInit(){this.bridge.call('note-read').then(data=>this.text.set(data?.text??'')).catch(e=>this.error.set(e.message));}
   save(value:string){
@@ -39,7 +41,7 @@ export class NotesBody implements OnInit,OnDestroy {
     clearTimeout(this.pending);
     this.pending=setTimeout(()=>this.bridge.call('note-save',{text:value}).then(()=>{if(revision===this.revision){this.saving.set(false);this.w.fire('saved',900);}}).catch(e=>{this.saving.set(false);this.error.set(e.message);}),600);
   }
-  ngOnDestroy(){if(this.saving()){clearTimeout(this.pending);void this.bridge.call('note-save',{text:this.text()});}}
+  ngOnDestroy(){this.unsubscribe();if(this.saving()){clearTimeout(this.pending);void this.bridge.call('note-save',{text:this.text()});}}
 }
 
 /** Concepts that are not live yet: shown in the same card language, clearly marked as previews. */

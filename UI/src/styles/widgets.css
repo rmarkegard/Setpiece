@@ -275,19 +275,21 @@
 .ck-sun { fill: var(--hi); transition: transform 1.2s var(--spring-soft); }
 .ck-place.night .arc { stroke-dasharray: 1.5 3; }
 .ck-place.night .ck-sun { fill: var(--c); stroke: var(--on); stroke-width: 1.4; }
-.ck-rip { position: absolute; left: 32%; top: 58%; width: 460px; height: 460px; border-radius: 50%; border: 1.5px solid var(--hi); opacity: 0; pointer-events: none; z-index: 0; }
-.ck.fx-chime .ck-rip { animation: sp-ripple 1.8s var(--glide); }
-.ck.fx-chime .ck-rip.r2 { animation-delay: .28s; }
-.ck.fx-chime .ck-rip.r3 { animation-delay: .56s; }
-.ck.fx-chime .ck-h { animation: sp-pop .8s var(--spring); transform-origin: 50% 80%; }
-.ck.fx-chime .ck-place { animation: ck-flash 1.3s var(--glide) both; }
-.ck.fx-chime .ck-place:nth-child(2) { animation-delay: .12s; }
-.ck.fx-chime .ck-place:nth-child(3) { animation-delay: .24s; }
-@keyframes ck-flash { 0% { background-color: var(--inset); } 30% { background-color: color-mix(in oklab, var(--hi) 34%, transparent); } 100% { background-color: var(--inset); } }
 @container (max-width: 460px) {
   .ck .in { grid-template-columns: minmax(0, 1fr); }
   .ck-places { display: none; }
   .ck-time { font-size: min(27cqw, 42cqh); }
+}
+/* A tall clock stacks its places under the time: two once there is room, three in a taller tile. */
+@container (max-width: 460px) and (min-height: 330px) {
+  .ck .in { grid-template-rows: minmax(0, 1fr) auto; }
+  .ck-places { display: flex; }
+  .ck-place:nth-child(n+3) { display: none; }
+  .ck-place:nth-child(2) { border-radius: 6px 6px 20px 20px; }
+}
+@container (max-width: 460px) and (min-height: 420px) {
+  .ck-place:nth-child(3) { display: grid; }
+  .ck-place:nth-child(2):not(:last-child) { border-radius: 6px; }
 }
 
 /* ==========================================================================
@@ -325,8 +327,6 @@
 .cal-d b { font: 800 30px/.78 var(--font-brand); letter-spacing: -.04em; padding-right: .04em; font-stretch: 86%; font-variant-numeric: tabular-nums; }
 .cal-d b * { font: inherit; letter-spacing: inherit; color: inherit; }
 .cal-d > span { font: 750 8.5px/1 var(--font-brand); letter-spacing: .09em; color: var(--hi); }
-.cal-row.same .cal-d { opacity: 0; transform: scale(.7); }
-.cal-row.same .cal-card { border-top-left-radius: 4px; border-top-right-radius: 4px; }
 .cal-row.today .cal-d { background: var(--hi); color: var(--c); }
 .cal-row.today .cal-d > span { color: var(--c); }
 .cal-row.next .cal-card { background: var(--inset2); }
@@ -658,7 +658,7 @@
    AI USAGE — three rings: inner is the 5-hour window, outer is the week.
    ========================================================================== */
 .ai .in { gap: 10px; }
-.ai-rings { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; align-items: start; }
+.ai-rings { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--ai-n, 3), minmax(0, 1fr)); gap: 6px; align-items: start; }
 .ai-p { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
 .ai-ring { position: relative; width: 82px; height: 82px; }
 .ai-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
@@ -873,11 +873,9 @@
 .wg.preview { --c: var(--t-ink); --on: var(--t-ink-on); --hi: var(--t-ink-hi); --v: var(--t-ink-v); border-radius: 28px; }
 /* The volume meter shows the live signal: when nothing is playing, it rests. */
 .vo.silent .vo-meter i { animation: none; transform: scaleY(.1); }
-/* Reduce motion (Setpiece's setting or the system's): no event motion, no ambient loops. */
+/* Setpiece's Reduce motion setting: no event motion, no ambient loops. Windows' "Animation effects" is not
+   followed here: many people turn it off to speed up windows, and it would freeze the widgets with it. */
 .reduced-motion .wg, .reduced-motion .wg *, .reduced-motion .wg::before, .reduced-motion .wg::after, .reduced-motion .wg *::before, .reduced-motion .wg *::after { animation: none !important; transition: none !important; }
-@media (prefers-reduced-motion: reduce) {
-  .wg, .wg *, .wg::before, .wg::after, .wg *::before, .wg *::after { animation: none !important; transition: none !important; }
-}
 /* Sizes the canvas did not draw. The camera box is sized from the stage in code; these place it. */
 .bb-stage.v-cam .bb-cam { align-self: center; max-height: none; }
 .bb-stage.v-cam.wide { flex-direction: row; }
