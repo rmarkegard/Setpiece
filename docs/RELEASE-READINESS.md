@@ -41,7 +41,7 @@ The license file is the canonical PolyForm text with no additional `Required Not
 The updated local package is a 46.82 MiB framework-dependent Windows x64 zip with 1,256 entries, built from `Setpiece/bin/Release/net10.0-windows` after the workspace restore-safety and feedback fixes. It includes the host, sensor helper, compiled UI and runtime assets, project license, third-party license texts, and notices. A fresh extraction of the final archive produced 16 successful WebView2 screenshots across eight curated scenes and both themes using an isolated `--offline-review` profile. A full SHA-256 comparison of the 1,135 non-PDB files in the extracted app folder found no missing, extra, or different files versus Release output. The package does not bundle .NET or WebView2 runtimes. The script excludes PDBs, `artifacts/`, `release/demo-data/`, browser profiles, build logs, caches, and developer tools.
 
 
-The package is built locally by `tools/package-release.ps1`. Its current archive is `release/Setpiece-2.0.0-windows-x64.zip`; the script verified 1,256 entries after the latest build. No installer, code-signing certificate, update service, or automatic runtime bootstrap is included.
+The package is built locally by `tools/package-release.ps1`. Its current archive is `release/Setpiece-2.0.1-windows-x64.zip`; the script verified 1,256 entries after the latest build. No installer, code-signing certificate, update service, or automatic runtime bootstrap is included.
 
 
 ## Acceptance checklist

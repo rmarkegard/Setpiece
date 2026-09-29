@@ -2,7 +2,7 @@
   "name": "setpiece-ui",
   "private": true,
   "type": "module",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "scripts": {
     "build": "ng build --configuration production",
     "start": "ng serve --host 127.0.0.1"
