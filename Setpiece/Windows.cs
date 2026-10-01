@@ -61,6 +61,14 @@ internal static class Windows
         try { return read(); }
         catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException) { return null; }
     }
+    /** Keeps a window moving or resizing (a WM_WINDOWPOSCHANGING request) at a place; stacking and showing pass. Returns whether the request changed. */
+    internal static bool Hold(ref WindowPos position,Rectangle place)
+    {
+        const uint keep=0x3;// SWP_NOSIZE | SWP_NOMOVE
+        if((position.Flags&keep)==keep)return false;
+        if((position.Flags&keep)==0&&position.X==place.X&&position.Y==place.Y&&position.Width==place.Width&&position.Height==place.Height)return false;
+        position.X=place.X;position.Y=place.Y;position.Width=place.Width;position.Height=place.Height;position.Flags&=~keep;return true;
+    }
     public static void BehindApplications(nint layer)
     {
         nint desktop=0;EnumWindows((window,_)=>{if(FindWindowEx(window,0,"SHELLDLL_DefView",null)!=0){desktop=window;return false;}return true;},0);
