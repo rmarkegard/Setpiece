@@ -44,4 +44,30 @@ public class WindowCoordinatorTests
         Assert.Null(WindowCoordinator.RestoreCandidate(windows, "editor", "Old name.md - Editor", None, allowTitleFallback: false));
     }
     [Fact] public void ChangedTitleCannotChooseAmongMultipleWindows() => Assert.Null(WindowCoordinator.RestoreCandidate(Distinct(), "editor", "Closed.md - Editor", None));
+
+    private static readonly Rectangle Tile = new(608, -721, 1254, 702);
+    [Fact] public void HeldWindowReturnsToItsPlaceWhenWindowsLiftsIt()
+    {
+        // A display wakes and Windows pulls the tile up inside the work area.
+        var position = new Setpiece.Rebuild.Windows.WindowPos { X = 608, Y = -751, Width = 1254, Height = 703, Flags = 0x14 };
+        Assert.True(Setpiece.Rebuild.Windows.Hold(ref position, Tile));
+        Assert.Equal((608, -721, 1254, 702, 0x14u), (position.X, position.Y, position.Width, position.Height, position.Flags));
+    }
+    [Fact] public void HeldWindowKeepsItsSizeWhenOnlyMoved()
+    {
+        var position = new Setpiece.Rebuild.Windows.WindowPos { X = 0, Y = 0, Flags = 0x1 };
+        Assert.True(Setpiece.Rebuild.Windows.Hold(ref position, Tile));
+        Assert.Equal((608, -721, 1254, 702, 0u), (position.X, position.Y, position.Width, position.Height, position.Flags));
+    }
+    [Fact] public void HeldWindowStillStacksAndShows()
+    {
+        var position = new Setpiece.Rebuild.Windows.WindowPos { X = 5, Y = 5, Flags = 0x43 };
+        Assert.False(Setpiece.Rebuild.Windows.Hold(ref position, Tile));
+        Assert.Equal((5, 5, 0x43u), (position.X, position.Y, position.Flags));
+    }
+    [Fact] public void HeldWindowAlreadyInPlaceIsUntouched()
+    {
+        var position = new Setpiece.Rebuild.Windows.WindowPos { X = 608, Y = -721, Width = 1254, Height = 702, Flags = 0x4 };
+        Assert.False(Setpiece.Rebuild.Windows.Hold(ref position, Tile));
+    }
 }
