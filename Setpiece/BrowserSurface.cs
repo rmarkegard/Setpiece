@@ -30,6 +30,9 @@ internal sealed class BrowserSurface : Form
     /** In a workspace tile the browser stays put: it cannot be dragged off its tile. A browser opened on its own can. */
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     internal bool Docked {get;set;}
+    /** Where Setpiece last put the window, which a docked browser holds; set by Put alone. */
+    private Rectangle held;
+    private bool placing;
     private readonly PageCorners corners;
     private readonly System.Windows.Forms.Timer cornerTimer=new(){Interval=60};
     /** Set when the corner windows cannot draw; the page then keeps only its hard-edged rounded region. */
@@ -39,8 +42,8 @@ internal sealed class BrowserSurface : Form
     private string look="";
     public BrowserSurface(Host host,Storage storage,string name,Rectangle bounds,bool constrainFullscreen=false)
     {
-        this.host=host;this.storage=storage;this.name=name;this.constrainFullscreen=constrainFullscreen;tileBounds=bounds;Bounds=bounds;Text="Setpiece · "+name;if(Windows.AppIcon.Value is { } icon)Icon=icon;
-        FormBorderStyle=FormBorderStyle.None;StartPosition=FormStartPosition.Manual;MinimumSize=new Size(280,160);BackColor=Color.Black;
+        this.host=host;this.storage=storage;this.name=name;this.constrainFullscreen=constrainFullscreen;tileBounds=bounds;Text="Setpiece · "+name;if(Windows.AppIcon.Value is { } icon)Icon=icon;
+        FormBorderStyle=FormBorderStyle.None;StartPosition=FormStartPosition.Manual;MinimumSize=new Size(280,160);BackColor=Color.Black;Put(bounds);
         Controls.Add(pages);Controls.Add(chrome);
         corners=new PageCorners(this);cornerTimer.Tick+=async(_,_)=>{cornerTimer.Stop();await RefreshCorners();};
         VisibleChanged+=(_,_)=>{if(Visible)ScheduleCorners();else corners.Hide();};
@@ -52,8 +55,24 @@ internal sealed class BrowserSurface : Form
     public void Place(Rectangle bounds,bool constrain)
     {
         tileBounds=bounds;constrainFullscreen=constrain;
-        if(!fullscreen)Bounds=bounds;
-        else Bounds=constrainFullscreen?tileBounds:Screen.FromRectangle(tileBounds).Bounds;
+        if(!fullscreen)Put(bounds);
+        // Leaving fullscreen returns to the new place, not to where the window was before.
+        else{restoreBounds=bounds;Put(constrainFullscreen?tileBounds:Screen.FromRectangle(tileBounds).Bounds);}
+    }
+    private void Put(Rectangle bounds){placing=true;try{Bounds=bounds;}finally{placing=false;}held=Bounds;}
+    /**
+     * A docked browser stays where Setpiece put it. Windows moves windows on its own: when a display wakes or
+     * reconnects it pulls them inside the work area, which still keeps room for the taskbar Setpiece hides,
+     * and that lifted a tile reaching the bottom of the display. Minimizing and maximizing are left alone.
+     */
+    protected override void WndProc(ref Message message)
+    {
+        if(message.Msg==0x46&&Docked&&!placing&&!held.IsEmpty&&message.LParam!=0&&((long)Windows.GetWindowLongPtr(Handle,-16)&0x21000000)==0)
+        {
+            var position=System.Runtime.InteropServices.Marshal.PtrToStructure<Windows.WindowPos>(message.LParam);
+            if(Windows.Hold(ref position,held))System.Runtime.InteropServices.Marshal.StructureToPtr(position,message.LParam,false);
+        }
+        base.WndProc(ref message);
     }
     public async Task Start(string url,JsonObject? initial=null)
     {
@@ -135,7 +154,7 @@ internal sealed class BrowserSurface : Form
         // Fullscreen inside the tile keeps the card's rounded corners; fullscreen on the whole display is square.
         if(fullscreen&&!diagnostics){pages.Bounds=ClientRectangle;SetPageShape(constrainFullscreen?OuterRadius:0);shaped=null;pages.BringToFront();if(constrainFullscreen)ScheduleCorners();return;}
         // Until the toolbar reports its opening, leave room for the toolbar it is about to draw.
-        var f=frame??(pinned?(132,8,8,8,12):(52,8,8,8,12));var scale=DeviceDpi/96d;int Px(double v)=>(int)Math.Round(v*scale);
+        var f=frame??(pinned?(104,8,8,8,12):(44,8,8,8,12));var scale=DeviceDpi/96d;int Px(double v)=>(int)Math.Round(v*scale);
         var bounds=Rectangle.FromLTRB(Px(f.Left),Px(f.Top),Math.Max(Px(f.Left)+1,ClientSize.Width-Px(f.Right)),Math.Max(Px(f.Top)+1,ClientSize.Height-Px(f.Bottom)));
         var moved=pages.Bounds!=bounds;if(moved)pages.Bounds=bounds;
         var shape=(bounds.Size,Px(f.Radius),cornersFailed);pages.BringToFront();if(!moved&&shaped==shape)return;shaped=shape;
@@ -202,8 +221,8 @@ internal sealed class BrowserSurface : Form
     private void SetFullscreen(bool value)
     {
         if(fullscreen==value)return;
-        if(value){restoreBounds=Bounds;Bounds=constrainFullscreen?tileBounds:Screen.FromRectangle(tileBounds).Bounds;}
-        else if(!restoreBounds.IsEmpty)Bounds=restoreBounds;
+        if(value){restoreBounds=Bounds;Put(constrainFullscreen?tileBounds:Screen.FromRectangle(tileBounds).Bounds);}
+        else if(!restoreBounds.IsEmpty)Put(restoreBounds);
         fullscreen=value;ApplyPin();
     }
     private async Task<JsonNode?> Command(string command,JsonObject payload)
@@ -221,7 +240,7 @@ internal sealed class BrowserSurface : Form
                 return null;
             // Where fullscreen video goes: the tile, or the whole display. The workspace keeps the choice.
             case "fullscreen-mode":
-                constrainFullscreen=!constrainFullscreen;if(fullscreen)Bounds=constrainFullscreen?tileBounds:Screen.FromRectangle(tileBounds).Bounds;
+                constrainFullscreen=!constrainFullscreen;if(fullscreen)Put(constrainFullscreen?tileBounds:Screen.FromRectangle(tileBounds).Bounds);
                 host.BrowserFullscreenChanged(name,constrainFullscreen);break;
             case "navigate":core?.Navigate(Address(payload["url"]!.GetValue<string>()));break;
             case "back":if(core?.CanGoBack==true)core.GoBack();break;
@@ -258,5 +277,5 @@ internal sealed class BrowserSurface : Form
     internal void NotifyState()=>EmitState();
     private void EmitState(){if(chrome.CoreWebView2 is not null)Emit("browser",State());}
     public void Emit(string name,JsonNode data){if(chrome.CoreWebView2 is not null&&!IsDisposed)chrome.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
-    protected override void Dispose(bool disposing){closing=true;if(disposing){cornerTimer.Dispose();corners.Dispose();}if(fullscreen&&!restoreBounds.IsEmpty)Bounds=restoreBounds;base.Dispose(disposing);}
+    protected override void Dispose(bool disposing){closing=true;if(disposing){cornerTimer.Dispose();corners.Dispose();}if(fullscreen&&!restoreBounds.IsEmpty)Put(restoreBounds);base.Dispose(disposing);}
 }

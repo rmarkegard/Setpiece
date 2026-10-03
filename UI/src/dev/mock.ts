@@ -26,6 +26,8 @@ export function installMock(){
 
   const forced=query.get('mockState');
   const saved:{key:string;profile:Profile}[]=[{key:'setpiece-reveal',profile:fixtures.sampleProfile()},{key:'deep-focus',profile:fixtures.focusProfile()}];
+  // ?wallpaper=mercury-flow dresses every sample workspace in that wallpaper.
+  const wallpaper=query.get('wallpaper');if(wallpaper&&/^[a-z0-9-]+$/.test(wallpaper))for(const entry of saved)entry.profile.WallpaperId=wallpaper;
   let active=structuredClone(saved[0].profile);
   const accent=query.get('accent');
   let preferences={...defaultAppearance,mode:query.get('mode')==='light'?'light':'dark',accent:accent&&/^[0-9a-f]{6}$/i.test(accent)?'#'+accent:defaultAppearance.accent,surface:query.get('surface')==='glass'?'glass':'solid',palette:query.get('palette')==='plain'?'plain':'colorful'};
@@ -55,11 +57,12 @@ export function installMock(){
     assign:({profile}:{profile:Profile})=>profile,
     release:()=>null,stop:()=>null,external:()=>null,window:()=>null,'stop-search':({query}:{query:string})=>[{id:'1',name:query+' stasjon',label:query+' stasjon · Oslo'},{id:'2',name:query+' skole',label:query+' skole · Oslo'}],
     'timezone-search':({query}:{query:string})=>[{name:query,timezone:'Asia/Shanghai',label:query+', China'},{name:query+' Heights',timezone:'America/Chicago',label:query+' Heights, USA'}],
-    'check-update':()=>({current:'2.0.1',latest:'2.1.0'}),'install-update':()=>null,
-    connect:({service}:{service:string})=>({title:'Connected',detail:service+' is ready to use'}),disconnect:()=>null,
+    'check-update':()=>({current:'2.0.2',latest:'2.1.0'}),'install-update':()=>null,
+    connect:({service,channel}:{service:string;channel?:string})=>{if(service==='twitch'&&channel){const chat=services['twitch'];chat.title='@'+channel;chat.data={...chat.data,channel};chat.items=[];return structuredClone(chat);}return {title:'Connected',detail:service+' is ready to use'};},disconnect:()=>null,
     'claude-sign-in':()=>null,'note-read':()=>({text:note}),'note-save':({text}:{text:string})=>{note=text;event('note',{text});return null;},
     volume:(change:{level?:number;muted?:boolean})=>{Object.assign(services['volume'].data!,change);return structuredClone(services['volume']);},
     'discord-voice':()=>services['discord'],
+    'twitch-say':({text}:{text:string})=>{const chat=services['twitch'];chat.items=[...(chat.items??[]),{title:'Rubster',detail:text,id:crypto.randomUUID(),color:'#ff7f50',self:true,badges:['broadcaster'],parts:[{t:text}]}];return structuredClone(chat);},
     'spotify-playback':({action}:{action:string})=>{const data=services['spotify'].data!;if(action==='play'||action==='pause')data['playing']=action==='play';return structuredClone(services['spotify']);},
     'spotify-like':({liked}:{liked:boolean})=>{services['spotify'].data!['liked']=liked;return structuredClone(services['spotify']);},
     'manage-widget':({id}:{id:string})=>{event('manage-widget',id);return null;},

@@ -21,8 +21,10 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&amp;icon_names=add,bookmarks,check,check_circle,content_copy,dark_mode,dashboard_customize,desktop_windows,drag_pan,fullscreen,fullscreen_exit,language,light_mode,lock,monitor,more_horiz,open_in_new,palette,pause,play_arrow,restart_alt,settings,share,shield,skip_next,space_dashboard,sports_esports,subtitles,swap_horiz,tab,thumb_down,thumb_up,tune,volume_off,volume_up,widgets&amp;display=block">
   <link rel="stylesheet" href="site.css">
   <script>
-    // Apply ?theme=, or a saved choice, before paint. The page follows the system otherwise.
-    try { const t = new URLSearchParams(location.search).get('theme') || localStorage.getItem('setpiece-site-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}
+    // Apply ?theme=, or a saved choice, before paint. Otherwise the page is dark, like Setpiece's default look.
+    let theme = 'dark';
+    try { const t = new URLSearchParams(location.search).get('theme') || localStorage.getItem('setpiece-site-theme'); if (t === 'light' || t === 'dark') theme = t; } catch {}
+    document.documentElement.dataset.theme = theme;
   </script>
   <script src="site.js" defer></script>
 </head>
@@ -111,12 +113,12 @@
       <div class="container">
         <div class="section-heading">
           <span class="eyebrow">Widgets</span>
-          <h2 id="widgets-title">Fifteen widgets. One family.</h2>
+          <h2 id="widgets-title">Sixteen widgets. One family.</h2>
           <p>Every widget takes its color from your accent and its shape from its category, so a wall of them still feels like one piece. Set each up once; it works in every workspace.</p>
         </div>
         <ul class="legend" aria-label="Widget categories">
           <li data-cat="daily"><i aria-hidden="true"></i>Daily <span>Clock, Calendar, Weather, Ruter, Notes</span></li>
-          <li data-cat="connected"><i aria-hidden="true"></i>Connected <span>Spotify, Discord, Inbox, News, Reddit</span></li>
+          <li data-cat="connected"><i aria-hidden="true"></i>Connected <span>Spotify, Discord, Twitch Chat, Inbox, News, Reddit</span></li>
           <li data-cat="device"><i aria-hidden="true"></i>Device <span>System, Battery, Volume, AI Usage, Bambu Lab</span></li>
         </ul>
         <div class="widget-wall" id="widget-wall" aria-label="Widget gallery">

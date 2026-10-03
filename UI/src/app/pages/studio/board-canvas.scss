@@ -22,25 +22,36 @@
   touch-action: none;
 }
 
+// The display at its own CSS size, scaled into the board from the top-left corner.
+.surface {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  overflow: hidden;
+}
+
 .tile {
   position: absolute;
   z-index: var(--z-content);
   display: flex;
-  border-radius: var(--shape-lg);
-  outline: 2px solid transparent;
-  outline-offset: 2px;
+  border-radius: 28px;
   cursor: grab;
-  transition: outline-color var(--motion-effects), box-shadow var(--motion-effects), opacity var(--motion-effects);
+  transition: box-shadow var(--motion-effects), opacity var(--motion-effects);
   sp-widget { flex: 1; min-width: 0; }
-  &:hover { box-shadow: var(--elevation-2); }
-  &.selected { outline-color: var(--mat-sys-primary); z-index: calc(var(--z-content) + 1); }
-  &.dragging { cursor: grabbing; opacity: 0.88; box-shadow: var(--elevation-3); }
-  &:focus-visible { outline: 3px solid var(--mat-sys-secondary); }
+  &:hover { box-shadow: 0 0 0 calc(2px / var(--k, 1)) color-mix(in srgb, var(--mat-sys-primary) 45%, transparent); }
+  &.selected { z-index: calc(var(--z-content) + 1); }
+  // The dragged tile follows the pointer above the others, with no transition to lag behind it.
+  &.dragging { z-index: calc(var(--z-content) + 2); cursor: grabbing; opacity: 0.9; box-shadow: 0 calc(18px / var(--k, 1)) calc(48px / var(--k, 1)) rgb(0 0 0 / .45); transition: none; }
+  &:focus-visible { outline: calc(3px / var(--k, 1)) solid var(--mat-sys-secondary); }
 }
 .previewing .tile { cursor: default; }
+.busy .tile:hover { box-shadow: none; }
 
 // Application and browser tiles: a quiet surface that names what goes there.
+// Placeholders are interface, not desk content: drawn at normal size inside the scaled tile.
 .placeholder {
+  zoom: calc(1 / var(--k, 1));
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -99,7 +110,18 @@
 .resize-ne { top: -7px; right: -7px; cursor: nesw-resize; }
 .resize-sw { bottom: -7px; left: -7px; cursor: nesw-resize; }
 
-.drop-preview {
+// The unscaled layer: the selection outline and its handles, and where a dragged tile will land.
+.selection {
+  position: absolute;
+  z-index: var(--z-handle);
+  box-sizing: border-box;
+  border: 2px solid var(--mat-sys-primary);
+  border-radius: var(--shape-lg);
+  pointer-events: none;
+  &.moving { border-style: dashed; opacity: .8; }
+  > * { pointer-events: auto; }
+}
+.landing {
   position: absolute;
   z-index: var(--z-overlay);
   display: grid;
@@ -120,18 +142,15 @@
   sp-icon { font-size: 16px; }
 }
 
-// Widgets hold their own controls, so they move by a grip on the top edge.
-.widget-grip {
+// Widgets hold their own controls, so a selected widget also has a grip on its top edge.
+.grip {
   position: absolute;
-  top: 0;
+  top: calc(-10px * var(--ui-scale));
   left: 50%;
-  z-index: var(--z-handle);
   width: calc(56px * var(--ui-scale));
   height: calc(20px * var(--ui-scale));
   margin-left: calc(-28px * var(--ui-scale));
   cursor: grab;
-  opacity: 0;
-  transition: opacity var(--motion-effects);
   &::before {
     content: '';
     position: absolute;
@@ -146,5 +165,5 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--mat-sys-surface) 60%, transparent);
   }
 }
-.tile:hover .widget-grip, .tile.selected .widget-grip { opacity: 0.9; }
+
 .tile-heading { cursor: grab; }

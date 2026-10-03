@@ -23,15 +23,15 @@ internal static class OAuth
         var context=await listener.GetContextAsync().WaitAsync(timeout.Token);var valid=context.Request.QueryString["state"]==state;var code=context.Request.QueryString["code"];
         var bytes=Encoding.UTF8.GetBytes("<!doctype html><title>Setpiece</title><p>You can return to Setpiece. This window may be closed.</p>");context.Response.ContentType="text/html; charset=utf-8";await context.Response.OutputStream.WriteAsync(bytes,timeout.Token);context.Response.Close();
         if(!valid||string.IsNullOrWhiteSpace(code))throw new InvalidDataException("Authorization was canceled or could not be verified. Your previous connection is preserved.");
-        var form=new Dictionary<string,string>{["client_id"]=client,["grant_type"]="authorization_code",["code"]=code,["redirect_uri"]=redirect,["code_verifier"]=verifier};if(provider is "Google" or "Discord"&&secret.Length>0)form["client_secret"]=secret;
-        using var response=await Exchange(http,provider,client,form,timeout.Token);response.EnsureSuccessStatusCode();var token=JsonNode.Parse(await response.Content.ReadAsStringAsync(timeout.Token))!.AsObject();var changes=TokenFields(provider,token);changes[provider+"ClientId"]=client;if(provider is "Google" or "Discord")changes[provider+"ClientSecret"]=secret;if(provider=="Spotify")changes["SpotifyPlaybackPermission"]=true;storage.UpdateConnections(changes);return Providers.State("ready","Connected",provider+" is ready to use.");
+        var form=new Dictionary<string,string>{["client_id"]=client,["grant_type"]="authorization_code",["code"]=code,["redirect_uri"]=redirect};if(parameters.ContainsKey("code_challenge"))form["code_verifier"]=verifier;if(provider is "Google" or "Discord"&&secret.Length>0)form["client_secret"]=secret;
+        using var response=await Exchange(http,provider,client,form,timeout.Token);await Ensure(response,provider);var token=JsonNode.Parse(await response.Content.ReadAsStringAsync(timeout.Token))!.AsObject();var changes=TokenFields(provider,token);changes[provider+"ClientId"]=client;if(provider is "Google" or "Discord")changes[provider+"ClientSecret"]=secret;if(provider=="Spotify")changes["SpotifyPlaybackPermission"]=true;storage.UpdateConnections(changes);return Providers.State("ready","Connected",provider+" is ready to use.");
     }
     public static async Task<string> Token(HttpClient http,Storage storage,string provider,JsonObject settings)
     {
         if(DateTimeOffset.TryParse(settings[provider+"ExpiresAt"]?.GetValue<string>(),out var expires)&&expires>DateTimeOffset.UtcNow.AddMinutes(2))return settings[provider+"AccessToken"]!.GetValue<string>();
         var form=new Dictionary<string,string>{["client_id"]=settings[provider+"ClientId"]?.GetValue<string>()??"",["grant_type"]="refresh_token",["refresh_token"]=settings[provider+"RefreshToken"]?.GetValue<string>()??""};
         if(provider is "Google" or "Discord")form["client_secret"]=settings[provider+"ClientSecret"]?.GetValue<string>()??"";
-        using var response=await Exchange(http,provider,form["client_id"],form,CancellationToken.None);response.EnsureSuccessStatusCode();var token=JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();storage.UpdateConnections(TokenFields(provider,token));return token["access_token"]!.GetValue<string>();
+        using var response=await Exchange(http,provider,form["client_id"],form,CancellationToken.None);await Ensure(response,provider);var token=JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();storage.UpdateConnections(TokenFields(provider,token));return token["access_token"]!.GetValue<string>();
     }
     private static string Endpoint(string provider)=>provider switch{"Google"=>"https://oauth2.googleapis.com/token","Reddit"=>"https://www.reddit.com/api/v1/access_token","Discord"=>"https://discord.com/api/oauth2/token",_=>"https://accounts.spotify.com/api/token"};
     private static string AuthorizeUrl(string provider)=>provider switch{"Google"=>"https://accounts.google.com/o/oauth2/v2/auth?","Reddit"=>"https://www.reddit.com/api/v1/authorize?","Discord"=>"https://discord.com/oauth2/authorize?",_=>"https://accounts.spotify.com/authorize?"};
@@ -40,6 +40,21 @@ internal static class OAuth
         using var request=new HttpRequestMessage(HttpMethod.Post,Endpoint(provider)){Content=new FormUrlEncodedContent(form)};
         if(provider=="Reddit")request.Headers.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Basic",Convert.ToBase64String(Encoding.UTF8.GetBytes(client+":")));
         return await http.SendAsync(request,token);
+    }
+    /** A refused token request, in words: the provider's own error code says whether the secret or the sign-in is at fault. */
+    private static async Task Ensure(HttpResponseMessage response,string provider)
+    {
+        if(response.IsSuccessStatusCode)return;
+        string error="",detail="";
+        try{var body=JsonNode.Parse(await response.Content.ReadAsStringAsync());error=body?["error"]?.GetValue<string>()??"";detail=body?["error_description"]?.GetValue<string>()??"";}
+        catch(Exception problem) when(problem is System.Text.Json.JsonException or InvalidOperationException){}
+        throw new InvalidDataException(error switch
+        {
+            "invalid_client"=>provider+" did not accept the client ID and secret. In the developer portal, check the client ID, reset the client secret, paste the new one here, and connect again.",
+            "invalid_grant"=>provider+" sign-in has expired or was already used. Connect again.",
+            "invalid_scope"=>provider+" refused the requested permissions. Check that your account is added as a tester of the application.",
+            _=>provider+" refused the sign-in ("+(int)response.StatusCode+(error.Length>0?", "+error:"")+(detail.Length>0?": "+detail:"")+")."
+        });
     }
     private static JsonObject TokenFields(string provider,JsonObject token)
     {

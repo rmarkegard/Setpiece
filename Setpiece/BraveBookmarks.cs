@@ -25,7 +25,7 @@ internal static class BraveBookmarks
             // The bar as Brave shows it: its bookmarks and folders in order, then Other and Mobile bookmarks as folders.
             if(document["roots"] is JsonObject shelf)
             {
-                if(shelf["bookmark_bar"] is JsonObject top)foreach(var node in Tree(top,icons))bar.Add(node);
+                if(shelf["bookmark_bar"] is JsonObject top)foreach(var node in Tree(top,icons))bar.Add(node!.DeepClone());
                 foreach(var root in new[]{"other","synced"})if(shelf[root] is JsonObject folder&&Tree(folder,icons) is {Count:>0} children)bar.Add(new JsonObject{["type"]="folder",["title"]=folder["name"]?.GetValue<string>()??root,["children"]=children});
             }
         }

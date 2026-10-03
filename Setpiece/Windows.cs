@@ -55,11 +55,51 @@ internal static class Windows
         catch(DllNotFoundException){}
         catch(EntryPointNotFoundException){}
     }
-    public static JsonArray Displays() => new(Screen.AllScreens.Select((s, i) => (JsonNode)new JsonObject { ["index"] = i, ["name"] = s.DeviceName, ["width"] = s.Bounds.Width, ["height"] = s.Bounds.Height, ["x"] = s.Bounds.X, ["y"] = s.Bounds.Y, ["primary"] = s.Primary }).ToArray());
+    public static JsonArray Displays() => new(Screen.AllScreens.Select((s, i) => (JsonNode)new JsonObject { ["index"] = i, ["name"] = s.DeviceName, ["id"] = MonitorId(s.DeviceName), ["scale"] = Scale(s), ["width"] = s.Bounds.Width, ["height"] = s.Bounds.Height, ["x"] = s.Bounds.X, ["y"] = s.Bounds.Y, ["primary"] = s.Primary }).ToArray());
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct DisplayDevice { public int Size; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string Name; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string String; public int Flags; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string Id; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string Key; }
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool EnumDisplayDevices(string? device, uint index, ref DisplayDevice info, uint flags);
+    /**
+     * The monitor itself, not the slot Windows put it in: its device path carries the model and the port it is
+     * plugged into. Windows renumbers DISPLAY1/2/3 and reorders its screen list when a monitor sleeps or wakes;
+     * this stays the same. Falls back to the device name when Windows does not say.
+     */
+    [DllImport("user32.dll")] private static extern nint MonitorFromPoint(Point point, uint flags);
+    [DllImport("shcore.dll")] private static extern int GetDpiForMonitor(nint monitor, int kind, out uint x, out uint y);
+    /** The display's Windows scale (1.25 at 125%): a desk on it lays out in pixels divided by this. */
+    public static double Scale(Screen screen)
+    {
+        try
+        {
+            var monitor = MonitorFromPoint(new Point(screen.Bounds.Left + screen.Bounds.Width / 2, screen.Bounds.Top + screen.Bounds.Height / 2), 2);
+            if (monitor != 0 && GetDpiForMonitor(monitor, 0, out var dpi, out _) == 0 && dpi > 0) return Math.Round(dpi / 96d, 3);
+        }
+        catch (Exception error) when (error is DllNotFoundException or EntryPointNotFoundException) { }
+        return 1;
+    }
+    public static string MonitorId(string deviceName)
+    {
+        try
+        {
+            var info = new DisplayDevice { Size = Marshal.SizeOf<DisplayDevice>() };
+            // Flag 1 (EDD_GET_DEVICE_INTERFACE_NAME) returns the monitor's device interface path.
+            if (EnumDisplayDevices(deviceName, 0, ref info, 1) && !string.IsNullOrWhiteSpace(info.Id)) return info.Id;
+        }
+        catch (Exception error) when (error is EntryPointNotFoundException or MarshalDirectiveException) { }
+        return deviceName;
+    }
     internal static string? TryReadProcessName(Func<string> read)
     {
         try { return read(); }
         catch (Exception error) when (error is System.ComponentModel.Win32Exception or InvalidOperationException) { return null; }
+    }
+    /** Keeps a window moving or resizing (a WM_WINDOWPOSCHANGING request) at a place; stacking and showing pass. Returns whether the request changed. */
+    internal static bool Hold(ref WindowPos position,Rectangle place)
+    {
+        const uint keep=0x3;// SWP_NOSIZE | SWP_NOMOVE
+        if((position.Flags&keep)==keep)return false;
+        if((position.Flags&keep)==0&&position.X==place.X&&position.Y==place.Y&&position.Width==place.Width&&position.Height==place.Height)return false;
+        position.X=place.X;position.Y=place.Y;position.Width=place.Width;position.Height=place.Height;position.Flags&=~keep;return true;
     }
     public static void BehindApplications(nint layer)
     {

@@ -14,9 +14,9 @@
       <sp-icon [name]="expanded()?'menu_open':'menu'"/>
     </button>
 
-    <button class="launch" [disabled]="store.busy()" [attr.aria-label]="'Launch '+store.profile().Name" [matTooltip]="expanded()?'':'Launch workspace'" matTooltipPosition="right" (click)="store.launch()">
-      @if(store.busy()){<mat-spinner diameter="24" strokeWidth="3"/>}@else{<sp-icon name="play_arrow" [filled]="true"/>}
-      <span class="launch-label label-large">Launch workspace</span>
+    <button class="launch" [disabled]="store.busy()" [class.running]="store.running()" [attr.aria-label]="store.running()?'Close workspace':'Launch '+store.profile().Name" [matTooltip]="expanded()?'':(store.running()?'Close workspace':'Launch workspace')" matTooltipPosition="right" (click)="store.running()?store.stop():store.launch()">
+      @if(store.busy()){<mat-spinner diameter="24" strokeWidth="3"/>}@else{<sp-icon [name]="store.running()?'stop':'play_arrow'" [filled]="true"/>}
+      <span class="launch-label label-large">{{store.running()?'Close workspace':'Launch workspace'}}</span>
     </button>
 
     <div class="destinations">

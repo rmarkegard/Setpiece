@@ -17,14 +17,17 @@ internal sealed class Providers : IDisposable
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string,(DateTimeOffset Time,JsonObject Value)> cache=new();
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string,SemaphoreSlim> gates=new();
     private readonly DeviceServices devices=new();
-    public Providers(Storage storage){this.storage=storage;http.DefaultRequestHeaders.UserAgent.ParseAdd("Setpiece/2.0 (Windows workspace widget)");}
+    private readonly TwitchChat twitch=new();
+    /** A service has new data before its next poll (Twitch chat); the host tells the widgets to read it now. */
+    public event Action<string>? Pushed;
+    public Providers(Storage storage){this.storage=storage;twitch.Changed+=()=>Pushed?.Invoke("twitch");http.DefaultRequestHeaders.UserAgent.ParseAdd("Setpiece/2.0 (Windows workspace widget)");}
     private static string Text(JsonObject obj,string key)=>obj[key]?.GetValue<string>()??"";
     public JsonObject PublicSettings()
     {
         try
         {
             var settings=storage.Connections();var result=new JsonObject();
-            foreach(var key in new[]{"WeatherLocation","WeatherLatitude","WeatherLongitude","RuterStopId","RuterStopName","NewsSource","NewsCategories","CalendarExcludedTitles","ClockTimeZones","ClockLocationLabels","DiscordServerId","DiscordClientId","BambuHost","BambuSerial","RedditCommunity","RedditClientId","GoogleClientId","SpotifyClientId","InboxProvider","CodexExecutable","AiHidden"})result[key]=settings[key]?.DeepClone();
+            foreach(var key in new[]{"WeatherLocation","WeatherLatitude","WeatherLongitude","RuterStopId","RuterStopName","NewsSource","NewsCategories","CalendarExcludedTitles","ClockTimeZones","ClockLocationLabels","DiscordServerId","DiscordClientId","BambuHost","BambuSerial","RedditCommunity","RedditClientId","TwitchChannel","TwitchClientId","TwitchLogin","GoogleClientId","SpotifyClientId","InboxProvider","CodexExecutable","AiHidden"})result[key]=settings[key]?.DeepClone();
             foreach(var service in new[]{"Google","Spotify","Discord","Reddit"})result[service+"Connected"]=!string.IsNullOrEmpty(Text(settings,service=="Discord"?"DiscordServerId":service+"RefreshToken"));
             result["CalendarFeedConnected"]=!string.IsNullOrEmpty(Text(settings,"CalendarFeedUrl"));result["OpenCodeGoKeySaved"]=Text(settings,"OpenCodeGoKey").Length>0;result["DiscordCallConnected"]=Text(settings,"DiscordCallToken").Length>0;return result;
         }
@@ -32,7 +35,7 @@ internal sealed class Providers : IDisposable
     }
     public async Task<JsonObject> Read(string service)
     {
-        var lifetime=TimeSpan.FromSeconds(service switch{"system" or "battery" or "volume"=>2,"discord" or "spotify"=>5,"bambu-lab"=>10,"ruter"=>15,"weather" or "news"=>300,"clock"=>3600,_=>30});
+        var lifetime=TimeSpan.FromSeconds(service switch{"system" or "battery" or "volume"=>2,"discord" or "spotify"=>5,"twitch"=>0,"bambu-lab"=>10,"ruter"=>15,"weather" or "news"=>300,"clock"=>3600,_=>30});
         if(cache.TryGetValue(service,out var old)&&DateTimeOffset.UtcNow-old.Time<lifetime)return (JsonObject)old.Value.DeepClone();
         var gate=gates.GetOrAdd(service,_=>new SemaphoreSlim(1));await gate.WaitAsync();
         try
@@ -48,7 +51,7 @@ internal sealed class Providers : IDisposable
             {
                 result=service switch
                 {
-                    "weather"=>await Weather(settings),"ruter"=>await Departures(settings),"news"=>await News(settings),"reddit"=>await Reddit(settings),"discord"=>await Discord(settings),"calendar" or "google-calendar"=>await Calendar(settings),"spotify"=>await Spotify(settings),
+                    "weather"=>await Weather(settings),"ruter"=>await Departures(settings),"news"=>await News(settings),"reddit"=>await Reddit(settings),"twitch"=>Twitch(settings),"discord"=>await Discord(settings),"calendar" or "google-calendar"=>await Calendar(settings),"spotify"=>await Spotify(settings),
                     "clock"=>State("ready",DateTime.Now.ToString("HH:mm"),DateTime.Now.ToString("dddd, d MMMM"),data:new JsonObject{["zones"]=settings["ClockTimeZones"]?.DeepClone()??new JsonArray("Europe/Oslo","America/New_York"),["labels"]=settings["ClockLocationLabels"]?.DeepClone()??new JsonArray("Oslo","New York")}),
                     "battery"=>Battery(),"system"=>await SystemData(),"volume"=>DeviceServices.Volume(),"codex"=>await AiUsage.Read(http,settings),"bambu-lab"=>await PrinterService.Read(settings),"email"=>await InboxService.Read(http,storage,settings),
                     _=>State("error","Widget data is not available","Select a supported live widget from the library.")
@@ -94,6 +97,13 @@ internal sealed class Providers : IDisposable
             case "news":changes["NewsSource"]="VG";changes["NewsCategories"]=request["categories"]?.DeepClone()??new JsonArray();break;
             case "clock":changes["ClockTimeZones"]=request["zones"]?.DeepClone()??new JsonArray("UTC");changes["ClockLocationLabels"]=request["zoneLabels"]?.DeepClone()??new JsonArray("UTC");break;
             case "reddit":var community=Text(request,"community");if(community.Length==0||!community.All(c=>char.IsAsciiLetterOrDigit(c)||c=='_'))throw new InvalidDataException("Enter a subreddit name using letters, numbers or underscores.");changes["RedditCommunity"]=community;if(Text(request,"clientId").Length>0){await OAuth.Connect(http,storage,"Reddit",Text(request,"clientId"),"");}break;
+            case "twitch":
+                var channel=Text(request,"channel").Trim().TrimStart('#','@').ToLowerInvariant();
+                if(channel.Length is <3 or >25||!channel.All(c=>char.IsAsciiLetterOrDigit(c)||c=='_'))throw new InvalidDataException("Enter a Twitch channel name using letters, numbers or underscores.");
+                changes["TwitchChannel"]=channel;
+                // Signing in to chat is its own step: the device code waits for you in the browser.
+                if(request["signIn"]?.GetValue<bool>()==true){using var wait=new CancellationTokenSource(TimeSpan.FromMinutes(10));foreach(var pair in await TwitchSignIn.Connect(http,Text(request,"clientId").Trim(),wait.Token))changes[pair.Key]=pair.Value?.DeepClone();}
+                break;
             case "bambu-lab":changes=await PrinterService.Connect(request);break;
             case "email":var provider=Text(request,"provider");if(provider is not ("google" or "outlook"))throw new InvalidDataException("Choose Google or Outlook.");changes["InboxProvider"]=provider;break;
             case "codex":var path=Text(request,"executable");if(path.Length>0&&(!File.Exists(path)||!Path.GetExtension(path).Equals(".exe",StringComparison.OrdinalIgnoreCase)))throw new InvalidDataException("Choose the installed codex.exe file.");changes["CodexExecutable"]=path;
@@ -137,6 +147,26 @@ internal sealed class Providers : IDisposable
         var filters=settings["NewsCategories"]?.AsArray().Select(n=>n!.GetValue<string>()).ToArray()??[];var items=WidgetData.News(document,filters);
         return State(items.Count==0?"empty":"ready","The latest from VG",items.Count==0?"No stories match your selected categories.":"Headlines from Norway",items);
     }
+    private JsonObject Twitch(JsonObject settings)
+    {
+        var channel=Text(settings,"TwitchChannel");if(channel.Length==0)return State("disconnected","Join the conversation","Choose a Twitch channel to follow its chat.");
+        var account=Text(settings,"TwitchRefreshToken").Length>0?Text(settings,"TwitchLogin"):"";
+        twitch.Credentials??=TwitchCredentials;twitch.Follow(channel,account);
+        return State("ready","@"+channel,twitch.Connected?"Live chat":"Connecting to chat…",twitch.Snapshot(60),new JsonObject{["channel"]=channel,["connected"]=twitch.Connected,["login"]=account,["canSend"]=twitch.CanSend,["authFailed"]=twitch.AuthFailed});
+    }
+    /** The saved Twitch sign-in, refreshed when it is about to expire or Twitch just refused it. */
+    private async Task<(string Login,string Token)?> TwitchCredentials(bool refused)
+    {
+        var settings=storage.Connections();var refresh=Text(settings,"TwitchRefreshToken");if(refresh.Length==0)return null;
+        var fresh=DateTimeOffset.TryParse(Text(settings,"TwitchExpiresAt"),out var expires)&&expires>DateTimeOffset.UtcNow.AddMinutes(5);
+        if(fresh&&!refused)return (Text(settings,"TwitchLogin"),Text(settings,"TwitchAccessToken"));
+        var renewed=await TwitchSignIn.Refresh(http,Text(settings,"TwitchClientId"),refresh);if(renewed is null)return null;
+        storage.UpdateConnections(renewed);return (renewed["TwitchLogin"]!.GetValue<string>(),renewed["TwitchAccessToken"]!.GetValue<string>());
+    }
+    public async Task<JsonObject> TwitchSay(JsonObject request)
+    {
+        await twitch.Say(Text(request,"text"));cache.TryRemove("twitch",out _);return await Read("twitch");
+    }
     private async Task<JsonObject> Reddit(JsonObject settings)
     {
         var community=Text(settings,"RedditCommunity");if(community.Length==0)community="technology";
@@ -151,7 +181,7 @@ internal sealed class Providers : IDisposable
     {
         if(Text(settings,"DiscordCallToken").Length>0)return await ReadVoice(settings);
         var server=Text(settings,"DiscordServerId");if(server.Length==0)return State("disconnected","A place for your people","Connect a server with its widget enabled.");var data=await Get("https://discord.com/api/guilds/"+Uri.EscapeDataString(server)+"/widget.json");
-        var items=new JsonArray();foreach(var member in data["members"]!.AsArray().Take(6))items.Add(new JsonObject{["id"]=member!["id"]?.DeepClone(),["title"]=member["username"]!.DeepClone(),["detail"]=member["status"]?.DeepClone()});return State("ready",data["name"]!.GetValue<string>(),data["presence_count"]+" members online",items);
+        var items=new JsonArray();foreach(var member in data["members"]!.AsArray().Take(12))items.Add(new JsonObject{["id"]=member!["id"]?.DeepClone(),["title"]=member["username"]!.DeepClone(),["detail"]=member["status"]?.DeepClone(),["avatar"]=DiscordVoice.Https(member["avatar_url"]?.GetValue<string>())});return State("ready",data["name"]!.GetValue<string>(),data["presence_count"]+" members online",items);
     }
     private async Task<JsonObject> Calendar(JsonObject settings)
     {
@@ -219,10 +249,33 @@ internal sealed class Providers : IDisposable
             data:new JsonObject{["level"]=status.BatteryLifePercent*100,["plugged"]=plugged,["charging"]=status.BatteryChargeStatus.HasFlag(BatteryChargeStatus.Charging),["saver"]=saver,["remaining"]=plugged?null:status.BatteryLifeRemaining});
     }
     public JsonObject SetVolume(JsonObject request){cache.TryRemove("volume",out _);return DeviceServices.Volume(request["level"]?.GetValue<double>(),request["muted"]?.GetValue<bool>());}
+    /**
+     * One connection to the Discord app serves every read and every mute or deafen. Opening a new one for each
+     * (as before) collided with the widget's own refresh: Discord stopped answering the handshake and the
+     * button timed out.
+     */
+    private DiscordVoice? voice;
+    private readonly SemaphoreSlim voiceGate=new(1);
     private async Task<JsonObject> ReadVoice(JsonObject settings,JsonObject? changes=null)
     {
-        var token=Text(settings,"DiscordRefreshToken").Length>0?await OAuth.Token(http,storage,"Discord",settings):Text(settings,"DiscordCallToken");
-        await using var session=await DiscordVoice.Session(Text(settings,"DiscordClientId"),token);return await session.Snapshot(changes);
+        await voiceGate.WaitAsync();
+        try
+        {
+            for(var attempt=0;;attempt++)
+            {
+                if(voice is null||voice.Broken)
+                {
+                    if(voice is not null){await voice.DisposeAsync();voice=null;}
+                    var token=Text(settings,"DiscordRefreshToken").Length>0?await OAuth.Token(http,storage,"Discord",settings):Text(settings,"DiscordCallToken");
+                    voice=await DiscordVoice.Session(Text(settings,"DiscordClientId"),token);
+                }
+                try{return await voice.Snapshot(changes);}
+                // A connection Discord dropped (it restarted, or the PC slept) is opened again once.
+                catch(Exception error) when(attempt==0&&error is IOException or OperationCanceledException or ObjectDisposedException or InvalidDataException){await voice.DisposeAsync();voice=null;}
+            }
+        }
+        catch{if(voice is not null){await voice.DisposeAsync();voice=null;}throw;}
+        finally{voiceGate.Release();}
     }
     public async Task<JsonArray> SearchTimezones(string query)
     {
@@ -256,11 +309,11 @@ internal sealed class Providers : IDisposable
         var fields=service switch{
             "google"=>new[]{"GoogleAccessToken","GoogleRefreshToken","GoogleExpiresAt"},
             "spotify"=>["SpotifyAccessToken","SpotifyRefreshToken","SpotifyExpiresAt"],
-            "reddit"=>["RedditAccessToken","RedditRefreshToken","RedditExpiresAt"],
+            "reddit"=>["RedditAccessToken","RedditRefreshToken","RedditExpiresAt"],"twitch"=>["TwitchChannel","TwitchAccessToken","TwitchRefreshToken","TwitchExpiresAt","TwitchLogin"],
             "calendar"=>["CalendarFeedUrl"],"discord"=>["DiscordServerId","DiscordCallToken","DiscordAccessToken","DiscordRefreshToken","DiscordExpiresAt"],"weather"=>["WeatherLatitude","WeatherLongitude","WeatherLocation"],
             "ruter"=>["RuterStopId","RuterStopName"],"bambu-lab"=>["BambuHost","BambuAccessCode","BambuCertificateSha256","BambuCameraCertificateSha256"],"email"=>["InboxProvider"],"codex"=>["OpenCodeGoKey"],
             _=>Array.Empty<string>()};
         var changes=new JsonObject();foreach(var field in fields)changes[field]=null;storage.UpdateConnections(changes);cache.Clear();
     }
-    public void Dispose(){http.Dispose();devices.Dispose();foreach(var gate in gates.Values)gate.Dispose();}
+    public void Dispose(){http.Dispose();devices.Dispose();twitch.Dispose();voice?.DisposeAsync().AsTask().Wait(500);foreach(var gate in gates.Values)gate.Dispose();}
 }

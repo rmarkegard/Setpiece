@@ -94,17 +94,17 @@ interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:strin
     .br{position:relative;height:100vh;flex-direction:column;border-radius:calc(28px * var(--shape-scale,1));clip-path:inset(0 round calc(28px * var(--shape-scale,1)));box-shadow:none;transition:background-color .8s var(--glide);
       --c:var(--t-accent);--on:var(--t-accent-on);--hi:var(--t-accent-hi);--v:var(--t-accent-v);
       --inner:max(4px,calc(28px * var(--shape-scale,1) - 8px))}
-    .top{display:flex;flex-direction:column;flex:none;padding:6px 8px 0}
+    .top{display:flex;flex-direction:column;flex:none;padding:4px 8px 0}
     .row{display:flex;align-items:center;gap:4px;min-width:0}
-    .tabs{height:40px}
-    .nav{height:42px;gap:6px}
-    .marks{height:36px;gap:2px;overflow:hidden}
-    .name{padding:0 10px 0 8px;height:32px;cursor:default;user-select:none;color:var(--on);font-weight:650}
+    .tabs{height:32px}
+    .nav{height:34px;gap:4px}
+    .marks{height:28px;gap:2px;overflow:hidden}
+    .name{padding:0 10px 0 8px;height:28px;cursor:default;user-select:none;color:var(--on);font-weight:650}
     .name sp-icon{font-size:18px;color:var(--hi)}
     .drag{flex:1;align-self:stretch;min-width:24px}
     .now{min-width:0;font:550 12.5px/1 var(--font-brand);color:var(--faint)}
     .strip{display:flex;align-items:center;gap:3px;min-width:0;overflow:hidden}
-    .tab{position:relative;display:flex;align-items:center;height:30px;max-width:210px;min-width:72px;border-radius:15px;color:var(--muted);transition:background-color .25s var(--glide),color .25s var(--glide)}
+    .tab{position:relative;display:flex;align-items:center;height:26px;max-width:200px;min-width:72px;border-radius:13px;color:var(--muted);transition:background-color .25s var(--glide),color .25s var(--glide)}
     .tab:hover{background:var(--inset)}
     .tab.on{background:var(--inset2);color:var(--on)}
     .tab-title{display:flex;align-items:center;gap:8px;flex:1;min-width:0;height:100%;padding:0 2px 0 12px;border:0;background:none;color:inherit;font:600 12.5px/1 var(--font-brand);cursor:pointer}
@@ -115,22 +115,22 @@ interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:strin
     .tab:hover .tab-close,.tab.on .tab-close,.tab-close:focus-visible{opacity:1}
     .tab-close:hover{background:var(--inset2)}
     .tab-close sp-icon{font-size:15px}
-    .btn{display:grid;place-items:center;flex:none;width:32px;height:32px;border:0;border-radius:50%;background:none;color:var(--muted);cursor:pointer;transition:background-color .2s var(--glide),color .2s var(--glide)}
+    .btn{display:grid;place-items:center;flex:none;width:28px;height:28px;border:0;border-radius:50%;background:none;color:var(--muted);cursor:pointer;transition:background-color .2s var(--glide),color .2s var(--glide)}
     .btn:hover:not(:disabled){background:var(--inset2);color:var(--on)}
     .btn:disabled{opacity:.35;cursor:default}
     .btn.on{background:var(--inset2);color:var(--hi)}
-    .btn sp-icon{font-size:19px}
-    .seg{display:flex;align-items:center;gap:0;padding:2px;border-radius:18px;background:var(--inset)}
-    .field{position:relative;flex:1;display:flex;align-items:center;gap:8px;min-width:0;height:36px;padding:0 14px;border-radius:18px;background:var(--inset);color:var(--muted);cursor:text;transition:background-color .2s var(--glide),box-shadow .2s var(--glide)}
+    .btn sp-icon{font-size:18px}
+    .seg{display:flex;align-items:center;gap:0;padding:0;border-radius:14px;background:var(--inset)}
+    .field{position:relative;flex:1;display:flex;align-items:center;gap:8px;min-width:0;height:28px;padding:0 12px;border-radius:14px;background:var(--inset);color:var(--muted);cursor:text;transition:background-color .2s var(--glide),box-shadow .2s var(--glide)}
     .field:hover{background:var(--inset2)}
     .field.editing{background:var(--inset2);box-shadow:inset 0 0 0 1.5px var(--hi)}
     .field sp-icon{font-size:16px;flex:none}
     .field input{flex:1;min-width:0;border:0;outline:0;background:none;color:transparent;caret-color:var(--on);font:500 13px/1 var(--font-brand)}
     .field.editing input{color:var(--on)}
-    .pretty{position:absolute;left:38px;right:14px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;pointer-events:none;font:500 13px/1 var(--font-brand);color:var(--faint)}
+    .pretty{position:absolute;left:34px;right:14px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;pointer-events:none;font:500 13px/1 var(--font-brand);color:var(--faint)}
     .pretty b{font-weight:600;color:var(--on)}
     .field.editing .pretty{visibility:hidden}
-    .mark{display:flex;align-items:center;gap:6px;flex:none;height:28px;max-width:170px;padding:0 10px;border:0;border-radius:14px;background:none;color:var(--muted);font:550 12px/1 var(--font-brand);cursor:pointer;transition:background-color .2s var(--glide),color .2s var(--glide)}
+    .mark{display:flex;align-items:center;gap:6px;flex:none;height:24px;max-width:170px;padding:0 8px;border:0;border-radius:12px;background:none;color:var(--muted);font:550 12px/1 var(--font-brand);cursor:pointer;transition:background-color .2s var(--glide),color .2s var(--glide)}
     .mark:hover{background:var(--inset2);color:var(--on)}
     .mark.icon-only{padding:0 6px}
     .mark.back{background:var(--inset2);color:var(--on);padding-left:4px}
@@ -140,7 +140,7 @@ interface BrowserState {selected?:string;tabs?:{id:string;title:string;url:strin
     .hint{padding:0 8px;font:500 12px/1 var(--font-brand);color:var(--faint)}
     .error{display:flex;align-items:center;gap:8px;margin:4px 0 2px;padding:8px 12px;border-radius:12px;background:color-mix(in oklab,var(--danger,#e5484d) 22%,transparent);font:550 12.5px/1.3 var(--font-brand)}
     .error sp-icon{font-size:16px}
-    .page{flex:1;min-height:0;margin:6px 8px 8px;border-radius:var(--inner);background:var(--inset)}
+    .page{flex:1;min-height:0;margin:4px 8px 8px;border-radius:var(--inner);background:var(--inset)}
     .br:not(.pinned) .page{margin-top:4px}
     .diagnostics{position:absolute;inset:8px;z-index:9;display:flex;flex-direction:column;gap:12px;padding:24px;border-radius:var(--inner);background:var(--c);font:500 14px/1.4 var(--font-brand)}
     .diagnostics h2{margin:0;font:650 20px/1.2 var(--font-brand)}
@@ -180,12 +180,13 @@ export class BrowserToolbar implements OnDestroy {
     // The host lays the web page into the opening; it hears again whenever the opening moves.
     effect(()=>{const el=this.page().nativeElement;this.observer?.disconnect();this.observer=new ResizeObserver(()=>this.report());this.observer.observe(el);this.observer.observe(document.documentElement);});
     // Only what moves the opening or recolours the card: the page's title and history changing must not.
-    effect(()=>{this.pinned();this.error();this.store.appearance();requestAnimationFrame(()=>this.report());});
+    // A new wallpaper re-frosts the card too, so the corners are drawn again from it.
+    effect(()=>{this.pinned();this.error();this.store.appearance();this.store.profile().WallpaperId;requestAnimationFrame(()=>this.report());});
   }
   private report(){
     const el=this.page().nativeElement,r=el.getBoundingClientRect(),radius=parseFloat(getComputedStyle(el).borderTopLeftRadius)||0;
     // The look rides along so the host redraws its smooth page corners when the card's colours change.
-    const frame={top:r.top,left:r.left,right:innerWidth-r.right,bottom:innerHeight-r.bottom,radius,look:JSON.stringify(this.store.appearance())};
+    const frame={top:r.top,left:r.left,right:innerWidth-r.right,bottom:innerHeight-r.bottom,radius,look:JSON.stringify([this.store.appearance(),this.store.profile().WallpaperId])};
     const key=JSON.stringify(frame);if(key===this.reported)return;this.reported=key;
     void this.bridge.call('browser',{action:'frame',...frame}).catch(()=>{this.reported='';});
   }

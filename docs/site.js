@@ -65,7 +65,7 @@ tabs.forEach((tab, i) => {
 /* Widget wall: every widget in both themes. */
 const widgets = [
   ['clock', 'Clock', 300], ['google-calendar', 'Calendar', 420], ['spotify', 'Spotify', 300], ['system', 'System', 300],
-  ['weather', 'Weather', 300], ['discord', 'Discord', 300], ['bambu-lab', 'Bambu Lab', 420], ['ruter', 'Ruter', 300],
+  ['weather', 'Weather', 300], ['discord', 'Discord', 300], ['twitch', 'Twitch Chat', 420], ['bambu-lab', 'Bambu Lab', 420], ['ruter', 'Ruter', 300],
   ['email', 'Inbox', 300], ['codex', 'AI Usage', 300], ['news', 'VG News', 300],
   ['volume', 'Volume', 300], ['notes', 'Notes', 300], ['reddit', 'Reddit', 300], ['battery', 'Battery', 300]
 ];
