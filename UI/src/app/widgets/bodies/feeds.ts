@@ -281,7 +281,8 @@ export class DiscordBody {
     const columns=Math.max(1,Math.floor((this.w.layoutWidth()-56)/150)),rows=Math.max(1,Math.floor((this.w.capacityHeight()-(this.voice()?156:86))/42));
     return Math.max(2,columns*rows);
   });
-  readonly more=computed(()=>Math.max(0,this.members().length-this.room()));
+  // A call of up to four always shows everyone: its tiles shrink to fit rather than count people off.
+  readonly more=computed(()=>this.stage()?0:Math.max(0,this.members().length-this.room()));
   /** A small call fills the panel like Discord's own call view: one large tile per person. */
   readonly stage=computed(()=>this.voice()&&this.members().length>0&&this.members().length<=4);
   /** The arrangement that gives each person the largest tile: side by side in a wide card, stacked in a tall one. */
@@ -291,7 +292,7 @@ export class DiscordBody {
     for(let cols=1;cols<=n;cols++){const rows=Math.ceil(n/cols),size=Math.min(width/cols,height/rows);if(size>best.size+.5)best={cols,rows,size};}
     return {cols:best.cols,rows:best.rows};
   });
-  readonly shown=computed(()=>{const fresh=this.joined.keys(),list=this.members(),room=this.room();return list.slice(0,list.length>room?room-1:room).map((m,i)=>{
+  readonly shown=computed(()=>{const fresh=this.joined.keys(),list=this.members(),room=this.stage()?list.length:this.room();return list.slice(0,list.length>room?room-1:room).map((m,i)=>{
     const deaf=/deafened/i.test(m.state),muted=deaf||/muted/i.test(m.state);
     return {key:m.key,name:m.name,avatar:m.avatar,initial:m.name.charAt(0).toUpperCase(),deaf,muted,state:m.state.toLowerCase(),hue:'dz-av a'+(i%5),
       cls:['dz-person',muted?'quiet':'',fresh.has(m.key)?'fresh':''].filter(Boolean).join(' '),aria:m.name+(deaf?', deafened':muted?', muted':'')};

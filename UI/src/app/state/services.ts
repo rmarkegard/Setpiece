@@ -26,7 +26,7 @@ export const serviceInfo:Record<string,ServiceInfo>={
   discord:{service:'discord',intro:'Follow a public server, or join your own voice calls.',action:'Connect',canDisconnect:true,status:c=>c['DiscordConnected']||c['DiscordCallConnected']?'connected':'needs-setup'},
   news:{service:'news',intro:'VG headlines, no account needed. Narrow them to the categories you like.',action:'Save',canDisconnect:false,status:()=>'ready'},
   reddit:{service:'reddit',intro:'Pick a community to follow.',action:'Save',canDisconnect:true,status:c=>has(c['RedditCommunity'])?'connected':'needs-setup'},
-  twitch:{service:'twitch',intro:"Follow any channel's chat. Read-only, and no account needed.",action:'Save',canDisconnect:true,status:c=>has(c['TwitchChannel'])?'connected':'needs-setup'},
+  twitch:{service:'twitch',intro:"Follow any channel's chat, no account needed. Sign in to chat as yourself.",action:'Save',canDisconnect:true,status:c=>has(c['TwitchChannel'])?'connected':'needs-setup'},
   email:{service:'email',intro:'Read unread mail from Gmail or the classic Outlook desktop app.',action:'Save',canDisconnect:true,status:c=>c['InboxProvider']==='outlook'||c['GoogleConnected']?'connected':'needs-setup'},
   'bambu-lab':{service:'bambu-lab',intro:'Connect your printer over your local network.',action:'Connect',canDisconnect:true,status:c=>has(c['BambuHost'])?'connected':'needs-setup'},
   codex:{service:'codex',intro:'Shows Claude, Codex and OpenCode Go limits. Choose which appear on the widget and connect the ones that are missing.',action:'Save',canDisconnect:false,status:()=>'ready'},
