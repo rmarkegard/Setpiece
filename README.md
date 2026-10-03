@@ -32,7 +32,7 @@ Setpiece is a Windows workspace manager. It tiles your apps, live widgets and pe
 
 ## Widgets
 
-Fifteen widgets, each colored from your accent by category, with a shape of its own: **Daily** (Clock, Calendar, Weather, Ruter, Notes), **Connected** (Spotify, Discord, Inbox, VG News, Reddit) and **Device** (System, Battery, Volume, AI Usage, Bambu Lab). Each adapts to the size of its tile, and each is set up once for every workspace.
+Sixteen widgets, each colored from your accent by category, with a shape of its own: **Daily** (Clock, Calendar, Weather, Ruter, Notes), **Connected** (Spotify, Discord, Twitch Chat, Inbox, VG News, Reddit) and **Device** (System, Battery, Volume, AI Usage, Bambu Lab). Each adapts to the size of its tile, and each is set up once for every workspace.
 
 <p>
   <picture><source media="(prefers-color-scheme: light)" srcset="docs/screenshots/widgets/light-clock.png"><img src="docs/screenshots/widgets/dark-clock.png" width="24%" alt="Clock widget"></picture>
@@ -61,7 +61,7 @@ Try it interactively on the [project page](https://rmarkegard.github.io/Setpiece
 
 - **Arrange your apps.** Assign open Windows apps to tiles; drag, resize, split and snap them on a live board. Drop a tile on another to swap them.
 - **Every display, its own layout.** Include the displays a workspace uses, portrait ones too, each at its real aspect ratio. Start from a layout preset, preview it, then apply.
-- **Widgets.** Fifteen live widgets with one setup flow, a live preview, and clear setup status.
+- **Widgets.** Sixteen live widgets with one setup flow, a live preview, and clear setup status.
 - **Shared browsers.** Named WebView2 sessions with persistent tabs and fullscreen contained inside a tile.
 - **Appearance.** Material 3 Expressive. Light or dark, one accent that recolors everything, surface and corner controls, and eleven wallpapers.
 - **Workspaces.** Save several, switch in one click, and never lose unsaved changes silently.
@@ -102,7 +102,7 @@ The source build is at `Setpiece/bin/Release/net10.0-windows/Setpiece.exe`. Keep
 .\tools\package-release.ps1
 ```
 
-It builds and verifies a local archive at `release/Setpiece-2.0.1-windows-x64.zip`. Use `-SkipBuild` only when the current Release output has already been built and verified. The script does not publish or upload the archive.
+It builds and verifies a local archive at `release/Setpiece-2.0.2-windows-x64.zip`. Use `-SkipBuild` only when the current Release output has already been built and verified. The script does not publish or upload the archive.
 
 To build the per-user Windows installer, install Inno Setup 6 and run:
 
@@ -110,7 +110,7 @@ To build the per-user Windows installer, install Inno Setup 6 and run:
 .\tools\package-installer.ps1
 ```
 
-The script packages the same app and notices as the zip into `release/Setpiece-2.0.1-windows-x64-setup.exe`. Set `ISCC_PATH` if `ISCC.exe` is outside the usual install path. The installer creates Start menu and optional desktop shortcuts, and uninstall removes only the installed program files. The separate .NET Desktop and WebView2 runtimes remain prerequisites.
+The script packages the same app and notices as the zip into `release/Setpiece-2.0.2-windows-x64-setup.exe`. Set `ISCC_PATH` if `ISCC.exe` is outside the usual install path. The installer creates Start menu and optional desktop shortcuts, and uninstall removes only the installed program files. The separate .NET Desktop and WebView2 runtimes remain prerequisites.
 
 Settings → Updates checks the latest published GitHub Release on demand. When a newer three-part version has a matching installer asset with a SHA-256 digest, Setpiece can download, verify, and launch it. A release maintainer must upload the installer under the generated filename; draft and prerelease releases are ignored. The installed app does not update silently.
 
@@ -149,4 +149,4 @@ The optional live checks use public weather/transit data and inspect local servi
 
 The project site is live at [rmarkegard.github.io/Setpiece](https://rmarkegard.github.io/Setpiece/). Its source is [`docs/index.html`](docs/index.html) with `site.css` and `site.js`, served from the `main` branch's `/docs` folder without a build step. It follows the reader's light or dark preference (`?theme=light` or `?theme=dark` forces one) and includes an interactive fullscreen-in-a-tile demo.
 
-Screenshots in [`docs/screenshots`](docs/screenshots) come from the development preview, which runs the real interface against sample data. Start it with `pnpm start` in `UI`, then open `http://127.0.0.1:4200/?mock=1`. Useful parameters: `route=Widgets` (with `capture=1`), `mode=light`, `accent=517c60`, `mockTime=10:24`, `mockState=disconnected`, `widget=clock&surface=1` for a single widget, and `browser=Media` for the browser toolbar. The mock is replaced by a no-op in production builds. For wallpapers in the preview, link them once from the repository root: `New-Item -ItemType Junction UI\dev-assets -Target Setpiece\Assets\Wallpapers` (the link is git-ignored).
+Screenshots in [`docs/screenshots`](docs/screenshots) come from the development preview, which runs the real interface against sample data. Start it with `pnpm start` in `UI`, then open `http://127.0.0.1:4200/?mock=1`. Useful parameters: `route=Widgets` (with `capture=1`), `mode=light`, `accent=517c60`, `surface=glass`, `palette=plain`, `wallpaper=mercury-flow`, `mockTime=10:24`, `mockState=disconnected`, `widget=clock&surface=1` for a single widget, and `browser=Media` for the browser toolbar. The mock is replaced by a no-op in production builds. For wallpapers in the preview, link them once from the repository root: `New-Item -ItemType Junction UI\dev-assets -Target Setpiece\Assets\Wallpapers` (the link is git-ignored).
