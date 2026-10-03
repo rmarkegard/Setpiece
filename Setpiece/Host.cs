@@ -394,14 +394,19 @@ internal sealed class Host : Form
         catch(Exception error) when(error is NotImplementedException or InvalidCastException or System.Runtime.InteropServices.COMException){}
     }
     internal void NotifyBrowserCatalog()=>Emit("browsers",BrowserCatalog());
-    /** The pages showing in visible browsers, kept as a snapshot so widgets can read it from any thread. */
-    private volatile string[] browserPages=[];
+    /**
+     * What Setpiece's browsers have open, kept as a snapshot so widgets can read it from any thread: the tab
+     * each visible browser shows, and every open tab in every browser.
+     */
+    private volatile BrowserPages browserPages=new([],[]);
     internal void NoteBrowserPages()
     {
         // Selecting a tab during setup can run before the browser joins the list; the next change catches up.
-        var pages=browsers.Values.Where(b=>!b.IsDisposed&&b.Visible).Select(b=>b.CurrentUrl).Where(u=>u.Length>0).ToArray();
-        if(pages.SequenceEqual(browserPages))return;
-        browserPages=pages;providers.BrowserPagesChanged();
+        var live=browsers.Values.Where(b=>!b.IsDisposed).ToArray();
+        var shown=live.Where(b=>b.Visible).Select(b=>b.CurrentUrl).Where(u=>u.Length>0).ToArray();
+        var open=live.SelectMany(b=>b.OpenUrls).Where(u=>u.Length>0).ToArray();
+        if(shown.SequenceEqual(browserPages.Shown)&&open.SequenceEqual(browserPages.Open))return;
+        browserPages=new(shown,open);providers.BrowserPagesChanged();
     }
     /** The desk window under a place on screen, while a workspace is launched. */
     internal Surface? DeskAt(Rectangle bounds)=>surfaces.FirstOrDefault(s=>!s.IsDisposed&&s.Visible&&s.Bounds.Contains(bounds));

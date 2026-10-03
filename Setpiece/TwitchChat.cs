@@ -37,6 +37,8 @@ internal sealed class TwitchChat : IDisposable
     private Dictionary<string,string> self=[];
 
     public bool Connected=>connected;
+    /** The channel chat follows now ("" once it has gone idle). */
+    public string Following{get{lock(gate)return channel;}}
     /** Signed in and joined: messages can be sent. */
     public bool CanSend=>connected&&authenticated;
     /** Twitch refused the saved sign-in, even after a refresh: chat fell back to reading anonymously. */

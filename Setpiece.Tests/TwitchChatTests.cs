@@ -73,4 +73,17 @@ public class TwitchChatTests
     [InlineData("https://www.youtube.com/xqc",null)]
     [InlineData("not a url",null)]
     public void A_browser_page_names_the_stream_it_shows(string url,string? channel)=>Assert.Equal(channel,TwitchChat.ChannelFromUrl(url));
+    [Fact]
+    public void Sync_prefers_the_shown_stream_then_keeps_one_still_open_in_a_background_tab()
+    {
+        static BrowserPages Pages(string[] shown,string[] open)=>new(shown,open);
+        // The selected tab decides.
+        Assert.Equal("xqc",Providers.FollowStream(Pages(["https://www.twitch.tv/xqc"],["https://www.twitch.tv/xqc","https://www.twitch.tv/clix"]),"clix"));
+        // Switched to another page: chat stays with the stream still playing in its tab.
+        Assert.Equal("clix",Providers.FollowStream(Pages(["https://www.youtube.com/"],["https://www.youtube.com/","https://www.twitch.tv/xqc","https://www.twitch.tv/clix"]),"clix"));
+        // Its tab closed: another open stream takes over.
+        Assert.Equal("xqc",Providers.FollowStream(Pages(["https://www.youtube.com/"],["https://www.twitch.tv/xqc"]),"clix"));
+        // No stream anywhere: wait.
+        Assert.Null(Providers.FollowStream(Pages(["https://www.youtube.com/"],["https://www.youtube.com/"]),"clix"));
+    }
 }

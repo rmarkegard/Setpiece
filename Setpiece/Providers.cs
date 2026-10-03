@@ -21,7 +21,7 @@ internal sealed class Providers : IDisposable
     /** A service has new data before its next poll (Twitch chat); the host tells the widgets to read it now. */
     public event Action<string>? Pushed;
     /** The pages showing in Setpiece's browsers right now. */
-    public Func<string[]> BrowserPages{get;set;}=()=>[];
+    public Func<BrowserPages> BrowserPages{get;set;}=()=>new([],[]);
     public Providers(Storage storage){this.storage=storage;twitch.Changed+=()=>Pushed?.Invoke("twitch");http.DefaultRequestHeaders.UserAgent.ParseAdd("Setpiece/2.0 (Windows workspace widget)");}
     private static string Text(JsonObject obj,string key)=>obj[key]?.GetValue<string>()??"";
     public JsonObject PublicSettings()
@@ -160,17 +160,22 @@ internal sealed class Providers : IDisposable
         var sync=settings["TwitchSync"]?.GetValue<bool>()==true;var saved=Text(settings,"TwitchChannel");
         var account=Text(settings,"TwitchRefreshToken").Length>0?Text(settings,"TwitchLogin"):"";
         // In sync, chat follows whichever Twitch stream a Setpiece browser is showing, and waits while none is.
-        var channel=sync?Watching():saved;
+        var channel=sync?Watching(twitch.Following):saved;
         if(sync&&channel is null)return State("ready","Waiting for a stream","Open a Twitch stream in your browser",new JsonArray(),new JsonObject{["sync"]=true,["waiting"]=true,["channel"]=saved,["login"]=account});
         if(string.IsNullOrEmpty(channel))return State("disconnected","Join the conversation","Choose a Twitch channel to follow its chat.");
         twitch.Credentials??=TwitchCredentials;twitch.Follow(channel,account);
         return State("ready","@"+channel,twitch.Connected?"Live chat":"Connecting to chat…",twitch.Snapshot(60),new JsonObject{["channel"]=channel,["connected"]=twitch.Connected,["login"]=account,["canSend"]=twitch.CanSend,["authFailed"]=twitch.AuthFailed,["sync"]=sync});
     }
-    /** The first Twitch stream open in a visible Setpiece browser, if any. */
-    private string? Watching()
+    /**
+     * The Twitch stream chat should follow: the one a browser is showing; failing that, the one chat already
+     * follows, as long as it is still open in some tab; failing that, any stream open in a tab.
+     */
+    private string? Watching(string current)=>FollowStream(BrowserPages(),current);
+    internal static string? FollowStream(BrowserPages pages,string current)
     {
-        foreach(var page in BrowserPages())if(TwitchChat.ChannelFromUrl(page) is { } channel)return channel;
-        return null;
+        foreach(var page in pages.Shown)if(TwitchChat.ChannelFromUrl(page) is { } shown)return shown;
+        var open=pages.Open.Select(TwitchChat.ChannelFromUrl).OfType<string>().ToArray();
+        return current.Length>0&&open.Contains(current)?current:open.FirstOrDefault();
     }
     /** A browser changed page: a chat in sync re-reads at once instead of on its next poll. */
     public void BrowserPagesChanged()
@@ -354,3 +359,5 @@ internal sealed class Providers : IDisposable
     }
     public void Dispose(){AiUsage.Shutdown();PrinterService.Shutdown();http.Dispose();devices.Dispose();twitch.Dispose();voice?.DisposeAsync().AsTask().Wait(500);foreach(var gate in gates.Values)gate.Dispose();}
 }
+/** The tab each visible browser shows, and every tab open in any browser. */
+internal sealed record BrowserPages(string[] Shown,string[] Open);
