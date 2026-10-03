@@ -169,7 +169,7 @@ const allSources=[{key:'claude',name:'Claude'},{key:'codex',name:'Codex'},{key:'
           <span class="ai-name">{{p.name}}</span>
           <span class="ai-lines">
             @for(line of p.lines;track line.label){<span class="ai-wk" [class]="line.cls"><i></i><span>{{line.label}} {{line.value}}%</span></span>}
-            @empty{<span class="ai-wk"><span>Not signed in</span></span>}
+            @empty{<span class="ai-wk" [title]="p.status"><span>{{p.expired?'Sign-in expired':'Not signed in'}}</span></span>}
           </span>
         </div>
       }
@@ -191,7 +191,8 @@ export class UsageBody {
     const radii=[37,28.5,20],outer=list.slice().reverse();
     const rings=radii.map((r,i)=>{const x=outer[i];if(!x)return {r,cls:'',offset:100,opacity:0,track:i<2?1:0};return {r,cls:spanClass[x.span]+(x.win.used>=90?' hot':''),offset:(100-x.win.used).toFixed(1),opacity:x.win.used<1?0:1,track:1};});
     const five=list.find(x=>x.span==='5h');
-    return {key:s.key,name:s.name,rings,center:five?Math.round(five.win.used):null,cls:['ai-p',hot?'hot':'',three?'three':'two'].filter(Boolean).join(' '),
+    const status=String((this.w.state().data?.[s.key] as {status?:string})?.status??'');
+    return {key:s.key,name:s.name,status,expired:/expired/i.test(status),rings,center:five?Math.round(five.win.used):null,cls:['ai-p',hot?'hot':'',three?'three':'two'].filter(Boolean).join(' '),
       lines:list.map(x=>({label:x.span,value:Math.round(x.win.used),cls:'ai-wk '+spanClass[x.span]+(x.win.used>=90?' hot':'')})),
       aria:s.name+': '+(list.length?list.map(x=>x.span+' '+Math.round(x.win.used)+'%').join(', '):'not signed in')};
   }));

@@ -7,13 +7,13 @@ export interface Tile {
   Web: { Tabs: {Id:string;Url:string;Title:string}[]; SelectedTabId:string; ToolbarPinned:boolean };
   [key: string]: unknown;
 }
-export interface Board { MonitorIndex: number; MonitorDeviceName?:string; WidgetScale: number; Zones: Tile[]; [key:string]:unknown; }
+export interface Board { MonitorIndex: number; MonitorDeviceName?:string; MonitorId?:string; WidgetScale: number; Zones: Tile[]; [key:string]:unknown; }
 export interface Profile {
   Name: string; SchemaVersion:number; Gap:number; OuterMargin:number; MonitorIndex:number;
   MonitorIndices:number[]; MonitorBoards:Board[]; WallpaperId:string; AnimatedWallpaper:boolean;
   SmartSnap:boolean; SnapStep:number; [key:string]:unknown;
 }
-export interface Display { index:number; name:string; width:number; height:number; x:number; y:number; primary:boolean; }
+export interface Display { index:number; name:string; id?:string; scale?:number; width:number; height:number; x:number; y:number; primary:boolean; }
 export function fittingGap(gap:number,margin:number,tiles:Tile[],width:number,height:number):number {
   return Math.min(gap,...tiles.map(t=>Math.max(0,Math.min(t.Width*(width-2*margin),t.Height*(height-2*margin))-1)));
 }
@@ -28,6 +28,7 @@ export const widgets:WidgetDefinition[] = [
   {id:'system',name:'System',icon:'monitoring',category:'Device',description:'A clear view of your machine.'},
   {id:'google-calendar',name:'Calendar',icon:'calendar_month',category:'Daily',description:'Make room for what comes next.'},
   {id:'discord',name:'Discord',icon:'forum',category:'Connected',description:'Your community, at a glance.'},
+  {id:'twitch',name:'Twitch Chat',icon:'chat',category:'Connected',description:'A live channel chat, right on your desk.'},
   {id:'spotify',name:'Spotify',icon:'music_note',category:'Connected',description:'A little space for your soundtrack.'},
   {id:'codex',name:'AI Usage',icon:'data_usage',category:'Device',description:'Claude and Codex quotas, and OpenCode activity.'},
   {id:'weather',name:'Weather',icon:'partly_cloudy_day',category:'Daily',description:'A window onto the day outside.'},

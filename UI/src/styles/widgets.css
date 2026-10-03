@@ -116,7 +116,7 @@
 .wg.play { --c: var(--t-play); --on: var(--t-play-on); --hi: var(--t-play-hi); --v: var(--t-play-v); --ga: 74%; border-radius: 28px; }
 /* Each widget gets its own tone, chosen so neighbours on the desk never match. */
 .wg.ck, .wg.vo, .wg.ib { --c: var(--t-accent); --on: var(--t-accent-on); --hi: var(--t-accent-hi); --v: var(--t-accent-v); }
-.wg.ru { --c: var(--t-berry); --on: var(--t-berry-on); --hi: var(--t-berry-hi); --v: var(--t-berry-v); }
+.wg.ru, .wg.tw { --c: var(--t-berry); --on: var(--t-berry-on); --hi: var(--t-berry-hi); --v: var(--t-berry-v); }
 .wg.cal, .wg.dz { --c: var(--t-coral); --on: var(--t-coral-on); --hi: var(--t-coral-hi); --v: var(--t-coral-v); }
 .wg.nt, .wg.rd { --c: var(--t-citrus); --on: var(--t-citrus-on); --hi: var(--t-citrus-hi); --v: var(--t-citrus-v); --ga: 74%; }
 .wg.bb { --c: var(--t-mint); --on: var(--t-mint-on); --hi: var(--t-mint-hi); --v: var(--t-mint-v); }
@@ -262,10 +262,9 @@
 .ck-bar i { position: absolute; inset: 0; border-radius: 2px; background: var(--hi); transform-origin: left center; animation: ck-sec 60s linear infinite; }
 @keyframes ck-sec { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .ck-s { font: 600 12px/1 var(--font-brand); font-variant-numeric: tabular-nums; color: var(--muted); width: 22px; text-align: right; }
-.ck-places { display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+/* The group is rounded, not each row: however many places fit, the stack keeps its soft outer corners. */
+.ck-places { display: flex; flex-direction: column; justify-content: center; gap: 3px; border-radius: 20px; overflow: hidden; align-self: center; }
 .ck-place { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; column-gap: 10px; padding: 10px 12px; background: var(--inset); border-radius: 6px; }
-.ck-place:first-child { border-radius: 20px 20px 6px 6px; }
-.ck-place:last-child { border-radius: 6px 6px 20px 20px; }
 .ck-city { display: block; font: 550 12px/1.2 var(--font-brand); color: var(--muted); }
 .ck-pt { display: block; font: 600 19px/1.15 var(--font-brand); font-stretch: 112%; font-variant-numeric: tabular-nums; }
 .ck-off { font: 600 11px/1 var(--font-brand); color: var(--faint); align-self: start; margin-top: 3px; font-variant-numeric: tabular-nums; }
@@ -284,21 +283,45 @@
 .ck.fx-chime .ck-place:nth-child(2) { animation-delay: .12s; }
 .ck.fx-chime .ck-place:nth-child(3) { animation-delay: .24s; }
 @keyframes ck-flash { 0% { background-color: var(--inset); } 30% { background-color: color-mix(in oklab, var(--hi) 34%, transparent); } 100% { background-color: var(--inset); } }
+/*
+ * A narrow clock stacks its places under the time. At least one always shows; a second once there is room,
+ * a third in a tall tile. In a short tile the place becomes a single slim line so the time keeps its size.
+ */
 @container (max-width: 460px) {
-  .ck .in { grid-template-columns: minmax(0, 1fr); }
-  .ck-places { display: none; }
-  .ck-time { font-size: min(27cqw, 42cqh); }
+  .ck .in { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 12px; }
+  .ck-places { align-self: stretch; }
+  .ck-place:nth-child(n+2) { display: none; }
+  .ck-time { font-size: min(27cqw, 30cqh); }
 }
-/* A tall clock stacks its places under the time: two once there is room, three in a taller tile. */
 @container (max-width: 460px) and (min-height: 330px) {
-  .ck .in { grid-template-rows: minmax(0, 1fr) auto; }
-  .ck-places { display: flex; }
-  .ck-place:nth-child(n+3) { display: none; }
-  .ck-place:nth-child(2) { border-radius: 6px 6px 20px 20px; }
+  .ck-place:nth-child(2) { display: grid; }
+  .ck-time { font-size: min(27cqw, 34cqh); }
 }
 @container (max-width: 460px) and (min-height: 420px) {
   .ck-place:nth-child(3) { display: grid; }
-  .ck-place:nth-child(2):not(:last-child) { border-radius: 6px; }
+}
+/* A wide but short clock keeps its side column, with only as many places as its height holds. */
+@container (min-width: 461px) and (max-height: 260px) { .ck-place:nth-child(n+3) { display: none; } }
+@container (min-width: 461px) and (max-height: 190px) { .ck-place:nth-child(n+2) { display: none; } }
+/* Short tiles: one slim line per place, and the seconds bar tucks in closer. */
+@container (max-height: 300px) {
+  .ck-place { grid-template-columns: 30px minmax(0, 1fr) auto; column-gap: 8px; padding: 6px 12px; }
+  .ck-place > div { display: flex; align-items: baseline; gap: 8px; }
+  .ck-city { display: inline; }
+  .ck-pt { display: inline; font-size: 15px; }
+  .ck-off { align-self: center; margin-top: 0; }
+  .ck-arc { width: 30px; height: 18px; }
+  .ck-secs { margin-top: 6px; }
+}
+/* The smallest clock: just the time and one place, the seconds bar gives way. */
+@container (max-height: 190px), (max-width: 230px) {
+  .ck .in { gap: 8px; padding: 16px; }
+  .ck-secs { display: none; }
+  .ck-main > .spread { display: none; }
+  .ck-time { font-size: min(27cqw, 44cqh); }
+  .ck-place { padding: 5px 10px; }
+  .ck-arc { display: none; }
+  .ck-place { grid-template-columns: minmax(0, 1fr) auto; }
 }
 
 /* ==========================================================================
@@ -777,34 +800,46 @@
 /* ==========================================================================
    DISCORD — who is talking, at a glance; rings breathe with each voice.
    ========================================================================== */
-.dz-server { width: 42px; height: 42px; flex: none; border-radius: 14px; background: var(--on); color: var(--c); display: grid; place-items: center; font: 800 14px/1 var(--font-brand); font-stretch: 120%; }
+.dz-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.dz-server { width: 42px; height: 42px; flex: none; border-radius: 14px; object-fit: cover; background: var(--on); color: var(--c); display: grid; place-items: center; }
+.dz-server.mark { background: #5865f2; color: #fff; }
+.dz-server.mark svg { width: 24px; height: 24px; fill: currentColor; }
 .dz-name { font: 650 16px/1.2 var(--font-brand); font-stretch: 108%; }
 .dz-ch { display: flex; align-items: center; gap: 6px; margin-top: 3px; font: 500 12px/1.2 var(--font-brand); color: var(--muted); }
-.dz-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: var(--hi); color: var(--c); font: 750 10.5px/1 var(--font-brand); font-variant-numeric: tabular-nums; }
-.dz.fx-ping .dz-badge { animation: sp-pop .6s var(--spring); }
-.dz-voice { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; padding: 12px; border-radius: 18px; background: var(--inset); }
-.dz-vh { display: flex; align-items: center; justify-content: space-between; font: 600 12.5px/1 var(--font-brand); }
-.dz-vh > span { display: inline-flex; align-items: center; gap: 6px; }
-.dz-vh .ic { width: 16px; height: 16px; color: var(--hi); }
-.dz-vh em { font-style: normal; font-weight: 550; color: var(--muted); font-variant-numeric: tabular-nums; }
-.dz-avs { display: flex; gap: 8px; align-items: center; }
-.dz-av { position: relative; width: 38px; height: 38px; flex: none; border-radius: 50%; display: grid; place-items: center; font: 700 14px/1 var(--font-brand); color: var(--c); transition: transform .5s var(--spring), box-shadow .3s; }
+.dz-ch .dot { width: 6px; height: 6px; background: #3ba55d; }
+.dz-people { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); grid-auto-rows: 38px; align-content: start; gap: 4px; overflow: hidden; padding: 8px; border-radius: 18px; background: var(--inset); }
+.dz-person { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 0 8px 0 3px; border-radius: 12px; transition: background-color .3s var(--glide); }
+.dz-person.fresh { animation: dz-join .7s var(--spring) both; }
+.dz-av { position: relative; width: 32px; height: 32px; flex: none; border-radius: 50%; overflow: hidden; display: grid; place-items: center; font: 700 13px/1 var(--font-brand); color: var(--c); }
+.dz-av img { width: 100%; height: 100%; object-fit: cover; }
 .dz-av.a0 { background: oklch(from var(--hi) l c h); }
 .dz-av.a1 { background: oklch(from var(--hi) calc(l - .08) c calc(h + 70)); }
 .dz-av.a2 { background: oklch(from var(--hi) calc(l - .04) c calc(h - 70)); }
 .dz-av.a3 { background: oklch(from var(--hi) calc(l - .1) c calc(h + 140)); }
 .dz-av.a4 { background: oklch(from var(--hi) l c calc(h + 200)); }
-.dz-av.talk { box-shadow: 0 0 0 2.5px var(--c), 0 0 0 5px var(--on); animation: dz-talk .9s ease-in-out infinite alternate; }
-@keyframes dz-talk { from { box-shadow: 0 0 0 2.5px var(--c), 0 0 0 4.5px var(--on); } to { box-shadow: 0 0 0 2.5px var(--c), 0 0 0 6.5px color-mix(in oklab, var(--on) 50%, transparent); } }
-.dz-av.fresh { animation: dz-join .9s var(--spring) both; }
-@keyframes dz-join { 0% { transform: scale(0) rotate(-40deg); } 100% { transform: none; } }
-.dz-av b { position: absolute; right: -3px; bottom: -3px; width: 18px; height: 18px; border-radius: 50%; background: var(--c); color: var(--on); display: grid; place-items: center; transform: scale(0); transition: transform .4s var(--spring); }
-.dz-av b .ic { width: 12px; height: 12px; stroke-width: 2.4; }
-.dz-av.mic-off b { transform: none; }
+@keyframes dz-join { 0% { opacity: 0; transform: translateX(-10px) scale(.96); } 100% { opacity: 1; transform: none; } }
+.dz-who { flex: 1; min-width: 0; font: 600 13.5px/1.2 var(--font-brand); }
+.dz-person.quiet .dz-who { color: var(--muted); }
+.dz-person.quiet .dz-av { opacity: .7; }
+.dz-face { position: relative; flex: none; display: grid; }
+.dz-state { position: absolute; right: -4px; bottom: -4px; box-sizing: border-box; width: 18px; height: 18px; padding: 3px; border-radius: 50%; background: var(--on); color: var(--c); stroke-width: 2.6; box-shadow: 0 0 0 2px var(--c); }
+.dz-presence { position: absolute; right: -2px; bottom: -2px; width: 11px; height: 11px; border-radius: 50%; background: var(--faint); box-shadow: 0 0 0 2px var(--c); }
+/* A call of up to four: a tile per person, the avatar as large as the panel allows. */
+.dz-people.stage { container-type: size; grid-template-columns: repeat(var(--dz-cols, 2), minmax(0, 1fr)); grid-auto-rows: 1fr; align-content: stretch; gap: 8px; }
+.dz-people.stage .dz-person { flex-direction: column; justify-content: center; gap: 8px; padding: 10px 8px; border-radius: 16px; background: var(--inset); }
+.dz-people.stage { --dz-face: clamp(40px, min(calc(52cqh / var(--dz-rows, 1)), calc(55cqw / var(--dz-cols, 2))), 112px); }
+.dz-people.stage .dz-av { width: var(--dz-face); height: var(--dz-face); font-size: calc(var(--dz-face) * .38); }
+.dz-people.stage .dz-state { width: calc(var(--dz-face) * .3); height: calc(var(--dz-face) * .3); padding: calc(var(--dz-face) * .05); right: 0; bottom: 0; }
+.dz-people.stage .dz-who { flex: none; max-width: 100%; text-align: center; font-size: clamp(13px, calc(var(--dz-face) * .17), 16px); }
+.dz-presence.online { background: #3ba55d; }
+.dz-presence.idle { background: #faa61a; }
+.dz-presence.dnd { background: #f23f43; }
+.dz-more { display: flex; align-items: center; padding: 0 12px; font: 600 12.5px/1 var(--font-brand); color: var(--muted); }
+.dz-empty { margin: auto; padding: 12px; text-align: center; font: 500 12.5px/1.4 var(--font-brand); color: var(--faint); }
 .dz-ctl { display: flex; gap: 6px; }
 .dz-ctl .btn { flex: 1; height: 40px; padding: 0 12px; font-size: 13px; }
 .dz-ctl .btn .ic { width: 18px; height: 18px; }
-.dz-ctl .btn[aria-pressed=true] { background: var(--on); color: var(--c); border-radius: 12px; }
+.dz-ctl .btn[aria-pressed=true] { background: #f23f43; color: #fff; border-radius: 12px; }
 .dz-toast { position: absolute; right: 16px; top: 18px; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 6px; border-radius: 15px; background: var(--on); color: var(--c); font: 650 12px/1 var(--font-brand); opacity: 0; transform: translateX(24px); pointer-events: none; z-index: 6; }
 .dz-toast i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; background: var(--hi); color: var(--c); }
 .dz.fx-join .dz-toast { animation: dz-toast 2.6s var(--spring-soft); }
@@ -896,7 +931,6 @@
 @container (max-width: 250px) {
   .bb-meta { flex-direction: column; align-items: flex-start; }
   .ck-main > .spread > .chip { display: none; }
-  .dz-avs { flex-wrap: wrap; }
   .ai .spread > .eyebrow { display: none; }
 }
 @container (max-width: 340px) {
@@ -934,4 +968,33 @@
 }
 /* In short tiles these parts keep their content's height, so the card zooms to fit instead of overlapping them. */
 @container (max-height: 230px) { .wx-top { flex-shrink: 0; } }
-.dz-voice { min-height: min-content; }
+.dz-people { min-height: 56px; }
+
+/* ==========================================================================
+   TWITCH CHAT — newest at the bottom; each arrival blooms in, emotes sit inline.
+   ========================================================================== */
+.tw-log { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 4.5px; overflow: hidden; padding: 10px 12px; border-radius: 18px; background: var(--inset); }
+.tw-line { margin: 0; flex: none; font: 500 13.75px/1.45 var(--font-brand); overflow-wrap: anywhere; }
+.tw-name { font-weight: 700; margin-right: 6px; }
+.tw-name::after { content: ':'; color: var(--muted); font-weight: 500; }
+.tw-badge { display: inline-grid; place-items: center; width: 16.5px; height: 16.5px; margin-right: 5px; border-radius: 5.5px; background: var(--hi); color: var(--c); font: 700 10px/1 var(--font-brand); font-style: normal; vertical-align: 1px; }
+.tw-line.me .tw-text { font-style: italic; color: var(--muted); }
+.tw-emote { display: inline-block; height: 1.5em; width: auto; vertical-align: middle; margin: -2px 1px; }
+.tw-quiet { margin: auto; text-align: center; font: 500 12.5px/1.4 var(--font-brand); color: var(--faint); }
+
+.tw-channel { padding: 0; border: 0; background: none; cursor: text; font: inherit; color: inherit; border-radius: 6px; }
+.tw-channel:hover { color: var(--on); }
+.tw-switch { display: flex; align-items: center; gap: 2px; min-width: 0; height: 26px; padding: 0 8px; border-radius: 13px; background: var(--inset2); font: 600 12.5px/1 var(--font-brand); color: var(--muted); }
+.tw-switch input { width: 140px; min-width: 0; border: 0; outline: 0; background: none; color: var(--on); font: inherit; }
+.tw-line.system .tw-text { font-style: italic; color: var(--muted); }
+.tw-line.mine { background: color-mix(in oklab, var(--hi) 14%, transparent); margin: 0 -6px; padding: 1px 6px; border-radius: 8px; }
+.tw-compose { display: flex; gap: 6px; flex: none; }
+.tw-compose input { flex: 1; min-width: 0; height: 38px; box-sizing: border-box; padding: 0 14px; border: 0; outline: 0; border-radius: 19px; background: var(--inset); color: var(--on); font: 500 13.5px/1 var(--font-brand); }
+.tw-compose input::placeholder { color: var(--faint); }
+.tw-compose input:focus { background: var(--inset2); box-shadow: inset 0 0 0 1.5px var(--hi); }
+.tw-compose .btn { width: 38px; height: 38px; padding: 0; flex: none; border-radius: 19px; }
+.tw-compose .btn .ic { width: 18px; height: 18px; }
+.tw-compose .btn:disabled { opacity: .45; }
+.tw-error { margin: 0; font: 500 12px/1.3 var(--font-brand); color: var(--on); opacity: .85; }
+.tw-signin { flex: none; height: 34px; border: 0; border-radius: 17px; background: var(--inset); color: var(--muted); font: 600 12.5px/1 var(--font-brand); cursor: pointer; }
+.tw-signin:hover { background: var(--inset2); color: var(--on); }

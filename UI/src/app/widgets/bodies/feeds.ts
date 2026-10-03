@@ -1,7 +1,9 @@
-import {ChangeDetectionStrategy,Component,computed,effect,inject,signal} from '@angular/core';
+import {ChangeDetectionStrategy,Component,ElementRef,computed,effect,inject,signal,viewChild} from '@angular/core';
+import {FormsModule} from '@angular/forms';
 import {ServiceItem} from '../../../domain';
 import {lineKind,siden} from '../../../widget-format';
 import {WidgetContext} from '../context';
+import {StudioStore} from '../../state/studio-store';
 import {OdoComponent,ago,clockTime,compact,flashSet,onChange,slotList} from '../motion';
 
 const text=(item:ServiceItem,key:string)=>typeof item[key]==='string'?item[key] as string:'';
@@ -216,53 +218,165 @@ export class InboxBody {
   }
 }
 
-interface Member {key:string;name:string;state:string;}
+interface Member {key:string;name:string;state:string;avatar:string;}
+const discordMark='M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.865-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.74 19.74 0 0 0 3.677 4.37a.07.07 0 0 0-.032.028C.533 9.046-.319 13.58.099 18.058a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.873-1.295 1.226-1.994a.076.076 0 0 0-.042-.106 13.1 13.1 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .078-.011c3.928 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .079.01c.12.099.246.198.373.292a.077.077 0 0 1-.007.128 12.3 12.3 0 0 1-1.873.891.077.077 0 0 0-.041.107c.36.698.772 1.363 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.029zM8.02 15.331c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.332-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.332-.946 2.418-2.157 2.418z';
 
-/** Discord: who is here, at a glance; in a call, your mute and deafen are one tap away. */
+/**
+ * Discord: who is here, at a glance. In a call the card names the channel and its server, lists everyone
+ * with their avatar and whether they are muted or deafened, and keeps your own mute and deafen one tap away.
+ * Following a public server, it lists who is online.
+ */
 @Component({
   selector:'sp-discord-body',
   changeDetection:ChangeDetectionStrategy.OnPush,
   template:`
     <div class="dz-toast" aria-live="polite"><i>{{toast().charAt(0)}}</i>{{toast()}}</div>
-    <div style="display: flex; align-items: center; gap: 12px; min-width: 0">
-      <span class="dz-server" aria-hidden="true">{{initials()}}</span>
-      <div style="min-width: 0"><div class="dz-name clip">{{server()}}</div><div class="dz-ch">{{voice()?'Connected to voice':w.state().detail}}</div></div>
-    </div>
-    <div class="dz-voice">
-      <div class="dz-vh"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9a4.2 4.2 0 0 1 0 6"></path></svg>{{voice()?w.state().title:'Online now'}}</span><em>{{members().length}} {{voice()?'in voice':'online'}}</em></div>
-      <div class="dz-avs">
-        @for(m of shown();track m.key){
-          <span class="dz-av" [class]="m.cls" [title]="m.name" [attr.aria-label]="m.aria">{{m.name.charAt(0).toUpperCase()}}<b><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5a3 3 0 0 1 6 0v5M15 13a3 3 0 0 1-5.6 1.4M6 11a6 6 0 0 0 10.4 4.1M12 18v3M4 4l16 16"></path></svg></b></span>
-        }
+    <div class="dz-head">
+      @if(icon()){<img class="dz-server" [src]="icon()" alt="">}@else{<span class="dz-server mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="mark"></path></svg></span>}
+      <div style="min-width: 0">
+        <div class="dz-name clip">{{heading()}}</div>
+        <div class="dz-ch clip">@if(voice()){<span class="dot live"></span>}{{subline()}}</div>
       </div>
+    </div>
+    <div class="dz-people" [class.stage]="stage()" [style.--dz-cols]="grid().cols" [style.--dz-rows]="grid().rows" role="list" [attr.aria-label]="voice()?'In this call':'Online now'">
+      @for(m of shown();track m.key){
+        <div class="dz-person" role="listitem" [class]="m.cls" [attr.aria-label]="m.aria">
+          <span class="dz-face">
+            <span class="dz-av" [class]="m.hue">@if(m.avatar){<img [src]="m.avatar" alt="" loading="lazy">}@else{{{m.initial}}}</span>
+            @if(m.deaf){<svg class="ic dz-state" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 13.7-5.6M20 12v3M4 15h3v5H5.5A1.5 1.5 0 0 1 4 18.5zM17 20h1.5a1.5 1.5 0 0 0 1.5-1.5V15h-3zM4 4l16 16"></path></svg>}
+            @else if(m.muted){<svg class="ic dz-state" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5a3 3 0 0 1 6 0v5M15 13a3 3 0 0 1-5.6 1.4M6 11a6 6 0 0 0 10.4 4.1M12 18v3M4 4l16 16"></path></svg>}
+            @else if(!voice()){<span class="dz-presence" [class]="m.state"></span>}
+          </span>
+          <span class="dz-who clip">{{m.name}}</span>
+        </div>
+      } @empty {<p class="dz-empty">{{voice()?'Nobody else is here yet.':'Nobody is online right now.'}}</p>}
+      @if(more()>0){<div class="dz-more">+{{more()}} more</div>}
     </div>
     @if(voice()){
       <div class="dz-ctl">
-        <button class="btn tonal" type="button" [attr.aria-pressed]="muted()" (click)="w.control('discord-voice',{muted:!muted()})"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v5.5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg>{{muted()?'Unmute':'Mute'}}</button>
-        <button class="btn tonal" type="button" [attr.aria-pressed]="deafened()" (click)="w.control('discord-voice',{deafened:!deafened()})"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3M4 15h3v5H5.5A1.5 1.5 0 0 1 4 18.5zM20 15h-3v5h1.5a1.5 1.5 0 0 0 1.5-1.5z"></path></svg>{{deafened()?'Undeafen':'Deafen'}}</button>
+        <button class="btn tonal" type="button" [attr.aria-pressed]="muted()" (click)="w.control('discord-voice',{muted:!muted()})"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true">@if(muted()){<path d="M9 5.5a3 3 0 0 1 6 0v5M15 13a3 3 0 0 1-5.6 1.4M6 11a6 6 0 0 0 10.4 4.1M12 18v3M4 4l16 16"></path>}@else{<path d="M12 3a3 3 0 0 0-3 3v5.5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path>}</svg>{{muted()?'Unmute':'Mute'}}</button>
+        <button class="btn tonal" type="button" [attr.aria-pressed]="deafened()" (click)="w.control('discord-voice',{deafened:!deafened()})"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true">@if(deafened()){<path d="M4 15v-3a8 8 0 0 1 13.7-5.6M20 12v3M4 15h3v5H5.5A1.5 1.5 0 0 1 4 18.5zM17 20h1.5a1.5 1.5 0 0 0 1.5-1.5V15h-3zM4 4l16 16"></path>}@else{<path d="M4 15v-3a8 8 0 0 1 16 0v3M4 15h3v5H5.5A1.5 1.5 0 0 1 4 18.5zM20 15h-3v5h1.5a1.5 1.5 0 0 0 1.5-1.5z"></path>}</svg>{{deafened()?'Undeafen':'Deafen'}}</button>
       </div>
     }`,
   styleUrl:'./body.scss'
 })
 export class DiscordBody {
   readonly w=inject(WidgetContext);
+  readonly mark=discordMark;
   readonly toast=signal('');
   private readonly joined=flashSet(1000);
   readonly voice=computed(()=>!!this.w.state().data?.['voice']);
   readonly muted=computed(()=>!!this.w.state().data?.['muted']);
   readonly deafened=computed(()=>!!this.w.state().data?.['deafened']);
-  /** In a call the header names the server; the panel below names the channel. */
-  readonly server=computed(()=>String(this.w.state().data?.['server']||this.w.state().title));
-  readonly initials=computed(()=>this.server().split(/\s+/).filter(Boolean).slice(0,2).map(s=>s.charAt(0).toUpperCase()).join('')||'D');
-  readonly members=computed<Member[]>(()=>(this.w.state().items??[]).map((item,i)=>({key:text(item,'id')||item.title+'|'+i,name:item.title,state:item.detail})));
-  readonly shown=computed(()=>{const fresh=this.joined.keys();return this.members().slice(0,5).map((m,i)=>{
-    const quiet=/muted|deafened/i.test(m.state);
-    return {key:m.key,name:m.name,cls:['dz-av','a'+(i%5),quiet?'mic-off':'',fresh.has(m.key)?'fresh':''].filter(Boolean).join(' '),aria:m.name+(quiet?', '+m.state.toLowerCase():'')};
+  readonly icon=computed(()=>String(this.w.state().data?.['icon']||''));
+  /** In a call the card names the channel; following a server, the server. */
+  readonly heading=computed(()=>this.w.state().title||'Discord');
+  readonly subline=computed(()=>{
+    const server=String(this.w.state().data?.['server']||''),n=this.members().length;
+    return this.voice()?[server,n+' in voice'].filter(Boolean).join(' · '):this.w.state().detail;
+  });
+  readonly members=computed<Member[]>(()=>(this.w.state().items??[]).map((item,i)=>({key:text(item,'id')||item.title+'|'+i,name:item.title,state:item.detail,avatar:text(item,'avatar')})));
+  /** As many people as the tile has room for, in as many 150px columns as fit; the rest are counted. */
+  private readonly room=computed(()=>{
+    const columns=Math.max(1,Math.floor((this.w.layoutWidth()-56)/150)),rows=Math.max(1,Math.floor((this.w.capacityHeight()-(this.voice()?156:86))/42));
+    return Math.max(2,columns*rows);
+  });
+  readonly more=computed(()=>Math.max(0,this.members().length-this.room()));
+  /** A small call fills the panel like Discord's own call view: one large tile per person. */
+  readonly stage=computed(()=>this.voice()&&this.members().length>0&&this.members().length<=4);
+  /** The arrangement that gives each person the largest tile: side by side in a wide card, stacked in a tall one. */
+  readonly grid=computed(()=>{
+    const n=Math.max(1,this.members().length),width=Math.max(1,this.w.layoutWidth()-56),height=Math.max(1,this.w.capacityHeight()-160);
+    let best={cols:n,rows:1,size:0};
+    for(let cols=1;cols<=n;cols++){const rows=Math.ceil(n/cols),size=Math.min(width/cols,height/rows);if(size>best.size+.5)best={cols,rows,size};}
+    return {cols:best.cols,rows:best.rows};
+  });
+  readonly shown=computed(()=>{const fresh=this.joined.keys(),list=this.members(),room=this.room();return list.slice(0,list.length>room?room-1:room).map((m,i)=>{
+    const deaf=/deafened/i.test(m.state),muted=deaf||/muted/i.test(m.state);
+    return {key:m.key,name:m.name,avatar:m.avatar,initial:m.name.charAt(0).toUpperCase(),deaf,muted,state:m.state.toLowerCase(),hue:'dz-av a'+(i%5),
+      cls:['dz-person',muted?'quiet':'',fresh.has(m.key)?'fresh':''].filter(Boolean).join(' '),aria:m.name+(deaf?', deafened':muted?', muted':'')};
   });});
   constructor(){
     onChange(()=>this.members().map(m=>m.key),(now,before)=>{
       const arrived=this.members().filter(m=>now.includes(m.key)&&!before.includes(m.key));
-      if(arrived.length){arrived.forEach(m=>this.joined.mark(m.key));this.toast.set(arrived[0].name+' joined '+(this.voice()?this.w.state().title:'the server'));this.w.fire('join',2700);}
+      if(arrived.length){arrived.forEach(m=>this.joined.mark(m.key));this.toast.set(arrived[0].name+' joined '+(this.voice()?this.heading():'the server'));this.w.fire('join',2700);}
     });
+  }
+}
+
+interface ChatPart {t:string;e?:string;}
+interface ChatLine {key:string;name:string;color:string;action:boolean;system:boolean;badge:string;parts:ChatPart[];cls:string;}
+const badgeMark:Record<string,string>={broadcaster:'●',moderator:'⚔',vip:'♦',subscriber:'★',founder:'★'};
+
+/**
+ * Twitch chat: the latest messages from one channel, newest at the bottom, emotes inline. Click the
+ * channel name to switch channels. Signed in (in the widget settings), you can chat from the box below.
+ */
+@Component({
+  selector:'sp-twitch-body',
+  changeDetection:ChangeDetectionStrategy.OnPush,
+  imports:[FormsModule],
+  template:`
+    <div class="spread">
+      @if(editing()){
+        <form class="tw-switch" (ngSubmit)="switchTo()"><span aria-hidden="true">@</span><input #channelInput name="channel" [(ngModel)]="draftChannel" aria-label="Channel to follow" autocomplete="off" spellcheck="false" maxlength="25" (keydown.escape)="editing.set(false)" (blur)="editing.set(false)"></form>
+      } @else {
+        <button class="eyebrow tw-channel" type="button" [title]="'Switch channel'" (click)="startEditing()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h15v10.5l-4.5 4.5h-3.5L9.5 21.5V19H5zM11 8.5v4M15.5 8.5v4"></path></svg>{{w.state().title}}</button>
+      }
+      <span class="chip" [class.hi]="live()"><span class="dot" [class.live]="live()"></span>{{live()?'Live chat':'Connecting'}}</span>
+    </div>
+    <div class="tw-log" role="log" aria-live="off" aria-label="Chat messages">
+      @for(line of lines();track line.key){
+        <p class="tw-line" [class]="line.cls">@if(!line.system){<b class="tw-name" [style.color]="line.color||null">@if(line.badge){<i class="tw-badge" aria-hidden="true">{{line.badge}}</i>}{{line.name}}</b>}<span class="tw-text">@for(part of line.parts;track $index){@if(part.e){<img class="tw-emote" [src]="part.e" [alt]="part.t" [title]="part.t" loading="lazy">}@else{{{part.t}}}}</span></p>
+      } @empty {<p class="tw-quiet">{{live()?'Chat is quiet. Messages appear here.':'Joining the channel…'}}</p>}
+    </div>
+    @if(canSend()){
+      <form class="tw-compose" (ngSubmit)="send()">
+        <input name="message" [(ngModel)]="draft" (keydown.enter)="$event.preventDefault();send()" [placeholder]="'Chat as '+login()" aria-label="Send a message" autocomplete="off" maxlength="500" [disabled]="sending()">
+        <button class="btn filled" type="submit" aria-label="Send" [disabled]="sending()||!draft.trim()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4.5-6.5zM11.5 13.5 20 4"></path></svg></button>
+      </form>
+      @if(w.controlError()){<p class="tw-error" role="alert">{{w.controlError()}}</p>}
+    } @else if(live()){
+      <button class="tw-signin" type="button" (click)="store.manageWidget('twitch')">{{authFailed()?'Twitch sign-in expired. Sign in again to chat':login()?'Signing in to chat…':'Sign in to chat'}}</button>
+    }`,
+  styleUrl:'./body.scss'
+})
+export class TwitchBody {
+  readonly w=inject(WidgetContext);
+  readonly store=inject(StudioStore);
+  readonly live=computed(()=>!!this.w.state().data?.['connected']);
+  readonly canSend=computed(()=>!!this.w.state().data?.['canSend']);
+  readonly login=computed(()=>String(this.w.state().data?.['login']||''));
+  readonly authFailed=computed(()=>!!this.w.state().data?.['authFailed']);
+  readonly editing=signal(false);
+  readonly sending=signal(false);
+  private readonly channelInput=viewChild<ElementRef<HTMLInputElement>>('channelInput');
+  draftChannel='';
+  draft='';
+  /**
+   * Every buffered line is laid out; the log clips the oldest at its top edge, so a tall tile fills to the top.
+   * Lines simply appear, like any chat: at several updates a second, an entrance animation per line would keep
+   * the desk redrawing at the display's full rate.
+   */
+  readonly lines=computed<ChatLine[]>(()=>(this.w.state().items??[]).map((item,i)=>{
+    const key=text(item,'id')||item.title+'|'+i,badges=Array.isArray(item['badges'])?item['badges'] as string[]:[],parts=Array.isArray(item['parts'])?item['parts'] as ChatPart[]:[{t:item.detail}];
+    const top=['broadcaster','moderator','vip','subscriber','founder'].find(b=>badges.includes(b))??'';
+    const system=item['system']===true;
+    return {key,name:item.title,color:text(item,'color'),action:item['action']===true,system,badge:badgeMark[top]??'',parts,cls:['tw-line',item['action']===true?'me':'',system?'system':'',item['self']===true?'mine':''].filter(Boolean).join(' ')};
+  }));
+  startEditing(){
+    this.draftChannel=String(this.w.state().data?.['channel']||'');this.editing.set(true);
+    setTimeout(()=>{const input=this.channelInput()?.nativeElement;input?.focus();input?.select();});
+  }
+  async switchTo(){
+    const channel=this.draftChannel.trim().replace(/^[@#]/,'');this.editing.set(false);
+    if(!channel||channel.toLowerCase()===String(this.w.state().data?.['channel']||''))return;
+    await this.w.control('connect',{service:'twitch',channel});
+  }
+  async send(){
+    const message=this.draft.trim();if(!message||this.sending())return;
+    this.sending.set(true);this.w.controlError.set('');
+    try{await this.w.control('twitch-say',{text:message});if(!this.w.controlError())this.draft='';}
+    finally{this.sending.set(false);}
   }
 }

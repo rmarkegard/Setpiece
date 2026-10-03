@@ -135,7 +135,7 @@ internal sealed class BrowserSurface : Form
         // Fullscreen inside the tile keeps the card's rounded corners; fullscreen on the whole display is square.
         if(fullscreen&&!diagnostics){pages.Bounds=ClientRectangle;SetPageShape(constrainFullscreen?OuterRadius:0);shaped=null;pages.BringToFront();if(constrainFullscreen)ScheduleCorners();return;}
         // Until the toolbar reports its opening, leave room for the toolbar it is about to draw.
-        var f=frame??(pinned?(132,8,8,8,12):(52,8,8,8,12));var scale=DeviceDpi/96d;int Px(double v)=>(int)Math.Round(v*scale);
+        var f=frame??(pinned?(104,8,8,8,12):(44,8,8,8,12));var scale=DeviceDpi/96d;int Px(double v)=>(int)Math.Round(v*scale);
         var bounds=Rectangle.FromLTRB(Px(f.Left),Px(f.Top),Math.Max(Px(f.Left)+1,ClientSize.Width-Px(f.Right)),Math.Max(Px(f.Top)+1,ClientSize.Height-Px(f.Bottom)));
         var moved=pages.Bounds!=bounds;if(moved)pages.Bounds=bounds;
         var shape=(bounds.Size,Px(f.Radius),cornersFailed);pages.BringToFront();if(!moved&&shaped==shape)return;shaped=shape;

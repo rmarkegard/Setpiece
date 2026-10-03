@@ -51,7 +51,7 @@ export function widgetFamily(category:string){return ({Daily:'daily',Connected:'
  */
 export const widgetTones:Record<string,string>={
   clock:'ck','google-calendar':'cal',weather:'wx',spotify:'mu','bambu-lab':'bb',system:'sy',ruter:'ru',news:'nw',
-  codex:'ai',notes:'nt',battery:'bt',volume:'vo',discord:'dz',email:'ib',reddit:'rd'
+  codex:'ai',notes:'nt',battery:'bt',volume:'vo',discord:'dz',email:'ib',reddit:'rd',twitch:'tw'
 };
 export function widgetTone(id:string){return widgetTones[id]??'';}
 

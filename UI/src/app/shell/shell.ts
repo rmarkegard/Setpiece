@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy,Component,HostListener,inject,signal} from '@angular/core';
+import {ChangeDetectionStrategy,Component,DestroyRef,HostListener,inject,signal} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatMenuModule} from '@angular/material/menu';
 import {MatProgressBarModule} from '@angular/material/progress-bar';
@@ -7,6 +7,7 @@ import {MatTooltipModule} from '@angular/material/tooltip';
 import {StudioStore,routes} from '../state/studio-store';
 import {Dialogs} from '../dialogs/dialogs';
 import {IconComponent} from '../ui/icon';
+import {paceAmbientMotion} from '../widgets/ambient-pace';
 import {StudioPage} from '../pages/studio/studio-page';
 import {WidgetsPage} from '../pages/widgets/widgets-page';
 import {BrowsersPage} from '../pages/browsers/browsers-page';
@@ -29,7 +30,11 @@ export class ShellComponent {
   readonly routes=routes;
   readonly expanded=signal(readRail());
 
-  constructor(){void this.store.initialize();}
+  constructor(){
+    void this.store.initialize();
+    // The main window previews live widgets too, and draws through the same graphics process as the browser.
+    const stop=paceAmbientMotion(30);inject(DestroyRef).onDestroy(stop);
+  }
 
   toggleRail(){this.expanded.update(v=>!v);try{localStorage.setItem(railKey,String(this.expanded()));}catch{}}
 

@@ -76,6 +76,7 @@
   &:hover { box-shadow: var(--elevation-2); background: color-mix(in srgb, var(--mat-sys-on-primary-container) 8%, var(--mat-sys-primary-container)); }
   &:active { border-radius: var(--shape-md); }
   &:disabled { cursor: progress; }
+  &.running { background: var(--mat-sys-error-container); color: var(--mat-sys-on-error-container); --mat-progress-spinner-active-indicator-color: var(--mat-sys-on-error-container); &:hover { background: color-mix(in srgb, var(--mat-sys-on-error-container) 8%, var(--mat-sys-error-container)); } }
   sp-icon { font-size: calc(28px * var(--ui-scale)); }
 }
 .launch-label { display: none; }

@@ -38,7 +38,7 @@ export function focusProfile():Profile{
 export const connections:Record<string,unknown>={
   WeatherLocation:'Oslo',RuterStopName:'Kjelsås stasjon',RuterStopId:'NSR:StopPlace:59516',NewsCategories:[],CalendarExcludedTitles:['Blocked'],
   ClockTimeZones:['America/New_York','Asia/Tokyo','Australia/Sydney'],ClockLocationLabels:['New York','Tokyo','Sydney'],
-  DiscordServerId:'1234567890',RedditCommunity:'technology',InboxProvider:'google',CodexExecutable:'',
+  DiscordServerId:'1234567890',RedditCommunity:'technology',TwitchChannel:'setpiece',InboxProvider:'google',CodexExecutable:'',
   GoogleConnected:true,SpotifyConnected:true,DiscordConnected:true,RedditConnected:false,CalendarFeedConnected:true,DiscordCallConnected:false
 };
 
@@ -83,7 +83,7 @@ export function services(camera=sampleCamera):Record<string,ServiceState>{
     'bambu-lab':{status:'ready',title:'Making something good',detail:'Bambu Lab A1 Mini',data:{stage:'RUNNING',progress:68,minutes:24,layer:198,layers:291,nozzle:220,bed:65,job:'Benchy',filament:'PLA Matte',image:camera}},
     'google-calendar':{status:'ready',title:'Your next 6 months',detail:'Upcoming events',items:events.map(([start,title,place],i)=>({id:'event-'+i,title,detail:start.toLocaleString('en-GB',{weekday:'short',hour:'2-digit',minute:'2-digit'})+' · '+place,start:iso(start),place}))},
     ruter:{status:'ready',title:'Kjelsås stasjon',detail:'Live departures · Entur',items:[departure(2,'54','Tåsen','bus','A'),departure(5,'54','Kværnerbyen','bus','A'),departure(7,'12','Majorstuen','tram','B'),departure(11,'54','Ekeberg hageby','bus','A'),departure(14,'R10','Drammen','rail','1'),departure(19,'25','Majorstuen','bus','C')]},
-    discord:{status:'ready',title:'Lounge',detail:'4 participants · Discord desktop',items:[{title:'You',detail:'In call',id:'you'},{title:'Sara',detail:'In call',id:'sara'},{title:'Jonas',detail:'In call',id:'jonas'},{title:'Ingrid',detail:'In call',id:'ingrid'}],data:{voice:true,server:'Setpiece Crew',muted:false,deafened:false}},
+    discord:{status:'ready',title:'Lounge',detail:'4 participants · Discord desktop',items:[{title:'You',detail:'In call',id:'you'},{title:'Sara',detail:'Muted',id:'sara'},{title:'Jonas',detail:'In call',id:'jonas'},{title:'Ingrid',detail:'Deafened',id:'ingrid'}],data:{voice:true,server:'Setpiece Crew',muted:false,deafened:false}},
     spotify:{status:'ready',title:'Night Drive',detail:'Chromatics',data:{album:'Night Drive',track:'2Z8WuEywRWYTKe1NybPQEW',device:'Studio PC',progress:119000,duration:280000,playing:true,liked:false}},
     email:{status:'ready',title:'Unread, within reach',detail:'Google inbox · latest unread messages',data:{count:4,source:'Gmail · Primary'},items:[
       {title:'Re: Widget review notes',detail:'Sara Lie',from:'Sara Lie',time:iso(at(0,'09:12')),url:'https://mail.google.com/#1'},
@@ -102,6 +102,14 @@ export function services(camera=sampleCamera):Record<string,ServiceState>{
       {title:'The quiet comeback of the dedicated music player',detail:'2870 points',score:2870,created:(Date.now()-3*3600000)/1000,url:'https://www.reddit.com/r/technology/2'},
       {title:'Open-source printer firmware adds live layer previews',detail:'1940 points',score:1940,created:(Date.now()-2*3600000)/1000,url:'https://www.reddit.com/r/technology/3'},
       {title:'A tiny e-ink dashboard that shows your whole day at a glance',detail:'860 points',score:860,created:(Date.now()-40*60000)/1000,url:'https://www.reddit.com/r/technology/4'}
+    ]},
+    twitch:{status:'ready',title:'@setpiece',detail:'Live chat',data:{channel:'setpiece',connected:true,login:'rubster',canSend:true},items:[
+      {title:'Nova_Flux',detail:'just got here, what did I miss?',id:'c1',color:'#9146FF',action:false,badges:['moderator'],parts:[{t:'just got here, what did I miss?'}]},
+      {title:'kettleDrum',detail:'the new layout looks so clean',id:'c2',color:'#1E90FF',action:false,badges:['subscriber'],parts:[{t:'the new layout looks so clean'}]},
+      {title:'ping_pong',detail:'same, those rounded corners 👌',id:'c3',color:'#FF7F50',action:false,badges:[],parts:[{t:'same, those rounded corners 👌'}]},
+      {title:'Marit',detail:'we are so back',id:'c4',color:'#2E8B57',action:false,badges:['vip'],parts:[{t:'we are so back'}]},
+      {title:'jonasdev',detail:'anyone know what song this is?',id:'c5',color:'',action:false,badges:[],parts:[{t:'anyone know what song this is?'}]},
+      {title:'Streamer',detail:'thanks for the follow, welcome in!',id:'c6',color:'#E91E63',action:false,badges:['broadcaster'],parts:[{t:'thanks for the follow, welcome in!'}]}
     ]},
     battery:{status:'ready',title:'76%',detail:'3h 18m remaining',data:{level:76,charging:false,plugged:false,saver:false,remaining:11880}},
     volume:{status:'ready',title:'42%',detail:'Speakers (Realtek Audio)',data:{level:42,peak:28,muted:false}},

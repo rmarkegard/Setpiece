@@ -10,7 +10,7 @@ import {WIDGET_BODIES} from './bodies';
 import {WidgetContext} from './context';
 
 // How often each live widget refreshes, in seconds.
-const refreshSeconds=(id:string)=>['system','volume','battery'].includes(id)?2:id==='codex'?60:id==='bambu-lab'?10:['discord','spotify'].includes(id)?5:30;
+const refreshSeconds=(id:string)=>['system','volume','battery'].includes(id)?2:id==='codex'?60:id==='bambu-lab'?10:['discord','spotify'].includes(id)?5:id==='twitch'?2:30;
 // Widgets whose body is always shown: they own their data or have nothing to wait for.
 const selfContained=['clock','notes'];
 // Widgets whose body is its own empty state (the inbox celebrates zero instead of saying so).
@@ -87,6 +87,7 @@ function contentRatio(container:HTMLElement,zoom:number){
                 @case('reddit'){<sp-reddit-body/>}
                 @case('email'){<sp-inbox-body/>}
                 @case('discord'){<sp-discord-body/>}
+                @case('twitch'){<sp-twitch-body/>}
                 @case('notes'){<sp-notes-body/>}
                 @default{<sp-preview-body/>}
               }
@@ -200,7 +201,8 @@ export class WidgetFrame extends WidgetContext implements OnInit,AfterViewInit,O
   private readonly unsubscribe=this.bridge.listen(e=>{
     if(e.event==='connections'&&this.live())void this.refresh();
     // A service can announce fresh data (the development bridge does), so events play right away.
-    if(e.event==='service'&&e.data===this.id()&&this.live())void this.refresh();
+    // A pushed update (chat) skips a beat rather than queue behind a read already in flight; the next one catches up.
+    if(e.event==='service'&&e.data===this.id()&&this.live()&&!this.polling)void this.poll();
   });
 
   constructor(){
@@ -236,9 +238,14 @@ export class WidgetFrame extends WidgetContext implements OnInit,AfterViewInit,O
     try{this.setState(await this.bridge.call<ServiceState>('service',{service:this.id()}));}
     catch(e){this.setState({status:'error',title:'Could not refresh',detail:(e as Error).message});}
     this.retry.set(retrySeconds);
-    requestAnimationFrame(()=>this.measure());
+    if(this.id()!=='twitch')requestAnimationFrame(()=>this.measure());
   }
-  private setState(state:ServiceState){this.state.set(state);this.receivedAt.set(Date.now());}
+  private chatSeen='';
+  private setState(state:ServiceState){
+    // Chat is polled every couple of seconds; a quiet poll changes nothing, so it must not repaint the desk.
+    if(this.id()==='twitch'){const seen=JSON.stringify(state);if(seen===this.chatSeen)return;this.chatSeen=seen;}
+    this.state.set(state);this.receivedAt.set(Date.now());
+  }
 
   /** Restarts the event: the class comes off, then back on a frame later, so a repeat plays again. */
   fire(kind:string,ms=1600){

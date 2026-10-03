@@ -50,6 +50,14 @@
       <mat-form-field><mat-label>Community</mat-label><span matTextPrefix>r/&nbsp;</span><input matInput [(ngModel)]="form['community']"></mat-form-field>
       <mat-form-field><mat-label>Installed-app client ID (optional)</mat-label><input matInput [(ngModel)]="form['clientId']" autocomplete="off"><mat-hint>Only needed if Reddit blocks anonymous access. Redirect URI: {{redirect}}</mat-hint></mat-form-field>
     }
+    @case('twitch'){
+      <mat-form-field><mat-label>Channel</mat-label><span matTextPrefix>&#64;&nbsp;</span><input matInput [(ngModel)]="form['channel']" autocomplete="off"><mat-hint>The channel name from its address. You can also click it on the widget to switch.</mat-hint></mat-form-field>
+      <h3 class="title-small">Chat as yourself</h3>
+      @if(store.connections()['TwitchLogin']){<p class="body-medium">Signed in as <strong>{{store.connections()['TwitchLogin']}}</strong>. Type in the box at the bottom of the widget to chat.</p>}
+      <mat-form-field><mat-label>Twitch application client ID</mat-label><input matInput [(ngModel)]="form['clientId']" autocomplete="off"><mat-hint>At dev.twitch.tv/console, register an application with client type Public and OAuth redirect http://localhost, then paste its client ID.</mat-hint></mat-form-field>
+      <div><button matButton="tonal" [disabled]="busy()||!form['clientId']?.trim()||!form['channel']?.trim()" (click)="form['signIn']=true;commit()">{{store.connections()['TwitchLogin']?'Sign in again':'Sign in with Twitch'}}</button></div>
+      <p class="body-small on-surface-variant">Twitch opens in your browser with a short code. Approve it there, and come back here.</p>
+    }
     @case('news'){
       <mat-form-field><mat-label>Categories</mat-label><input matInput [(ngModel)]="form['categoriesText']" placeholder="sport, nyheter"><mat-hint>Comma-separated. Leave blank for all headlines.</mat-hint></mat-form-field>
     }

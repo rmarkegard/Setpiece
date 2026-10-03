@@ -24,6 +24,7 @@ internal sealed class Host : Form
     public Host(Storage storage)
     {
         this.storage = storage;providers = new Providers(storage);
+        providers.Pushed += service => { if(IsHandleCreated&&!IsDisposed)BeginInvoke(()=>{var name=JsonValue.Create(service);Emit("service",name);foreach(var surface in surfaces)surface.Emit("service",name);}); };
         Text = "Setpiece";if(Windows.AppIcon.Value is { } icon)Icon=icon;Size = new Size(1440, 960);MinimumSize = new Size(1040, 680);StartPosition = FormStartPosition.CenterScreen;FormBorderStyle = FormBorderStyle.None;BackColor = SurfaceColor;
         Controls.Add(view);Shown += async (_, _) => await Initialize();
         FormClosing+=(_,e)=>{if(!closingConfirmed&&AuditOutput is null&&view.CoreWebView2 is not null&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;Emit("request-close",null);}};
@@ -31,7 +32,31 @@ internal sealed class Host : Form
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += DisplayChanged;
         Disposed += (_, _) => Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= DisplayChanged;
     }
-    private void DisplayChanged(object? sender, EventArgs e) { if(IsHandleCreated)BeginInvoke(() => Emit("displays", Windows.Displays())); }
+    private System.Windows.Forms.Timer? displaySettle;
+    /**
+     * A monitor slept, woke or was replugged. Windows reorders its screens and renumbers them, and fires this
+     * several times while it does, so the workspace waits for the change to settle, then finds every board's
+     * monitor again by its identity and puts the desks, browsers and apps back where they belong.
+     */
+    private void DisplayChanged(object? sender, EventArgs e)
+    {
+        if(!IsHandleCreated)return;
+        BeginInvoke(() =>
+        {
+            displaySettle?.Stop();displaySettle??=new System.Windows.Forms.Timer{Interval=1500};
+            displaySettle.Tick-=DisplaySettled;displaySettle.Tick+=DisplaySettled;displaySettle.Start();
+        });
+    }
+    private async void DisplaySettled(object? sender, EventArgs e)
+    {
+        displaySettle?.Stop();Emit("displays", Windows.Displays());
+        if(active is null)return;
+        await layoutGate.WaitAsync();
+        try{ResolveDisplays(active);if(launched)await Launch(false);Emit("profile",active);}
+        // An async event handler must not throw: a failed re-placement is logged and the next change tries again.
+        catch(Exception error){storage.Log("Display change",error);}
+        finally{layoutGate.Release();}
+    }
     private async Task Initialize()
     {
         try
@@ -49,6 +74,9 @@ internal sealed class Host : Form
     internal async Task Configure(WebView2 browser, bool privileged=true, Func<string,JsonObject,Task<JsonNode?>>? handler=null)
     {
         var options=environment!.CreateCoreWebView2ControllerOptions();options.ProfileName=privileged?"Interface":"Browsing";
+        // Setpiece's own pages never show WebView2's default white: while a page loads, or while the graphics
+        // process recovers, the desk and the main window stay their own dark colour instead of flashing a white display.
+        if(privileged)browser.DefaultBackgroundColor=SurfaceColor;
         await browser.EnsureCoreWebView2Async(environment,options);
         browser.CoreWebView2.Settings.IsStatusBarEnabled = false;
         // High-DPI policy (documented decision, deliberately explicit so it cannot drift):
@@ -72,6 +100,13 @@ internal sealed class Host : Form
         // parity.
         browser.ZoomFactor = 1;
         if (!privileged) return;
+        // A desk or the main window whose page process stops would otherwise stay blank until Setpiece restarts.
+        browser.CoreWebView2.ProcessFailed += (_, e) =>
+        {
+            storage.Log("WebView process failed: "+e.ProcessFailedKind+" ("+e.Reason+", exit "+e.ExitCode+") on "+browser.CoreWebView2.Source);
+            if(e.ProcessFailedKind is CoreWebView2ProcessFailedKind.RenderProcessExited or CoreWebView2ProcessFailedKind.RenderProcessUnresponsive or CoreWebView2ProcessFailedKind.FrameRenderProcessExited)
+                BeginInvoke(()=>{if(!browser.IsDisposed)browser.CoreWebView2.Reload();});
+        };
         browser.CoreWebView2.SetVirtualHostNameToFolderMapping("setpiece.local", Path.Combine(AppContext.BaseDirectory,"UI"), CoreWebView2HostResourceAccessKind.DenyCors);
         browser.CoreWebView2.SetVirtualHostNameToFolderMapping("assets.setpiece.local", Path.Combine(AppContext.BaseDirectory,"Assets"), CoreWebView2HostResourceAccessKind.DenyCors);
         browser.CoreWebView2.NavigationStarting += (_, e) => { if (!Uri.TryCreate(e.Uri,UriKind.Absolute,out var uri) || uri.Host != "setpiece.local")e.Cancel = true; };
@@ -101,7 +136,7 @@ internal sealed class Host : Form
         {
             case "bootstrap":
                 var profiles=storage.Profiles();foreach(var entry in profiles.OfType<JsonObject>())if(entry["profile"] is JsonObject stored)ResolveDisplays(stored);
-                return new JsonObject { ["profiles"] = profiles, ["displays"] = Windows.Displays(), ["preferences"] = storage.Preferences(), ["connections"] = providers.PublicSettings(), ["browsers"] = BrowserCatalog(), ["executable"] = Environment.ProcessPath, ["dataRoot"] = storage.Root, ["runtime"] = environment?.BrowserVersionString, ["profile"] = active?.DeepClone() };
+                return new JsonObject { ["profiles"] = profiles, ["displays"] = Windows.Displays(), ["preferences"] = storage.Preferences(), ["connections"] = providers.PublicSettings(), ["browsers"] = BrowserCatalog(), ["executable"] = Environment.ProcessPath, ["dataRoot"] = storage.Root, ["runtime"] = environment?.BrowserVersionString, ["profile"] = active?.DeepClone(), ["launched"] = launched };
             case "check-update":
                 pendingUpdate = await ReleaseUpdates.Check();
                 return new JsonObject { ["current"] = ReleaseUpdates.Current.ToString(3), ["latest"] = pendingUpdate?.Version.ToString(3), ["url"] = pendingUpdate?.Page.ToString() };
@@ -116,7 +151,7 @@ internal sealed class Host : Form
             case "save": var savedProfile=Storage.Normalize(payload["profile"]!.AsObject(),false);StampDisplayNames(savedProfile);return JsonValue.Create(storage.SaveProfile(payload["key"]?.GetValue<string>(),savedProfile));
             case "delete": storage.DeleteProfile(payload["key"]!.GetValue<string>());return null;
             case "preferences": storage.SaveDocument("appearance-v2.json",payload);Broadcast("appearance",payload);return null;
-            case "profile": active = Storage.Normalize(payload["profile"]!.AsObject(),false);ResolveDisplays(active);PlaceActive(payload["restoreApplications"]?.GetValue<bool>()??false);if(launched)await Launch(false);return null;
+            case "profile": active = Storage.Normalize(payload["profile"]!.AsObject(),false);ResolveDisplays(active);PlaceActive(payload["restoreApplications"]?.GetValue<bool>()??false);if(launched)await Launch(false);else foreach(var browser in browsers.Values)browser.Emit("profile",active);return null;
             case "switch-profile": windows!.ReleaseAll();active=Storage.Normalize(payload["profile"]!.AsObject(),false);ResolveDisplays(active);if(launched)await Launch(true);return null;
             case "assign":
                 var candidate=Storage.Normalize(payload["profile"]!.AsObject(),false);ResolveDisplays(candidate);var tileId = payload["id"]!.GetValue<string>();
@@ -126,10 +161,11 @@ internal sealed class Host : Form
                 try{windows!.Assign(tileId,payload["handle"]!.GetValue<string>(),WindowCoordinator.TileBounds(candidate,board,tile));}catch{active=before;throw;}
                 return active.DeepClone();
             case "release": windows!.Release(payload["id"]!.GetValue<string>());return null;
-            case "launch": active = Storage.Normalize(payload["profile"]!.AsObject(),false);ResolveDisplays(active);StampDisplayNames(active);var key=storage.SaveProfile(payload["key"]?.GetValue<string>(),active);await Launch(true);return JsonValue.Create(key);
-            case "stop": launched=false;foreach(var s in surfaces)s.Dispose();surfaces.Clear();foreach(var b in browsers.Values)b.Hide();windows!.ReleaseAll();windows.RestoreTaskbars();return null;
+            case "launch": active = Storage.Normalize(payload["profile"]!.AsObject(),false);ResolveDisplays(active);StampDisplayNames(active);var key=storage.SaveProfile(payload["key"]?.GetValue<string>(),active);await Launch(true);Emit("workspace",JsonValue.Create(launched));return JsonValue.Create(key);
+            case "stop": launched=false;foreach(var s in surfaces)s.Dispose();surfaces.Clear();foreach(var b in browsers.Values)b.Hide();windows!.ReleaseAll();windows.RestoreTaskbars();Emit("workspace",JsonValue.Create(false));return null;
             case "volume": return providers.SetVolume(payload);
             case "discord-voice":return await providers.VoiceControl(payload);
+            case "twitch-say":return await providers.TwitchSay(payload);
             case "spotify-playback":return await providers.Playback(payload);
             case "spotify-like":return await providers.SaveTrack(payload);
             case "manage-widget":Show();WindowState=FormWindowState.Normal;Activate();Emit("manage-widget",payload["id"]);return null;
@@ -200,7 +236,7 @@ internal sealed class Host : Form
         foreach(var board in profile["MonitorBoards"]!.AsArray().OfType<JsonObject>())
         {
             var index=board["MonitorIndex"]!.GetValue<int>();
-            if(index>=0&&index<Screen.AllScreens.Length)board["MonitorDeviceName"]=Screen.AllScreens[index].DeviceName;
+            if(index>=0&&index<Screen.AllScreens.Length){board["MonitorDeviceName"]=Screen.AllScreens[index].DeviceName;board["MonitorId"]=Windows.MonitorId(Screen.AllScreens[index].DeviceName);}
         }
     }
     private static void ResolveDisplays(JsonObject profile)
@@ -211,11 +247,13 @@ internal sealed class Host : Form
         var selectedBoards=boards.Where(b=>selected.Contains(b["MonitorIndex"]!.GetValue<int>())).ToHashSet();var unavailable=Screen.AllScreens.Length;
         foreach(var board in boards)
         {
-            var old=board["MonitorIndex"]!.GetValue<int>();var name=board["MonitorDeviceName"]?.GetValue<string>()??"";
-            var resolved=string.IsNullOrWhiteSpace(name)?old:Array.FindIndex(Screen.AllScreens,s=>s.DeviceName.Equals(name,StringComparison.OrdinalIgnoreCase));
+            var old=board["MonitorIndex"]!.GetValue<int>();var name=board["MonitorDeviceName"]?.GetValue<string>()??"";var id=board["MonitorId"]?.GetValue<string>()??"";
+            // The monitor's identity decides; the DISPLAYn name only for boards saved before identities were kept.
+            var resolved=id.Length>0?Array.FindIndex(Screen.AllScreens,s=>Windows.MonitorId(s.DeviceName).Equals(id,StringComparison.OrdinalIgnoreCase))
+                :string.IsNullOrWhiteSpace(name)?old:Array.FindIndex(Screen.AllScreens,s=>s.DeviceName.Equals(name,StringComparison.OrdinalIgnoreCase));
             if(resolved<0)resolved=unavailable++;
             board["MonitorIndex"]=resolved;
-            if(string.IsNullOrWhiteSpace(name)&&resolved<Screen.AllScreens.Length)board["MonitorDeviceName"]=Screen.AllScreens[resolved].DeviceName;
+            if(resolved<Screen.AllScreens.Length){board["MonitorDeviceName"]=Screen.AllScreens[resolved].DeviceName;if(id.Length==0)board["MonitorId"]=Windows.MonitorId(Screen.AllScreens[resolved].DeviceName);}
         }
         profile["MonitorIndices"]=new JsonArray(selectedBoards.Select(b=>(JsonNode)JsonValue.Create(b["MonitorIndex"]!.GetValue<int>())!).ToArray());
         profile["MonitorIndex"]=current?["MonitorIndex"]?.DeepClone()??profile["MonitorIndices"]!.AsArray().FirstOrDefault()?.DeepClone()??JsonValue.Create(0);
@@ -269,7 +307,9 @@ internal sealed class Host : Form
         }
         foreach(var board in active["MonitorBoards"]!.AsArray().OfType<JsonObject>())
         {
-            var index=board["MonitorIndex"]!.GetValue<int>();if(!selected.Contains(index)||index>=Screen.AllScreens.Length)continue;
+            var index=board["MonitorIndex"]!.GetValue<int>();if(!selected.Contains(index))continue;
+            // A monitor that is asleep or unplugged: its browsers stay open, hidden, for when it comes back.
+            if(index>=Screen.AllScreens.Length){foreach(var tile in board["Zones"]!.AsArray().OfType<JsonObject>().Where(t=>t["ContentKind"]!.GetValue<string>()=="Web")){var shared=tile["SharedWebName"]?.GetValue<string>();var key=string.IsNullOrWhiteSpace(shared)?"tile-"+tile["Id"]!.GetValue<string>():shared;keptBrowsers.Add(key);if(browsers.TryGetValue(key,out var sleeping))sleeping.Hide();}continue;}
             // The desk draws this display's wallpaper and widgets; applications and browsers sit above it.
             await EnsureSurface("workspace-"+index,Screen.AllScreens[index].Bounds,$"workspace={index}",kept);
             foreach(var tile in board["Zones"]!.AsArray().OfType<JsonObject>())
@@ -289,6 +329,8 @@ internal sealed class Host : Form
         foreach(var obsolete in surfaces.Where(s=>!kept.Contains(s.Key)).ToArray()){obsolete.Dispose();surfaces.Remove(obsolete);}
         foreach(var pair in browsers.Where(p=>!keptBrowsers.Contains(p.Key)).ToArray()){if(pair.Key.StartsWith("tile-",StringComparison.Ordinal)){pair.Value.Dispose();browsers.Remove(pair.Key);}else pair.Value.Hide();}
         foreach(var surface in surfaces)surface.Settle();
+        // Browser cards frost the wallpaper behind them: they hear about a new one like the desks do.
+        foreach(var browser in browsers.Values)browser.Emit("profile",active);
         windows!.HideTaskbars(selected);PlaceActive();if(restore)NotifyUnrestored(unrestored);
     }
     private async Task EnsureSurface(string key,Rectangle bounds,string query,HashSet<string> kept)

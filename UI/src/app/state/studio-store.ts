@@ -44,6 +44,8 @@ export class StudioStore {
   readonly selected=signal('');
   readonly apps=signal<AppWindow[]>([]);
   readonly busy=signal(false);
+  /** Whether a workspace is launched on the desk right now. */
+  readonly running=signal(false);
   readonly error=signal('');
   readonly preview=signal<Tile[]|null>(null);
   readonly presetKind=signal('main-half');
@@ -75,6 +77,8 @@ export class StudioStore {
   readonly tiles=computed(()=>this.preview()??this.board().Zones);
   readonly monitor=computed(()=>this.displays().find(d=>d.index===this.board().MonitorIndex));
   readonly monitorSize=computed(()=>{const d=this.monitor();return {width:d?.width??1920,height:d?.height??1080};});
+  /** The display in the CSS pixels its desk lays out in: its resolution divided by its Windows scale. */
+  readonly deskSize=computed(()=>{const d=this.monitor(),scale=d?.scale&&d.scale>0?d.scale:1,size=this.monitorSize();return {width:size.width/scale,height:size.height/scale};});
   readonly savedProfiles=computed(()=>this.profiles().filter(p=>p.profile));
   readonly profileErrors=computed(()=>this.profiles().filter(p=>p.error));
 
@@ -95,7 +99,8 @@ export class StudioStore {
       case 'detached':this.detach(e.data);break;
       case 'notice':this.notify(e.data);break;
       case 'appearance':{const prefs=normalizeAppearance(e.data);this.appearance.set(prefs);applyAppearance(prefs);break;}
-      case 'displays':this.displays.set(e.data);break;
+      case 'displays':this.followDisplays(e.data);break;
+      case 'workspace':this.running.set(!!e.data);break;
       case 'browsers':this.sharedBrowsers.set(e.data??[]);break;
       case 'manage-widget':this.manageWidget(e.data);break;
       case 'inspect-widget':this.dialogs.inspect(e.data);break;
@@ -109,7 +114,7 @@ export class StudioStore {
       this.profiles.set(data.profiles);this.displays.set(data.displays);this.connections.set(data.connections??{});this.sharedBrowsers.set(data.browsers??[]);
       this.executable.set(data.executable??'');this.dataRoot.set(data.dataRoot??'');this.runtime.set(data.runtime??'');
       const preferences=normalizeAppearance(data.preferences);this.appearance.set(preferences);applyAppearance(preferences);
-      if(data.profile&&!this.isStudio)this.profile.set(data.profile);
+      this.running.set(!!data.launched);if(data.profile&&!this.isStudio)this.profile.set(data.profile);
       else{
         const first=data.profiles.find((p:any)=>p.profile);
         if(first){this.key.set(first.key);this.profile.set(first.profile);this.saved.set(JSON.stringify(first.profile));}
@@ -169,7 +174,30 @@ export class StudioStore {
   }
 
   // Profiles.
-  private stampDisplays(profile:Profile){for(const board of profile.MonitorBoards){const display=this.displays().find(d=>d.index===board.MonitorIndex);if(display)board.MonitorDeviceName=display.name;}}
+  /** Windows can list the same displays in another order after a change: boards follow their display by name, never by position. */
+  private followDisplays(next:Display[]){
+    const before=this.displays();this.displays.set(next);
+    if(this.workspace)return;
+    this.profile.update(p=>{
+      // Each board finds its monitor by identity (the DISPLAYn name only for older boards). A board whose monitor
+      // is asleep or unplugged parks past the end of the list, so it never lands on a monitor that took its number.
+      const moved=new Map<number,number>();let parked=Math.max(next.length,...p.MonitorBoards.map(b=>b.MonitorIndex+1));
+      for(const board of p.MonitorBoards){
+        const was=before.find(d=>d.index===board.MonitorIndex);
+        const id=board.MonitorId||was?.id,name=board.MonitorDeviceName||was?.name;
+        const now=next.find(d=>id&&d.id?d.id===id:d.name===name);
+        const target=now?now.index:board.MonitorIndex<next.length?parked++:board.MonitorIndex;
+        if(target!==board.MonitorIndex)moved.set(board.MonitorIndex,target);
+      }
+      if(!moved.size)return p;
+      const to=(i:number)=>moved.get(i)??i;
+      const copy=structuredClone(p);
+      for(const board of copy.MonitorBoards){board.MonitorIndex=to(board.MonitorIndex);}
+      copy.MonitorIndices=copy.MonitorIndices.map(to);copy.MonitorIndex=to(copy.MonitorIndex);
+      return copy;
+    });
+  }
+  private stampDisplays(profile:Profile){for(const board of profile.MonitorBoards){const display=this.displays().find(d=>d.index===board.MonitorIndex);if(display){board.MonitorDeviceName=display.name;if(display.id)board.MonitorId=display.id;}}}
   async save(){
     this.busy.set(true);
     const snapshot=structuredClone(this.profile());this.stampDisplays(snapshot);this.profile.set(snapshot);
@@ -182,6 +210,11 @@ export class StudioStore {
     const snapshot=structuredClone(this.profile());this.stampDisplays(snapshot);this.profile.set(snapshot);
     const key=await this.execute<string>('launch',{key:this.key(),profile:snapshot});
     if(key){this.key.set(key);this.saved.set(JSON.stringify(snapshot));this.notify('Workspace launched');await this.reloadProfiles();}
+    this.busy.set(false);
+  }
+  async stop(){
+    this.busy.set(true);
+    await this.execute('stop');this.running.set(false);this.notify('Workspace closed');
     this.busy.set(false);
   }
   async reloadProfiles(){const data=await this.execute('bootstrap');if(data)this.profiles.set(data.profiles);}

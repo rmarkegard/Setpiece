@@ -17,7 +17,36 @@ internal static class AiUsage
         var ready=claude["windows"]?.AsArray().Count>0||codex["windows"]?.AsArray().Count>0||local["available"]?.GetValue<bool>()==true||go["windows"]?.AsArray().Count>0;
         return Providers.State(ready?"ready":"disconnected","Room for your next idea","Claude and Codex limits, OpenCode activity",data:data);
     }
+    private static JsonObject? lastClaude;private static DateTimeOffset lastClaudeAt;
+    /** Claude's sign-in only refreshes while Claude Code runs, and the usage call can be refused for a moment: the last good reading stands in for up to six hours, marked stale. */
     private static async Task<JsonObject> Claude(HttpClient http)
+    {
+        var fresh=await ClaudeNow(http);
+        if(fresh["windows"]?.AsArray().Count==0&&fresh["expired"]?.GetValue<bool>()==true&&await RefreshClaudeSignIn())fresh=await ClaudeNow(http);
+        if(fresh["windows"]?.AsArray().Count>0){lastClaude=fresh.DeepClone().AsObject();lastClaudeAt=DateTimeOffset.UtcNow;return fresh;}
+        if(lastClaude is not null&&DateTimeOffset.UtcNow-lastClaudeAt<TimeSpan.FromHours(6)){var kept=lastClaude.DeepClone().AsObject();kept["stale"]=true;kept["status"]=fresh["status"]?.GetValue<string>()+" Showing the last reading.";return kept;}
+        return fresh;
+    }
+    private static DateTimeOffset lastRefresh;
+    /** Claude Code renews its own sign-in whenever it starts a request, so a one-word Haiku prompt in a scratch folder renews it without Setpiece ever touching the credentials. At most once every twenty minutes. */
+    private static async Task<bool> RefreshClaudeSignIn()
+    {
+        if(DateTimeOffset.UtcNow-lastRefresh<TimeSpan.FromMinutes(20))return false;lastRefresh=DateTimeOffset.UtcNow;
+        var path=FindClaudeCode();if(path is null)return false;
+        try
+        {
+            var start=new ProcessStartInfo(path){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,WorkingDirectory=Path.GetTempPath()};
+            foreach(var argument in new[]{"-p","--model","haiku","--max-turns","1"})start.ArgumentList.Add(argument);
+            using var process=Process.Start(start);if(process is null)return false;
+            await process.StandardInput.WriteLineAsync(".");process.StandardInput.Close();
+            _=process.StandardOutput.ReadToEndAsync();_=process.StandardError.ReadToEndAsync();
+            using var limit=new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            try{await process.WaitForExitAsync(limit.Token);}catch(OperationCanceledException){try{process.Kill(true);}catch(InvalidOperationException){}return false;}
+            return process.ExitCode==0;
+        }
+        catch(Exception error) when(error is System.ComponentModel.Win32Exception or IOException or InvalidOperationException){return false;}
+    }
+    private static async Task<JsonObject> ClaudeNow(HttpClient http)
     {
         var result=new JsonObject{["status"]="Sign in to Claude Code to show its limits.",["windows"]=new JsonArray()};
         var configured=Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR");
@@ -27,9 +56,9 @@ internal static class AiUsage
         {
             using var stream=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite);var auth=(await JsonNode.ParseAsync(stream))?["claudeAiOauth"];
             var token=auth?["accessToken"]?.GetValue<string>();if(string.IsNullOrWhiteSpace(token))return result;
-            if(auth?["expiresAt"] is JsonValue expires&&expires.TryGetValue<long>(out var expiresAt)&&expiresAt<DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()){result["status"]="Claude sign-in expired. Open Claude Code to refresh it.";return result;}
+            if(auth?["expiresAt"] is JsonValue expires&&expires.TryGetValue<long>(out var expiresAt)&&expiresAt<DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()){result["status"]="Claude sign-in expired. Open Claude Code to refresh it.";result["expired"]=true;return result;}
             using var request=new HttpRequestMessage(HttpMethod.Get,"https://api.anthropic.com/api/oauth/usage");request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);request.Headers.Add("anthropic-beta","oauth-2025-04-20");
-            using var response=await http.SendAsync(request);response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync());
+            using var response=await http.SendAsync(request);if(response.StatusCode==System.Net.HttpStatusCode.Unauthorized){result["status"]="Claude sign-in expired. Open Claude Code to refresh it.";result["expired"]=true;return result;}response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync());
             var windows=new JsonArray();
             foreach(var (key,minutes) in new[]{("five_hour",300),("seven_day",10080)})
                 if(data?[key] is JsonObject window&&window["utilization"] is JsonValue utilization&&utilization.TryGetValue<double>(out var used))
@@ -132,7 +161,7 @@ internal static class AiUsage
             var key=savedKey;
             if(string.IsNullOrWhiteSpace(key)&&File.Exists(file)){using var stream=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite);var auth=await JsonNode.ParseAsync(stream);key=auth?["opencode-go"]?["key"]?.GetValue<string>();}
             if(string.IsNullOrWhiteSpace(key))return result;
-            using var request=new HttpRequestMessage(HttpMethod.Get,"https://opencode.ai/zen/go/v1/usage");request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",key);using var response=await http.SendAsync(request);response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync());
+            using var request=new HttpRequestMessage(HttpMethod.Get,"https://opencode.ai/zen/go/v1/usage");request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",key);using var response=await http.SendAsync(request);if(response.StatusCode==System.Net.HttpStatusCode.Unauthorized){result["status"]="Claude sign-in expired. Open Claude Code to refresh it.";result["expired"]=true;return result;}response.EnsureSuccessStatusCode();var data=JsonNode.Parse(await response.Content.ReadAsStringAsync());
             var windows=new JsonArray();if(data?["usage"] is JsonObject usage)foreach(var pair in usage)if(pair.Value?["percent"] is JsonValue percent&&percent.TryGetValue<double>(out var used))windows.Add(new JsonObject{["name"]=pair.Key,["used"]=Math.Clamp(used,0,100),["resetText"]=pair.Value["resetsAt"]?.DeepClone()});
             return new JsonObject{["status"]=windows.Count>0?"Connected to OpenCode Go":"No Go quota windows returned.",["windows"]=windows};
         }

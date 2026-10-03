@@ -22,6 +22,7 @@ export function widgetContentLimit(id:string,width:number,height:number):number 
     case 'ruter': return rows(42,44,1,6);
     case 'reddit': return rows(30,70,1,6);
     case 'discord': return rows(86,48,2,10);
+    case 'twitch': return rows(46,30,3,24);
     case 'news': return rows(140,70,1,6);
     case 'codex':
       if(width<175||height<100)return 1;

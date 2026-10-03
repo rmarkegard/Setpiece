@@ -65,8 +65,8 @@ export class ConnectionFormComponent {
     this.form={
       service,zones,zoneLabels:zones.map((z,i)=>labels[i]??z.split('/').pop()?.replaceAll('_',' ')??z),zoneQuery:'',
       discordMode:c['DiscordCallConnected']?'call':'server',location:c['WeatherLocation']??'',serverId:c['DiscordServerId']??'',
-      clientId:c[service==='google'?'GoogleClientId':service==='reddit'?'RedditClientId':service==='discord'?'DiscordClientId':'SpotifyClientId']??'',
-      exclusions:(c['CalendarExcludedTitles']??[]).join('\n'),community:c['RedditCommunity']??'technology',host:c['BambuHost']??'',serial:c['BambuSerial']??'',
+      clientId:c[service==='google'?'GoogleClientId':service==='reddit'?'RedditClientId':service==='discord'?'DiscordClientId':service==='twitch'?'TwitchClientId':'SpotifyClientId']??'',signIn:false,
+      exclusions:(c['CalendarExcludedTitles']??[]).join('\n'),community:c['RedditCommunity']??'technology',channel:c['TwitchChannel']??'',host:c['BambuHost']??'',serial:c['BambuSerial']??'',
       provider:c['InboxProvider']??'google',executable:c['CodexExecutable']??'',hidden:[...(c['AiHidden']??[])],goKey:'',categoriesText:(c['NewsCategories']??[]).join(', '),
       stopName:c['RuterStopName']??'',query:''
     };
@@ -97,7 +97,7 @@ export class ConnectionFormComponent {
     this.busy.set(true);this.result.set(null);
     try{const reply=await this.bridge.call('connect',this.form);if(this.service()==='codex'){this.form['goKey']='';void this.loadAi();}this.result.set({ok:true,text:[reply?.title,reply?.detail].filter(Boolean).join(' · ')||'Saved'});await this.store.refreshConnections();}
     catch(e){this.result.set({ok:false,text:(e as Error).message});}
-    finally{this.busy.set(false);}
+    finally{this.busy.set(false);this.form['signIn']=false;}
   }
   async disconnect(){
     this.busy.set(true);
