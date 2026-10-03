@@ -54,7 +54,7 @@ internal sealed class BrowserSurface : Form
         Controls.Add(pages);Controls.Add(chrome);
         corners=new PageCorners(this);cornerTimer.Tick+=async(_,_)=>{cornerTimer.Stop();await RefreshCorners();};
         persistTimer.Tick+=(_,_)=>{persistTimer.Stop();PersistNow();};
-        VisibleChanged+=(_,_)=>{if(Visible)ScheduleCorners();else corners.Hide();ApplyMemoryTargets();};
+        VisibleChanged+=(_,_)=>{if(Visible)ScheduleCorners();else corners.Hide();ApplyMemoryTargets();host.NoteBrowserPages();};
         // Per-pixel transparency, as for widget windows: the card's own rounded, anti-aliased edge is the window's shape.
         HandleCreated+=(_,_)=>{Windows.ApplyRoundedCorners(Handle,false);Windows.ExtendGlass(Handle);};
         Resize+=(_,_)=>{ApplyPin();Windows.ExtendGlass(Handle);UpdateViewport();};Move+=(_,_)=>{UpdateViewport();ScheduleCorners();};
@@ -133,7 +133,7 @@ internal sealed class BrowserSurface : Form
             item.CustomItemSelected+=(_,_)=>host.BeginInvoke(()=>Host.OpenExternal(target.AbsoluteUri));
             e.MenuItems.Insert(0,item);
         };
-        core.SourceChanged+=(_,_)=>{Persist();EmitState();};core.DocumentTitleChanged+=(_,_)=>EmitState();core.HistoryChanged+=(_,_)=>EmitState();
+        core.SourceChanged+=(_,_)=>{Persist();EmitState();if(tab==selected)host.NoteBrowserPages();};core.DocumentTitleChanged+=(_,_)=>EmitState();core.HistoryChanged+=(_,_)=>EmitState();
         core.NavigationCompleted+=(_,e)=>{tab.Error=e.IsSuccess?null:"This page could not load ("+e.WebErrorStatus+"). Check the address or try reloading.";EmitState();};
         core.ProcessFailed+=(_,e)=>{tab.Error="The browser process stopped ("+e.ProcessFailedKind+"). Reload this tab to recover.";EmitState();};
         core.ContainsFullScreenElementChanged+=(_,_)=>{if(tab==selected)SetFullscreen(core.ContainsFullScreenElement);};
@@ -154,7 +154,9 @@ internal sealed class BrowserSurface : Form
         if(tabs.Count==0)await Add("https://www.google.com/");else if(wasSelected)Select(tabs[Math.Max(0,index-1)]);
         Persist();EmitState();
     }
-    private void Select(Tab tab){selected=tab;foreach(var item in tabs)item.View.Visible=item==tab;tab.View.BringToFront();ApplyMemoryTargets();SetFullscreen(tab.View.CoreWebView2.ContainsFullScreenElement);EmitState();}
+    /** The address of the tab this browser shows (read on the UI thread). */
+    internal string CurrentUrl=>selected?.View.CoreWebView2?.Source??"";
+    private void Select(Tab tab){selected=tab;host.NoteBrowserPages();foreach(var item in tabs)item.View.Visible=item==tab;tab.View.BringToFront();ApplyMemoryTargets();SetFullscreen(tab.View.CoreWebView2.ContainsFullScreenElement);EmitState();}
     /** Tabs in the background, and a browser put away, keep less memory; the tab in front keeps all it needs. */
     private void ApplyMemoryTargets()
     {

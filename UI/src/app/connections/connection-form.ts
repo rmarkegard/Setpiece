@@ -66,7 +66,7 @@ export class ConnectionFormComponent {
       service,zones,zoneLabels:zones.map((z,i)=>labels[i]??z.split('/').pop()?.replaceAll('_',' ')??z),zoneQuery:'',
       discordMode:c['DiscordCallConnected']?'call':'server',location:c['WeatherLocation']??'',serverId:c['DiscordServerId']??'',
       clientId:c[service==='google'?'GoogleClientId':service==='reddit'?'RedditClientId':service==='discord'?'DiscordClientId':service==='twitch'?'TwitchClientId':'SpotifyClientId']??'',signIn:false,
-      exclusions:(c['CalendarExcludedTitles']??[]).join('\n'),community:c['RedditCommunity']??'technology',channel:c['TwitchChannel']??'',host:c['BambuHost']??'',serial:c['BambuSerial']??'',
+      exclusions:(c['CalendarExcludedTitles']??[]).join('\n'),community:c['RedditCommunity']??'technology',channel:c['TwitchChannel']??'',sync:c['TwitchSync']===true,host:c['BambuHost']??'',serial:c['BambuSerial']??'',
       provider:c['InboxProvider']??'google',executable:c['CodexExecutable']??'',hidden:[...(c['AiHidden']??[])],goKey:'',categoriesText:(c['NewsCategories']??[]).join(', '),
       stopName:c['RuterStopName']??'',query:''
     };

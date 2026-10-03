@@ -319,19 +319,37 @@ const badgeMark:Record<string,string>={broadcaster:'●',moderator:'⚔',vip:'�
   imports:[FormsModule],
   template:`
     <div class="spread">
-      @if(editing()){
+      @if(waiting()){
+        <span class="eyebrow tw-channel"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h15v10.5l-4.5 4.5h-3.5L9.5 21.5V19H5zM11 8.5v4M15.5 8.5v4"></path></svg>Synced to your browser</span>
+      } @else if(editing()){
         <form class="tw-switch" (ngSubmit)="switchTo()"><span aria-hidden="true">@</span><input #channelInput name="channel" [(ngModel)]="draftChannel" aria-label="Channel to follow" autocomplete="off" spellcheck="false" maxlength="25" (keydown.escape)="editing.set(false)" (blur)="editing.set(false)"></form>
       } @else {
         <button class="eyebrow tw-channel" type="button" [title]="'Switch channel'" (click)="startEditing()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h15v10.5l-4.5 4.5h-3.5L9.5 21.5V19H5zM11 8.5v4M15.5 8.5v4"></path></svg>{{w.state().title}}</button>
       }
-      <span class="chip" [class.hi]="live()"><span class="dot" [class.live]="live()"></span>{{live()?'Live chat':'Connecting'}}</span>
+      <span class="tw-tools">
+        <button class="tw-sync" type="button" [attr.aria-pressed]="sync()" [title]="sync()?'Following the stream in your browser. Click to keep one channel':'Follow the stream in your browser'" (click)="toggleSync()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 20v-4.5h4.5"></path></svg></button>
+        @if(!waiting()){<span class="chip" [class.hi]="live()"><span class="dot" [class.live]="live()"></span>{{live()?'Live chat':'Connecting'}}</span>}
+      </span>
     </div>
+    @if(waiting()){
+      <div class="tw-wait" role="status">
+        <svg class="tw-tv" viewBox="0 0 120 96" aria-hidden="true">
+          <path class="ant" d="M46 14 60 26 74 10"></path>
+          <rect class="set" x="14" y="26" width="92" height="60" rx="16"></rect>
+          <rect class="glass" x="24" y="35" width="72" height="42" rx="9"></rect>
+          <circle class="d d1" cx="46" cy="56" r="5"></circle><circle class="d d2" cx="60" cy="56" r="5"></circle><circle class="d d3" cx="74" cy="56" r="5"></circle>
+        </svg>
+        <strong>Waiting for a stream</strong>
+        <span>Open a Twitch channel in your Setpiece browser and its chat appears here.</span>
+      </div>
+    } @else {
     <div class="tw-log" role="log" aria-live="off" aria-label="Chat messages">
       @for(line of lines();track line.key){
         <p class="tw-line" [class]="line.cls">@if(!line.system){<b class="tw-name" [style.color]="line.color||null">@if(line.badge){<i class="tw-badge" aria-hidden="true">{{line.badge}}</i>}{{line.name}}</b>}<span class="tw-text">@for(part of line.parts;track $index){@if(part.e){<img class="tw-emote" [src]="part.e" [alt]="part.t" [title]="part.t" loading="lazy">}@else{{{part.t}}}}</span></p>
       } @empty {<p class="tw-quiet">{{live()?'Chat is quiet. Messages appear here.':'Joining the channel…'}}</p>}
     </div>
-    @if(canSend()){
+    }
+    @if(waiting()){} @else if(canSend()){
       <form class="tw-compose" (ngSubmit)="send()">
         <input name="message" [(ngModel)]="draft" (keydown.enter)="$event.preventDefault();send()" [placeholder]="'Chat as '+login()" aria-label="Send a message" autocomplete="off" maxlength="500" [disabled]="sending()">
         <button class="btn filled" type="submit" aria-label="Send" [disabled]="sending()||!draft.trim()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-4 16-4.5-6.5zM11.5 13.5 20 4"></path></svg></button>
@@ -349,6 +367,9 @@ export class TwitchBody {
   readonly canSend=computed(()=>!!this.w.state().data?.['canSend']);
   readonly login=computed(()=>String(this.w.state().data?.['login']||''));
   readonly authFailed=computed(()=>!!this.w.state().data?.['authFailed']);
+  /** Chat follows the stream open in a Setpiece browser; while none is, it waits. */
+  readonly sync=computed(()=>!!this.w.state().data?.['sync']);
+  readonly waiting=computed(()=>!!this.w.state().data?.['waiting']);
   readonly editing=signal(false);
   readonly sending=signal(false);
   private readonly channelInput=viewChild<ElementRef<HTMLInputElement>>('channelInput');
@@ -372,8 +393,10 @@ export class TwitchBody {
   async switchTo(){
     const channel=this.draftChannel.trim().replace(/^[@#]/,'');this.editing.set(false);
     if(!channel||channel.toLowerCase()===String(this.w.state().data?.['channel']||''))return;
-    await this.w.control('connect',{service:'twitch',channel});
+    // Picking a channel by hand means keeping it: sync turns off.
+    await this.w.control('connect',{service:'twitch',channel,sync:false});
   }
+  async toggleSync(){await this.w.control('connect',{service:'twitch',sync:!this.sync()});}
   async send(){
     const message=this.draft.trim();if(!message||this.sending())return;
     this.sending.set(true);this.w.controlError.set('');

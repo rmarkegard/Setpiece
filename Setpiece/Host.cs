@@ -23,7 +23,7 @@ internal sealed class Host : Form
     internal string? AuditOutput;
     public Host(Storage storage)
     {
-        this.storage = storage;providers = new Providers(storage);
+        this.storage = storage;providers = new Providers(storage);providers.BrowserPages=()=>browserPages;
         providers.Pushed += service => { if(IsHandleCreated&&!IsDisposed)BeginInvoke(()=>{var message=PageMessage("service",JsonValue.Create(service));Post(message);foreach(var surface in surfaces)surface.Post(message);}); };
         Text = "Setpiece";if(Windows.AppIcon.Value is { } icon)Icon=icon;Size = new Size(1440, 960);MinimumSize = new Size(1040, 680);StartPosition = FormStartPosition.CenterScreen;FormBorderStyle = FormBorderStyle.None;BackColor = SurfaceColor;
         Controls.Add(view);Shown += async (_, _) => await Initialize();
@@ -394,6 +394,15 @@ internal sealed class Host : Form
         catch(Exception error) when(error is NotImplementedException or InvalidCastException or System.Runtime.InteropServices.COMException){}
     }
     internal void NotifyBrowserCatalog()=>Emit("browsers",BrowserCatalog());
+    /** The pages showing in visible browsers, kept as a snapshot so widgets can read it from any thread. */
+    private volatile string[] browserPages=[];
+    internal void NoteBrowserPages()
+    {
+        // Selecting a tab during setup can run before the browser joins the list; the next change catches up.
+        var pages=browsers.Values.Where(b=>!b.IsDisposed&&b.Visible).Select(b=>b.CurrentUrl).Where(u=>u.Length>0).ToArray();
+        if(pages.SequenceEqual(browserPages))return;
+        browserPages=pages;providers.BrowserPagesChanged();
+    }
     /** The desk window under a place on screen, while a workspace is launched. */
     internal Surface? DeskAt(Rectangle bounds)=>surfaces.FirstOrDefault(s=>!s.IsDisposed&&s.Visible&&s.Bounds.Contains(bounds));
     /** The browser toolbar changed where fullscreen goes; the workspace's tiles for that browser follow, and Studio hears of it. */
