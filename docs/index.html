@@ -22,9 +22,12 @@
   <link rel="stylesheet" href="site.css">
   <script>
     // Apply ?theme=, or a saved choice, before paint. Otherwise the page is dark, like Setpiece's default look.
-    let theme = 'dark';
-    try { const t = new URLSearchParams(location.search).get('theme') || localStorage.getItem('setpiece-site-theme'); if (t === 'light' || t === 'dark') theme = t; } catch {}
-    document.documentElement.dataset.theme = theme;
+    // Kept inside a function: a global name here would collide with site.js and stop it from running.
+    (() => {
+      let choice = 'dark';
+      try { const t = new URLSearchParams(location.search).get('theme') || localStorage.getItem('setpiece-site-theme'); if (t === 'light' || t === 'dark') choice = t; } catch {}
+      document.documentElement.dataset.theme = choice;
+    })();
   </script>
   <script src="site.js" defer></script>
 </head>
