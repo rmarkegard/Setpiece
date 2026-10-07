@@ -81,7 +81,16 @@ if (Test-Path -LiteralPath $archive) {
   }
   Remove-Item -LiteralPath $archive -Force
 }
-Compress-Archive -Path (Join-Path $stageRoot '*') -DestinationPath $archive -CompressionLevel Optimal
+# A virus scanner often still holds the files just copied into staging; a locked file is retried, not fatal.
+for ($attempt = 1; ; $attempt++) {
+  try { Compress-Archive -Path (Join-Path $stageRoot '*') -DestinationPath $archive -CompressionLevel Optimal -ErrorAction Stop; break }
+  catch [IO.IOException] {
+    if (Test-Path -LiteralPath $archive) { Remove-Item -LiteralPath $archive -Force }
+    if ($attempt -ge 5) { throw }
+    Write-Output "A staged file is in use; retrying the archive ($attempt of 4)."
+    Start-Sleep -Seconds (3 * $attempt)
+  }
+}
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [IO.Compression.ZipFile]::OpenRead($archive)
