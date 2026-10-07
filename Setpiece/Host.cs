@@ -192,6 +192,8 @@ internal sealed class Host : Form
                 return null;
             case "browser-open": await OpenBrowser(payload["name"]!.GetValue<string>(),payload["url"]?.GetValue<string>()??"https://www.youtube.com/",new Rectangle(Location.X+80,Location.Y+100,1000,700),null,false,false);return null;
             case "browser-list":return BrowserCatalog();
+            // A desk window answers this itself; a desk page shown anywhere else (a design capture) has nothing covered.
+            case "covered-tiles":return new JsonArray();
             default: throw new InvalidOperationException("This action is not supported by this version of Setpiece.");
         }
     }
