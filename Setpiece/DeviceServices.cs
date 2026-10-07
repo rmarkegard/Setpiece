@@ -14,6 +14,14 @@ internal sealed class DeviceServices : IDisposable
     private long previousReceived,previousSent;
     private DateTimeOffset previousNetwork;
     private readonly SemaphoreSlim sensorGate=new(1);
+    /**
+     * The adapters whose traffic the System widget adds up. Listing them takes Windows about 10 ms, on the UI
+     * thread, every two seconds; reading their counters takes a fraction of that. The list is kept until Windows
+     * reports a network change (an adapter connecting, dropping or getting a new address).
+     */
+    private NetworkInterface[]? adapters;
+    public DeviceServices(){NetworkChange.NetworkAddressChanged+=ForgetAdapters;NetworkChange.NetworkAvailabilityChanged+=ForgetAdapters;}
+    private void ForgetAdapters(object? sender,EventArgs e)=>Volatile.Write(ref adapters,null);
     public static JsonObject Volume(double? level=null,bool? muted=null)
     {
         try
@@ -29,7 +37,8 @@ internal sealed class DeviceServices : IDisposable
     public JsonObject Network()
     {
         long received=0,sent=0;
-        foreach(var adapter in NetworkInterface.GetAllNetworkInterfaces().Where(a=>a.OperationalStatus==OperationalStatus.Up&&a.NetworkInterfaceType is not (NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel)))
+        var up=Volatile.Read(ref adapters)??(adapters=NetworkInterface.GetAllNetworkInterfaces().Where(a=>a.OperationalStatus==OperationalStatus.Up&&a.NetworkInterfaceType is not (NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel)).ToArray());
+        foreach(var adapter in up)
         {try{var stats=adapter.GetIPStatistics();received+=stats.BytesReceived;sent+=stats.BytesSent;}catch(NetworkInformationException){}}
         var now=DateTimeOffset.UtcNow;var seconds=(now-previousNetwork).TotalSeconds;
         var result=new JsonObject{["download"]=previousNetwork==default?null:Math.Max(0,(received-previousReceived)/seconds),["upload"]=previousNetwork==default?null:Math.Max(0,(sent-previousSent)/seconds)};
@@ -61,6 +70,6 @@ internal sealed class DeviceServices : IDisposable
         {return new JsonObject{["sensorStatus"]="Hardware readings unavailable. Enable the collector in widget settings for supported temperature sensors."};}
         finally{sensorGate.Release();}
     }
-    public void Dispose(){if(sensorProcess is not null){try{if(!sensorProcess.HasExited)sensorProcess.Kill();}catch(System.ComponentModel.Win32Exception){}sensorProcess.Dispose();}sensorGate.Dispose();}
+    public void Dispose(){NetworkChange.NetworkAddressChanged-=ForgetAdapters;NetworkChange.NetworkAvailabilityChanged-=ForgetAdapters;if(sensorProcess is not null){try{if(!sensorProcess.HasExited)sensorProcess.Kill();}catch(System.ComponentModel.Win32Exception){}sensorProcess.Dispose();}sensorGate.Dispose();}
 }
 

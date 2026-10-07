@@ -91,18 +91,28 @@ internal static class AiUsage
         var installed=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"OpenAI","Codex","bin");
         return Directory.Exists(installed)?Directory.EnumerateDirectories(installed).Select(d=>Path.Combine(d,"codex.exe")).Where(File.Exists).OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault():null;
     }
+    /**
+     * Codex reports its limits through its app-server. Starting one for every reading cost a tenth of a second
+     * of startup and a burst of CPU each minute, so one stays open while the widget reads it; every reading still
+     * asks OpenAI afresh. It holds about 60 MB, so it closes once nothing has asked for three minutes.
+     */
+    private sealed record CodexServer(Process Process,string Path){public int Next=2;}
+    private static CodexServer? codex;
+    private static readonly SemaphoreSlim codexGate=new(1);
+    private static long codexAsked;
+    private static System.Threading.Timer? codexIdle;
+    private const long CodexIdleAfter=180_000;
     private static async Task<JsonObject> Codex(JsonObject settings)
     {
         var path=FindCodex(settings);if(path is null)return new JsonObject{["status"]="Install Codex, or choose where it is in the widget settings.", ["windows"]=new JsonArray()};
-        using var process=new Process{StartInfo=new ProcessStartInfo(path){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true}};
-        process.StartInfo.ArgumentList.Add("app-server");using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(18));
+        using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(18));var entered=false;
         try
         {
-            process.Start();process.ErrorDataReceived+=(_,_)=>{};process.BeginErrorReadLine();
-            await Send(process,new JsonObject{["id"]=1,["method"]="initialize",["params"]=new JsonObject{["clientInfo"]=new JsonObject{["name"]="setpiece_workspace",["title"]="Setpiece",["version"]="2.0"}}},timeout.Token);
-            await Response(process,1,timeout.Token);await Send(process,new JsonObject{["method"]="initialized"},timeout.Token);
-            await Send(process,new JsonObject{["id"]=2,["method"]="account/rateLimits/read"},timeout.Token);
-            var result=await Response(process,2,timeout.Token);var windows=new JsonArray();
+            await codexGate.WaitAsync(timeout.Token);entered=true;Interlocked.Exchange(ref codexAsked,Environment.TickCount64);
+            if(codex is null||codex.Process.HasExited||codex.Path!=path){StopCodex();codex=await StartCodex(path,timeout.Token);}
+            var id=codex.Next++;
+            await Send(codex.Process,new JsonObject{["id"]=id,["method"]="account/rateLimits/read"},timeout.Token);
+            var result=await Response(codex.Process,id,timeout.Token);var windows=new JsonArray();
             var buckets=result["rateLimitsByLimitId"] is JsonObject map?map.Select(pair=>pair.Value).OfType<JsonObject>():result["rateLimits"] is JsonObject single?[single]:Enumerable.Empty<JsonObject>();
             foreach(var bucket in buckets)foreach(var period in new[]{"primary","secondary"})
             {
@@ -111,10 +121,47 @@ internal static class AiUsage
             }
             return new JsonObject{["status"]=windows.Count>0?"Connected through Codex":"No quota data returned. Sign in to Codex with ChatGPT.",["windows"]=windows};
         }
-        catch(Exception error) when(error is IOException or JsonException or InvalidDataException or OperationCanceledException or System.ComponentModel.Win32Exception)
-        {return new JsonObject{["status"]=error is OperationCanceledException?"Codex did not respond in time. Retry shortly.":"Codex quota is unavailable. Open Codex, sign in, and retry.",["windows"]=new JsonArray()};}
-        finally{try{if(process.Id>0&&!process.HasExited)process.Kill(true);}catch(InvalidOperationException){}catch(System.ComponentModel.Win32Exception){}}
+        catch(Exception error) when(error is IOException or JsonException or InvalidDataException or OperationCanceledException or System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            // A server that failed mid-conversation is not trusted with the next one: it starts afresh.
+            if(entered)StopCodex();
+            return new JsonObject{["status"]=error is OperationCanceledException?"Codex did not respond in time. Retry shortly.":"Codex quota is unavailable. Open Codex, sign in, and retry.",["windows"]=new JsonArray()};
+        }
+        finally{if(entered)codexGate.Release();}
     }
+    private static async Task<CodexServer> StartCodex(string path,CancellationToken token)
+    {
+        var process=new Process{StartInfo=new ProcessStartInfo(path){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true}};
+        process.StartInfo.ArgumentList.Add("app-server");
+        try
+        {
+            process.Start();Windows.EndWithSetpiece(process);process.ErrorDataReceived+=(_,_)=>{};process.BeginErrorReadLine();
+            await Send(process,new JsonObject{["id"]=1,["method"]="initialize",["params"]=new JsonObject{["clientInfo"]=new JsonObject{["name"]="setpiece_workspace",["title"]="Setpiece",["version"]="2.0"}}},token);
+            await Response(process,1,token);await Send(process,new JsonObject{["method"]="initialized"},token);
+        }
+        catch{End(process);throw;}
+        codexIdle??=new System.Threading.Timer(_=>RestCodex(),null,TimeSpan.FromMinutes(1),TimeSpan.FromMinutes(1));
+        return new CodexServer(process,path);
+    }
+    /** Closes the app-server once the widget has stopped asking (removed, covered, or Setpiece minimized). */
+    private static void RestCodex()
+    {
+        if(!codexGate.Wait(0))return;
+        try{if(Environment.TickCount64-Interlocked.Read(ref codexAsked)>CodexIdleAfter)StopCodex();}
+        finally{codexGate.Release();}
+    }
+    private static void StopCodex()
+    {
+        codexIdle?.Dispose();codexIdle=null;
+        if(codex is null)return;End(codex.Process);codex=null;
+    }
+    private static void End(Process process)
+    {
+        try{if(!process.HasExited)process.Kill(true);}catch(Exception error) when(error is InvalidOperationException or System.ComponentModel.Win32Exception){}
+        process.Dispose();
+    }
+    /** Setpiece is closing: the app-server goes with it. */
+    internal static void Shutdown(){if(!codexGate.Wait(TimeSpan.FromSeconds(2)))return;try{StopCodex();}finally{codexGate.Release();}}
     private static async Task Send(Process process,JsonObject message,CancellationToken token){await process.StandardInput.WriteLineAsync(message.ToJsonString().AsMemory(),token);await process.StandardInput.FlushAsync(token);}
     private static async Task<JsonObject> Response(Process process,int id,CancellationToken token)
     {

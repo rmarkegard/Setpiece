@@ -11,8 +11,16 @@ export function isoWeek(d:Date){
   const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t.getTime()-y.getTime())/86400000+1)/7);
 }
 
+/** Date formats are built once and reused: building one costs far more than using it, and widgets format every second. */
+const formats=new Map<string,Intl.DateTimeFormat>();
+export function formatDate(at:Date,options:Intl.DateTimeFormatOptions){
+  const key=JSON.stringify(options);let format=formats.get(key);
+  if(!format){format=new Intl.DateTimeFormat('en-GB',options);formats.set(key,format);}
+  return format.format(at);
+}
+
 export function zoneTime(zone:string,at:Date){
-  try{const t=new Intl.DateTimeFormat('en-GB',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(at);return {t,h:parseInt(t.slice(0,2),10)+parseInt(t.slice(3,5),10)/60};}
+  try{const t=formatDate(at,{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'});return {t,h:parseInt(t.slice(0,2),10)+parseInt(t.slice(3,5),10)/60};}
   catch{return {t:'--:--',h:0};}
 }
 

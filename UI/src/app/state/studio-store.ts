@@ -3,6 +3,7 @@ import {MatSnackBar} from '@angular/material/snack-bar';
 import {Bridge} from '../../bridge';
 import {Profile,Board,Tile,Display,AppWindow,History,assertLayout,newProfile,preset,splitTile,removeTile,vacantTile,widgets} from '../../domain';
 import {Appearance,defaultAppearance,normalizeAppearance,applyAppearance} from '../../theme';
+import {setPageCovered} from './presence';
 
 export type Route='Studio'|'Widgets'|'Browsers'|'Appearance'|'Settings';
 export const routes:{name:Route;label:string;icon:string}[]=[
@@ -60,6 +61,8 @@ export class StudioStore {
   readonly bookmarks=signal<Bookmark[]>([]);
   readonly bookmarkBar=signal<BookmarkNode[]>([]);
   readonly wallpaperViewport=signal<Record<string,string>>({});
+  /** On a desk: the widget tiles applications cover, which rest until they show again. */
+  readonly coveredTiles=signal<ReadonlySet<string>>(new Set());
   readonly ready=signal(false);
 
   readonly updateBusy=signal(false);
@@ -95,6 +98,8 @@ export class StudioStore {
   private receive(e:{event:string;data:any}){
     switch(e.event){
       case 'wallpaper-viewport':this.wallpaperViewport.set(e.data);break;
+      case 'page-covered':setPageCovered(!!e.data);break;
+      case 'tiles-covered':this.coverTiles(e.data);break;
       case 'request-close':this.requestClose();break;
       case 'detached':this.detach(e.data);break;
       case 'notice':this.notify(e.data);break;
@@ -123,10 +128,16 @@ export class StudioStore {
       if(this.workspace)this.profile.update(p=>({...p,MonitorIndex:Number(this.query.get('workspace'))}));
       this.selectFirst();
       if(this.isStudio)void this.refreshApps();
+      if(this.workspace)this.coverTiles(await this.bridge.call<string[]>('covered-tiles').catch(()=>[]));
       if(this.isStudio||this.browserName)await this.loadBookmarks();
     }catch(e){this.error.set((e as Error).message);}
     this.ready.set(true);
     this.prepareCapture();
+  }
+
+  private coverTiles(ids:string[]|null){
+    const next=new Set(ids??[]),now=this.coveredTiles();
+    if(next.size!==now.size||[...next].some(id=>!now.has(id)))this.coveredTiles.set(next);
   }
 
   // Messages and errors.
@@ -301,7 +312,6 @@ export class StudioStore {
   // Appearance and wallpaper.
   appearanceChange<K extends keyof Appearance>(key:K,value:Appearance[K]){const next=normalizeAppearance({...this.appearance(),[key]:value});this.appearance.set(next);applyAppearance(next);void this.execute('preferences',next);}
   wallpaper(id:string){this.edit(p=>p.WallpaperId=id);}
-  editAnimated(value:boolean){this.edit(p=>p.AnimatedWallpaper=value);}
 
   // Browsers.
   normalizeBookmarks(items:any[]):Bookmark[]{

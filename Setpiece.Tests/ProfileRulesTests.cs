@@ -51,10 +51,10 @@ public class ProfileRulesTests
         var store = new Storage(TestData.Root());
         foreach (var id in ProfileRules.WallpaperIds)
         {
-            var profile = TestData.Profile(); profile["WallpaperId"] = id; profile["AnimatedWallpaper"] = false;
+            var profile = TestData.Profile(); profile["WallpaperId"] = id;
             var key = store.SaveProfile(null, profile);
             var saved = store.Profiles().OfType<JsonObject>().Single(p => p["key"]!.GetValue<string>() == key)["profile"]!;
-            Assert.Equal(id, saved["WallpaperId"]!.GetValue<string>()); Assert.False(saved["AnimatedWallpaper"]!.GetValue<bool>());
+            Assert.Equal(id, saved["WallpaperId"]!.GetValue<string>());
             store.DeleteProfile(key);
         }
     }
@@ -67,7 +67,7 @@ public class ProfileRulesTests
     {
         var profile = TestData.Profile(); profile["WallpaperId"] = legacy; profile["AnimatedWallpaper"] = true;
         var migrated = Storage.Normalize(profile);
-        Assert.Equal(current, migrated["WallpaperId"]!.GetValue<string>()); Assert.True(migrated["AnimatedWallpaper"]!.GetValue<bool>()); Assert.Equal("retained", migrated["CustomLegacyField"]!.GetValue<string>());
+        Assert.Equal(current, migrated["WallpaperId"]!.GetValue<string>()); Assert.Null(migrated["AnimatedWallpaper"]); Assert.Equal("retained", migrated["CustomLegacyField"]!.GetValue<string>());
         Assert.True(JsonNode.DeepEquals(migrated, Storage.Normalize(migrated.DeepClone().AsObject())));
     }
     [Fact] public void UnknownWallpaperFallsBackToAmbient()

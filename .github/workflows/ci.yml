@@ -26,6 +26,6 @@ jobs:
         working-directory: UI
       - run: node node_modules/@angular/cli/bin/ng.js build --configuration production
         working-directory: UI
-      - run: node --test UI/tests/domain.test.ts UI/tests/widget-layout.test.ts UI/tests/theme.test.ts
+      - run: node --test UI/tests/domain.test.ts UI/tests/widget-layout.test.ts UI/tests/theme.test.ts UI/tests/icons.test.ts
       - run: dotnet build Setpiece/Setpiece.csproj -c Release
       - run: dotnet test Setpiece.Tests/Setpiece.Tests.csproj -c Release

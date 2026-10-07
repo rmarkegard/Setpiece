@@ -41,7 +41,9 @@ internal static class ProfileRules
         var notices=new List<string>();
         profile["Name"]=Text(profile,"Name","Untitled workspace").Trim();if(Text(profile,"Name").Length==0)profile["Name"]="Untitled workspace";
         profile["Gap"]=Math.Clamp(Number(profile,"Gap",12),0,40);profile["OuterMargin"]=Math.Clamp(Number(profile,"OuterMargin",16),0,64);
-        profile["SnapStep"]=Math.Clamp(Number(profile,"SnapStep",.05),.01,.2);profile["SmartSnap"]=Flag(profile,"SmartSnap",true);profile["AnimatedWallpaper"]=Flag(profile,"AnimatedWallpaper",true);
+        profile["SnapStep"]=Math.Clamp(Number(profile,"SnapStep",.05),.01,.2);profile["SmartSnap"]=Flag(profile,"SmartSnap",true);
+        // Wallpapers no longer move (the drift kept every desk redrawing the whole display): the old switch goes.
+        profile.Remove("AnimatedWallpaper");
         profile["SchemaVersion"]=18;profile["FreeformBoard"]=true;
         var wallpaper=Text(profile,"WallpaperId","ambient");
         if(LegacyWallpapers.TryGetValue(wallpaper,out var replacement))wallpaper=replacement;

@@ -38,7 +38,7 @@
   border-radius: 28px;
   cursor: grab;
   transition: box-shadow var(--motion-effects), opacity var(--motion-effects);
-  sp-widget { flex: 1; min-width: 0; }
+  sp-widget { position: relative; z-index: 1; flex: 1; min-width: 0; }
   &:hover { box-shadow: 0 0 0 calc(2px / var(--k, 1)) color-mix(in srgb, var(--mat-sys-primary) 45%, transparent); }
   &.selected { z-index: calc(var(--z-content) + 1); }
   // The dragged tile follows the pointer above the others, with no transition to lag behind it.

@@ -35,7 +35,8 @@ internal sealed class Providers : IDisposable
     }
     public async Task<JsonObject> Read(string service)
     {
-        var lifetime=TimeSpan.FromSeconds(service switch{"system" or "battery" or "volume"=>2,"discord" or "spotify"=>5,"twitch"=>0,"bambu-lab"=>10,"ruter"=>15,"weather" or "news"=>300,"clock"=>3600,_=>30});
+        // AI usage starts Codex for each reading, once a minute: Studio and a desk showing it share that one reading.
+        var lifetime=TimeSpan.FromSeconds(service switch{"system" or "battery" or "volume"=>2,"discord" or "spotify"=>5,"twitch"=>0,"bambu-lab"=>10,"codex"=>55,"ruter"=>15,"weather" or "news"=>300,"clock"=>3600,_=>30});
         if(cache.TryGetValue(service,out var old)&&DateTimeOffset.UtcNow-old.Time<lifetime)return (JsonObject)old.Value.DeepClone();
         var gate=gates.GetOrAdd(service,_=>new SemaphoreSlim(1));await gate.WaitAsync();
         try
@@ -183,10 +184,23 @@ internal sealed class Providers : IDisposable
         var server=Text(settings,"DiscordServerId");if(server.Length==0)return State("disconnected","A place for your people","Connect a server with its widget enabled.");var data=await Get("https://discord.com/api/guilds/"+Uri.EscapeDataString(server)+"/widget.json");
         var items=new JsonArray();foreach(var member in data["members"]!.AsArray().Take(12))items.Add(new JsonObject{["id"]=member!["id"]?.DeepClone(),["title"]=member["username"]!.DeepClone(),["detail"]=member["status"]?.DeepClone(),["avatar"]=DiscordVoice.Https(member["avatar_url"]?.GetValue<string>())});return State("ready",data["name"]!.GetValue<string>(),data["presence_count"]+" members online",items);
     }
+    /**
+     * The last calendar feed read. A feed can hold years of events, and parsing it and expanding its repeats took
+     * a good share of a second every half minute; most reads fetch the same file, so its events are reused.
+     */
+    private sealed record FeedRead(string Feed,string Hash,string Filter,JsonArray Items,DateTime At);
+    private FeedRead? feedRead;
     private async Task<JsonObject> Calendar(JsonObject settings)
     {
         var feed=Text(settings,"CalendarFeedUrl");var excluded=settings["CalendarExcludedTitles"]?.AsArray().Select(n=>n!.GetValue<string>()).ToArray()??[];JsonArray items;
-        if(feed.Length>0)items=WidgetData.CalendarFeed(await http.GetStringAsync(feed),excluded,DateTime.UtcNow);
+        if(feed.Length>0)
+        {
+            var text=await http.GetStringAsync(feed);var hash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(text)));var filter=string.Join('\0',excluded);var now=DateTime.UtcNow;
+            // The same file, and nothing on the list has started: reading it again would list the same events.
+            if(feedRead is { } last&&last.Feed==feed&&last.Hash==hash&&last.Filter==filter&&now-last.At<TimeSpan.FromHours(1)&&last.Items.All(i=>DateTimeOffset.Parse(i!["start"]!.GetValue<string>(),CultureInfo.InvariantCulture)>now))
+                items=(JsonArray)last.Items.DeepClone();
+            else{items=WidgetData.CalendarFeed(text,excluded,now);feedRead=new(feed,hash,filter,(JsonArray)items.DeepClone(),now);}
+        }
         else
         {
             if(Text(settings,"GoogleRefreshToken").Length==0)return State("disconnected","Make time for what matters","Connect Google or add a calendar feed.");
@@ -315,5 +329,5 @@ internal sealed class Providers : IDisposable
             _=>Array.Empty<string>()};
         var changes=new JsonObject();foreach(var field in fields)changes[field]=null;storage.UpdateConnections(changes);cache.Clear();
     }
-    public void Dispose(){http.Dispose();devices.Dispose();twitch.Dispose();voice?.DisposeAsync().AsTask().Wait(500);foreach(var gate in gates.Values)gate.Dispose();}
+    public void Dispose(){AiUsage.Shutdown();PrinterService.Shutdown();http.Dispose();devices.Dispose();twitch.Dispose();voice?.DisposeAsync().AsTask().Wait(500);foreach(var gate in gates.Values)gate.Dispose();}
 }

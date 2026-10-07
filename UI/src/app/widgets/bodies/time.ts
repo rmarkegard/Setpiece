@@ -1,5 +1,5 @@
 import {ChangeDetectionStrategy,Component,computed,inject,signal} from '@angular/core';
-import {eventStart,isoWeek,pad,untilLabel,zoneTime} from '../../../widget-format';
+import {eventStart,formatDate,isoWeek,pad,untilLabel,zoneTime} from '../../../widget-format';
 import {WidgetContext} from '../context';
 import {OdoComponent,flashSet,onChange,slotList} from '../motion';
 
@@ -37,7 +37,7 @@ export class ClockBody {
   readonly w=inject(WidgetContext);
   /** The seconds bar is one 60 s animation, started at the right point so it sweeps in step with the clock. */
   readonly secondsOffset=-new Date().getSeconds();
-  readonly dateLabel=computed(()=>this.w.now().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}));
+  readonly dateLabel=computed(()=>formatDate(this.w.now(),{weekday:'long',day:'numeric',month:'long'}));
   readonly week=computed(()=>isoWeek(this.w.now()));
   readonly hh=computed(()=>pad(this.w.now().getHours()));
   readonly mm=computed(()=>pad(this.w.now().getMinutes()));
@@ -91,8 +91,8 @@ const ROW=58;
 })
 export class CalendarBody {
   readonly w=inject(WidgetContext);
-  readonly weekday=computed(()=>this.w.now().toLocaleDateString('en-GB',{weekday:'long'}));
-  readonly monthLine=computed(()=>this.w.now().toLocaleDateString('en-GB',{month:'long',year:'numeric'}));
+  readonly weekday=computed(()=>formatDate(this.w.now(),{weekday:'long'}));
+  readonly monthLine=computed(()=>formatDate(this.w.now(),{month:'long',year:'numeric'}));
   readonly events=computed<CalendarEvent[]>(()=>{
     const now=new Date(this.w.receivedAt());
     return (this.w.state().items??[]).map(item=>{
@@ -114,8 +114,8 @@ export class CalendarBody {
       const e=slot.item,d=new Date(e.start),isNext=!slot.gone&&next?.key===e.key;
       const chip=knock.has(e.key)?'Reminder':isNext?untilLabel(e.start-now.getTime()):'';
       const cls=['slot cal-row',e.start<now.getTime()?'past':'',slot.gone?'gone':'',struck.has(e.key)?'strike':'',d.toDateString()===today?'today':'',isNext?'next':'',slot.fresh?'fresh':'',knock.has(e.key)?'knock':''].filter(Boolean).join(' ');
-      return {key:slot.key,cls,y:slot.rank*ROW,day:d.getDate(),mon:d.toLocaleDateString('en-GB',{month:'short'}).toUpperCase(),title:e.title,
-        sub:d.toLocaleDateString('en-GB',{weekday:'short'})+' '+pad(d.getHours())+':'+pad(d.getMinutes())+(e.place?' · '+e.place:''),chip};
+      return {key:slot.key,cls,y:slot.rank*ROW,day:d.getDate(),mon:formatDate(d,{month:'short'}).toUpperCase(),title:e.title,
+        sub:formatDate(d,{weekday:'short'})+' '+pad(d.getHours())+':'+pad(d.getMinutes())+(e.place?' · '+e.place:''),chip};
     });
   });
   constructor(){

@@ -10,7 +10,7 @@ export interface Tile {
 export interface Board { MonitorIndex: number; MonitorDeviceName?:string; MonitorId?:string; WidgetScale: number; Zones: Tile[]; [key:string]:unknown; }
 export interface Profile {
   Name: string; SchemaVersion:number; Gap:number; OuterMargin:number; MonitorIndex:number;
-  MonitorIndices:number[]; MonitorBoards:Board[]; WallpaperId:string; AnimatedWallpaper:boolean;
+  MonitorIndices:number[]; MonitorBoards:Board[]; WallpaperId:string;
   SmartSnap:boolean; SnapStep:number; [key:string]:unknown;
 }
 export interface Display { index:number; name:string; id?:string; scale?:number; width:number; height:number; x:number; y:number; primary:boolean; }
@@ -74,7 +74,7 @@ export function newTile(x=0,y=0,w=1,h=1):Tile {
   return {Id:crypto.randomUUID(),Name:'Untitled tile',X:x,Y:y,Width:w,Height:h,ContentKind:'Application',WidgetId:'',WidgetArg:'',AssignedProcessName:'',AssignedWindowTitle:'',SharedWebName:'',ConstrainFullscreenToTile:false,Web:{Tabs:[],SelectedTabId:'',ToolbarPinned:true}};
 }
 export function newProfile(name:string,index=0):Profile {
-  return {Name:name.trim(),SchemaVersion:18,Gap:12,OuterMargin:16,MonitorIndex:index,MonitorIndices:[index],MonitorBoards:[{MonitorIndex:index,WidgetScale:1,Zones:[newTile()]}],WallpaperId:'ambient',AnimatedWallpaper:true,SmartSnap:true,SnapStep:.05};
+  return {Name:name.trim(),SchemaVersion:18,Gap:12,OuterMargin:16,MonitorIndex:index,MonitorIndices:[index],MonitorBoards:[{MonitorIndex:index,WidgetScale:1,Zones:[newTile()]}],WallpaperId:'ambient',SmartSnap:true,SnapStep:.05};
 }
 const eps=1e-7;
 export function assertLayout(tiles:Tile[]):void {

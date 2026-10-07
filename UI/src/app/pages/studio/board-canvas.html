@@ -2,12 +2,13 @@
   <div class="board" #board [ngStyle]="boardStyle()" [class.previewing]="!!store.preview()" [class.busy]="!!dragging()||!!live()" aria-label="Layout canvas">
     <!-- The display at its own size, scaled down: widgets lay out exactly as on the desk. -->
     <div class="surface" [ngStyle]="surfaceStyle()">
-      <sp-wallpaper [id]="store.profile().WallpaperId" [moving]="store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion"/>
+      <sp-wallpaper [id]="store.profile().WallpaperId"/>
       @for(tile of zones();track tile.Id){
         <section class="tile" [attr.data-kind]="tile.ContentKind" [class.selected]="tile.Id===store.selected()&&!store.preview()" [class.dragging]="tile.Id===dragging()" [class.empty]="tile.ContentKind==='Application'&&!tile.AssignedProcessName"
           [ngStyle]="bounds(tile)" [style.transform]="shift(tile)" tabindex="0" [attr.aria-label]="label(tile,$index)+', '+(tile.ContentKind==='Web'?'browser':tile.ContentKind==='Widget'?'widget':'application')+' tile'"
           (pointerdown)="start($event,tile.Id)" (click)="store.selected.set(tile.Id)" (keydown.enter)="store.selected.set(tile.Id)" (keydown)="key($event,tile.Id)">
           @if(tile.ContentKind==='Widget'){
+            @if(glass()){<sp-frost [wallpaper]="store.profile().WallpaperId" [area]="percent(tile)" [screen]="store.monitorSize()" [detail]="frostDetail()"/>}
             <sp-widget [id]="tile.WidgetId" [scale]="store.board().WidgetScale" (expand)="store.expandWidget(tile.WidgetId)" (manage)="store.manageWidget(tile.WidgetId)"/>
           } @else {
             <div class="placeholder">

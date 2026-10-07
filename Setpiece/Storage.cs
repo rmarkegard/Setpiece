@@ -61,11 +61,21 @@ internal sealed class Storage
         if (key != Path.GetFileName(key) || key.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || key is "." or "..") throw new InvalidDataException("Invalid profile name.");
         return key;
     }
+    private readonly object connectionsGate = new();
+    private (DateTime Written, long Length, JsonObject Value)? connectionsRead;
+    /**
+     * Widgets read their connections on every poll (chat every couple of seconds), and decrypting the file each
+     * time is a round trip to Windows' security service. The last decrypted copy is reused until the file changes.
+     */
     public JsonObject Connections()
     {
-        var file = Path.Combine(Root, "connections.dat");
-        if (!File.Exists(file)) return new JsonObject();
-        return JsonNode.Parse(ProtectedData.Unprotect(File.ReadAllBytes(file), entropy, DataProtectionScope.CurrentUser))?.AsObject() ?? throw new InvalidDataException("Empty connection data.");
+        var file = new FileInfo(Path.Combine(Root, "connections.dat"));
+        if (!file.Exists) return new JsonObject();
+        lock (connectionsGate)
+            if (connectionsRead is { } read && read.Written == file.LastWriteTimeUtc && read.Length == file.Length) return (JsonObject)read.Value.DeepClone();
+        var value = JsonNode.Parse(ProtectedData.Unprotect(File.ReadAllBytes(file.FullName), entropy, DataProtectionScope.CurrentUser))?.AsObject() ?? throw new InvalidDataException("Empty connection data.");
+        lock (connectionsGate) connectionsRead = (file.LastWriteTimeUtc, file.Length, (JsonObject)value.DeepClone());
+        return value;
     }
     public void UpdateConnections(JsonObject changes)
     {
@@ -87,6 +97,7 @@ internal sealed class Storage
             }
             foreach (var field in changes) current[field.Key] = field.Value?.DeepClone();
             Atomic(file, ProtectedData.Protect(Encoding.UTF8.GetBytes(current.ToJsonString()), entropy, DataProtectionScope.CurrentUser));
+            lock (connectionsGate) connectionsRead = null;
         }
         finally { if (acquired) gate.ReleaseMutex(); }
     }

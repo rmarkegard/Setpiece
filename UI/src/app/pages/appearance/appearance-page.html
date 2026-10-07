@@ -64,7 +64,7 @@
 
   <aside class="preview" aria-label="Live preview">
     <div class="desk">
-      <sp-wallpaper [id]="store.profile().WallpaperId" [moving]="false"/>
+      <sp-wallpaper [id]="store.profile().WallpaperId"/>
       <div class="sample daily sp wg ck"><span class="label-medium">Friday 24 Oct</span><strong class="hero">10:24</strong></div>
       <div class="sample device sp wg sy"><span class="label-medium">CPU</span><strong class="hero small">18%</strong><i class="bar"><b></b></i></div>
       <div class="sample connected sp wg mu trk-0"><span class="label-medium">Now playing</span><strong class="title-medium">Night Drive</strong><span class="play"><sp-icon name="pause" [filled]="true"/></span></div>
@@ -75,11 +75,10 @@
 </div>
 
 <sp-section class="wallpaper-section" headline="Wallpaper" [supporting]="'Saved with '+store.profile().Name+'.'" icon="wallpaper">
-  <mat-slide-toggle section-action [checked]="store.profile().AnimatedWallpaper" (change)="store.editAnimated($event.checked)">Motion</mat-slide-toggle>
   <div class="wallpapers" role="radiogroup" aria-label="Wallpaper">
     @for(id of wallpapers;track id){
       <button class="wallpaper" role="radio" [attr.aria-checked]="store.profile().WallpaperId===id" (click)="store.wallpaper(id)">
-        <sp-wallpaper [id]="id" [moving]="id===store.profile().WallpaperId&&store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion"/>
+        <sp-wallpaper [id]="id"/>
         @if(store.profile().WallpaperId===id){<span class="selected"><sp-icon name="check" [filled]="true"/></span>}
         <span class="name label-large">{{pretty(id)}}</span>
       </button>

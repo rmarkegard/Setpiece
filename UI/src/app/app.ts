@@ -13,10 +13,10 @@ import {WidgetWindow,WorkspaceBackdrop} from './surfaces/surfaces';
   changeDetection:ChangeDetectionStrategy.OnPush,
   imports:[ShellComponent,BrowserToolbar,WidgetWindow,WorkspaceBackdrop],
   template:`
-    @if(store.widgetId){<sp-widget-window/>}
-    @else if(store.workspace){<sp-workspace-backdrop/>}
-    @else if(store.browserName){<sp-browser-toolbar/>}
-    @else{<sp-shell/>}`
+    @if(store.widgetId){@defer(on immediate){<sp-widget-window/>}}
+    @else if(store.workspace){@defer(on immediate){<sp-workspace-backdrop/>}}
+    @else if(store.browserName){@defer(on immediate){<sp-browser-toolbar/>}}
+    @else{@defer(on immediate){<sp-shell/>}}`
 })
 export class AppComponent {
   readonly store=inject(StudioStore);

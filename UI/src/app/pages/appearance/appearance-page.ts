@@ -3,7 +3,6 @@ import {DecimalPipe,UpperCasePipe} from '@angular/common';
 import {MatButtonModule} from '@angular/material/button';
 import {MatButtonToggleModule} from '@angular/material/button-toggle';
 import {MatSliderModule} from '@angular/material/slider';
-import {MatSlideToggleModule} from '@angular/material/slide-toggle';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {wallpaperNames} from '../../../domain';
 import {Appearance,accentColors,defaultAccent} from '../../../theme';
@@ -17,7 +16,7 @@ type SurfaceKey='opacity'|'dim'|'glow';
 @Component({
   selector:'sp-appearance-page',
   changeDetection:ChangeDetectionStrategy.OnPush,
-  imports:[DecimalPipe,UpperCasePipe,MatButtonModule,MatButtonToggleModule,MatSliderModule,MatSlideToggleModule,MatTooltipModule,IconComponent,PageHeaderComponent,SectionComponent,WallpaperComponent],
+  imports:[DecimalPipe,UpperCasePipe,MatButtonModule,MatButtonToggleModule,MatSliderModule,MatTooltipModule,IconComponent,PageHeaderComponent,SectionComponent,WallpaperComponent],
   templateUrl:'./appearance-page.html',
   styleUrl:'./appearance-page.scss'
 })
