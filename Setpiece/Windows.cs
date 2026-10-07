@@ -55,6 +55,20 @@ internal static class Windows
         catch(DllNotFoundException){}
         catch(EntryPointNotFoundException){}
     }
+    [StructLayout(LayoutKind.Sequential)] private struct JobBasicLimits { public long PerProcessTime, PerJobTime; public uint Flags; public nuint MinimumWorkingSet, MaximumWorkingSet; public uint ActiveProcesses; public nuint Affinity; public uint Priority, Scheduling; }
+    [StructLayout(LayoutKind.Sequential)] private struct JobLimits { public JobBasicLimits Basic; public ulong ReadOperations, WriteOperations, OtherOperations, ReadBytes, WriteBytes, OtherBytes; public nuint ProcessMemory, JobMemory, PeakProcessMemory, PeakJobMemory; }
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] private static extern nint CreateJobObject(nint attributes, string? name);
+    [DllImport("kernel32.dll")] private static extern bool SetInformationJobObject(nint job, int kind, ref JobLimits limits, int size);
+    [DllImport("kernel32.dll")] private static extern bool AssignProcessToJobObject(nint job, nint process);
+    /** A job that ends its processes when Setpiece's handle to it closes, that is, when Setpiece exits however it exits. */
+    private static readonly Lazy<nint> childJob = new(() =>
+    {
+        var job = CreateJobObject(0, null); if (job == 0) return 0;
+        var limits = new JobLimits { Basic = new JobBasicLimits { Flags = 0x2000 } };// JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        return SetInformationJobObject(job, 9, ref limits, Marshal.SizeOf<JobLimits>()) ? job : 0;
+    });
+    /** A helper Setpiece keeps running (the Codex app-server) never outlives it, even if Setpiece crashes. */
+    internal static void EndWithSetpiece(Process process) { if (childJob.Value != 0) AssignProcessToJobObject(childJob.Value, process.Handle); }
     public static JsonArray Displays() => new(Screen.AllScreens.Select((s, i) => (JsonNode)new JsonObject { ["index"] = i, ["name"] = s.DeviceName, ["id"] = MonitorId(s.DeviceName), ["scale"] = Scale(s), ["width"] = s.Bounds.Width, ["height"] = s.Bounds.Height, ["x"] = s.Bounds.X, ["y"] = s.Bounds.Y, ["primary"] = s.Primary }).ToArray());
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct DisplayDevice { public int Size; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string Name; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string String; public int Flags; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string Id; [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)] public string Key; }
@@ -143,7 +157,8 @@ internal sealed class WindowCoordinator : IDisposable
     private readonly Dictionary<nint, bool> taskbars = [];
     private readonly Windows.EventCallback callback;
     private readonly nint hook;
-    private readonly nint destroyedHook;
+    /** A window closing is watched for in the processes whose windows Setpiece holds, one hook per process. */
+    private readonly Dictionary<uint, nint> destroyedHooks = [];
     private readonly Control dispatcher;
     public event Action<string>? Detached;
     public event Action<nint>? MoveEnded;
@@ -152,7 +167,6 @@ internal sealed class WindowCoordinator : IDisposable
         this.dispatcher = dispatcher;
         callback = Observe;
         hook = Windows.SetWinEventHook(0x000A, 0x000B, 0, callback, 0, 0, 2);
-        destroyedHook=Windows.SetWinEventHook(0x8001,0x8001,0,callback,0,0,2);
         if (hook == 0) throw new InvalidOperationException("Windows could not start application movement tracking.");
     }
     private void Observe(nint token, uint kind, nint window, int objectId, int childId, uint thread, uint time)
@@ -160,7 +174,9 @@ internal sealed class WindowCoordinator : IDisposable
         if(kind==0x000A)
         {
             var entry=attachments.FirstOrDefault(p=>p.Value.Handle==window);
-            if(entry.Key is not null){attachments.Remove(entry.Key);dispatcher.BeginInvoke(()=>Detached?.Invoke(entry.Key));return;}
+            if(entry.Key is not null){attachments.Remove(entry.Key);dispatcher.BeginInvoke(()=>{WatchProcesses();Detached?.Invoke(entry.Key);});return;}
+            // Moves are forgotten when they end; one whose window closed mid-drag is dropped here.
+            foreach(var closed in pendingMoves.Keys.Where(w=>!Windows.IsWindow(w)).ToArray())pendingMoves.Remove(closed);
             if(!Windows.IsWindow(window))return;Windows.GetWindowThreadProcessId(window,out var process);if(process==Environment.ProcessId)return;
             var original=new Windows.Placement{Length=Marshal.SizeOf<Windows.Placement>()};if(Windows.GetWindowPlacement(window,ref original))pendingMoves[window]=original;
             return;
@@ -171,7 +187,7 @@ internal sealed class WindowCoordinator : IDisposable
             return;
         }
         if(kind!=0x8001||objectId!=0||childId!=0)return;
-        pendingMoves.Remove(window);var destroyed=attachments.FirstOrDefault(p=>p.Value.Handle==window);if(destroyed.Key is null)return;attachments.Remove(destroyed.Key);dispatcher.BeginInvoke(()=>Detached?.Invoke(destroyed.Key));
+        pendingMoves.Remove(window);var destroyed=attachments.FirstOrDefault(p=>p.Value.Handle==window);if(destroyed.Key is null)return;attachments.Remove(destroyed.Key);dispatcher.BeginInvoke(()=>{WatchProcesses();Detached?.Invoke(destroyed.Key);});
     }
     public void Assign(string id, string handle, Rectangle destination)
     {
@@ -189,13 +205,24 @@ internal sealed class WindowCoordinator : IDisposable
         if (previous is not null && previous.Handle != hwnd) Restore(previous);
         var title=new StringBuilder(1024);Windows.GetWindowText(hwnd,title,title.Capacity);
         attachments[id] = already.Value??new Attachment(hwnd,pid,started,original,processName,title.ToString());
+        WatchProcesses();
+    }
+    /**
+     * Hooks the processes that own held windows and unhooks the rest. A hook on every process woke Setpiece for
+     * each tooltip, menu and window any program closed, all day, to notice the few it holds.
+     */
+    private void WatchProcesses()
+    {
+        var wanted=attachments.Values.Select(a=>a.Process).ToHashSet();
+        foreach(var process in destroyedHooks.Keys.Where(p=>!wanted.Contains(p)).ToArray()){Windows.UnhookWinEvent(destroyedHooks[process]);destroyedHooks.Remove(process);}
+        foreach(var process in wanted)if(!destroyedHooks.ContainsKey(process)&&Windows.SetWinEventHook(0x8001,0x8001,0,callback,process,0,2) is var watch and not 0)destroyedHooks[process]=watch;
     }
     public bool Matches(string id,string name,string title)=>attachments.TryGetValue(id,out var entry)&&SameWindow(entry)&&entry.Name.Equals(name,StringComparison.OrdinalIgnoreCase)&&entry.Title==title;
     public void ForgetPendingMove(nint handle)=>pendingMoves.Remove(handle);
     public void Place(string id, Rectangle destination)
     {
         if (!attachments.TryGetValue(id, out var entry)) return;
-        if (!SameWindow(entry)) { attachments.Remove(id); Detached?.Invoke(id); return; }
+        if (!SameWindow(entry)) { attachments.Remove(id); WatchProcesses(); Detached?.Invoke(id); return; }
         var placement=PlacementBounds(entry.Handle,destination);
         Windows.SetWindowPos(entry.Handle, 0, placement.X, placement.Y, placement.Width, placement.Height, 0x4014);
     }
@@ -232,7 +259,7 @@ internal sealed class WindowCoordinator : IDisposable
         var pixelLeft=(int)Math.Round(left);var pixelTop=(int)Math.Round(top);
         return Rectangle.FromLTRB(pixelLeft,pixelTop,Math.Max(pixelLeft+1,(int)Math.Round(right)),Math.Max(pixelTop+1,(int)Math.Round(bottom)));
     }
-    public void Release(string id) { if (attachments.Remove(id, out var entry)) Restore(entry); }
+    public void Release(string id) { if (attachments.Remove(id, out var entry)) { Restore(entry); WatchProcesses(); } }
     public void ReleaseAll() { foreach (var id in attachments.Keys.ToArray()) Release(id); }
     public void Retain(IReadOnlySet<string> ids){foreach(var id in attachments.Keys.Where(id=>!ids.Contains(id)).ToArray())Release(id);}
     internal nint? AttachedHandle(string id)=>attachments.TryGetValue(id,out var entry)?entry.Handle:null;
@@ -274,5 +301,5 @@ internal sealed class WindowCoordinator : IDisposable
         }, 0);
     }
     public void RestoreTaskbars() { foreach (var pair in taskbars) if (pair.Value && Windows.IsWindow(pair.Key)) Windows.ShowWindow(pair.Key, 5); taskbars.Clear(); }
-    public void Dispose() { Windows.UnhookWinEvent(hook);Windows.UnhookWinEvent(destroyedHook);ReleaseAll();RestoreTaskbars();GC.KeepAlive(callback); }
+    public void Dispose() { Windows.UnhookWinEvent(hook);ReleaseAll();foreach(var watch in destroyedHooks.Values)Windows.UnhookWinEvent(watch);destroyedHooks.Clear();RestoreTaskbars();GC.KeepAlive(callback); }
 }

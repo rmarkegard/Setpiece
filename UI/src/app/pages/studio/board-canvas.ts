@@ -7,6 +7,7 @@ import {StudioStore} from '../../state/studio-store';
 import {IconComponent} from '../../ui/icon';
 import {WallpaperComponent} from '../../ui/wallpaper';
 import {WidgetFrame} from '../../widgets/widget-frame';
+import {FrostComponent} from '../../surfaces/surfaces';
 
 interface Drag {id:string;handle:ResizeHandle|null;x:number;y:number;originX:number;originY:number;width:number;height:number;before:Profile;source:Tile[];pointerId:number;moved:boolean;}
 /** Where a moved tile will land: a swap, a shrink into a gap, or a plain move. */
@@ -19,11 +20,14 @@ type Landing=(TileDrop|{tiles:Tile[];kind:'move'});
  *
  * Dragging never touches the saved profile until you let go: the tile follows the pointer, the landing is
  * previewed, and the change is applied once, on release. Resizing redraws at most once per frame.
+ *
+ * Glass cards frost a still, pre-blurred copy of the wallpaper, as on the desk (sp-frost): a live backdrop blur
+ * was redone on every frame anything in a card moved.
  */
 @Component({
   selector:'sp-board-canvas',
   changeDetection:ChangeDetectionStrategy.OnPush,
-  imports:[NgStyle,MatButtonModule,MatMenuModule,IconComponent,WallpaperComponent,WidgetFrame],
+  imports:[NgStyle,MatButtonModule,MatMenuModule,IconComponent,WallpaperComponent,WidgetFrame,FrostComponent],
   templateUrl:'./board-canvas.html',
   styleUrl:'./board-canvas.scss'
 })
@@ -51,6 +55,9 @@ export class BoardCanvas implements AfterViewInit,OnDestroy {
   readonly surfaceStyle=computed(()=>{const s=this.surface();return {width:s.width+'px',height:s.height+'px',transform:'scale('+s.scale+')','--k':String(s.scale)};});
   readonly selectedTile=computed(()=>this.zones().find(t=>t.Id===this.store.selected())??null);
   readonly landingTile=computed(()=>{const l=this.landing();return l?l.tiles.find(t=>t.Id===this.dragging())??null:null;});
+  readonly glass=computed(()=>this.store.appearance().surface==='glass');
+  /** The board shows the display scaled down, so its frosted copies need no more pixels than it draws. */
+  readonly frostDetail=computed(()=>Math.min(.5,Math.ceil(this.surface().scale*devicePixelRatio*20)/20));
 
   ngAfterViewInit(){
     const el=this.board().nativeElement;
@@ -58,11 +65,8 @@ export class BoardCanvas implements AfterViewInit,OnDestroy {
   }
   ngOnDestroy(){this.observer?.disconnect();cancelAnimationFrame(this.frame);}
 
-  bounds(tile:Tile,tiles=this.zones()){
-    const {width,height}=this.store.monitorSize(),p=this.store.profile();
-    const b=tilePercentBounds(tile,tiles,width,height,p.OuterMargin,p.Gap);
-    return {left:b.left+'%',top:b.top+'%',width:b.width+'%',height:b.height+'%'};
-  }
+  percent(tile:Tile,tiles=this.zones()){const {width,height}=this.store.monitorSize(),p=this.store.profile();return tilePercentBounds(tile,tiles,width,height,p.OuterMargin,p.Gap);}
+  bounds(tile:Tile,tiles=this.zones()){const b=this.percent(tile,tiles);return {left:b.left+'%',top:b.top+'%',width:b.width+'%',height:b.height+'%'};}
   /** The dragged tile follows the pointer; in the scaled layer its offset is divided by the scale. */
   shift(tile:Tile,scaled=true){
     const o=this.offset();if(!o||tile.Id!==this.dragging())return null;

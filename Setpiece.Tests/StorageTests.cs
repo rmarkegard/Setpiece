@@ -15,6 +15,17 @@ public class StorageTests
         var log = File.ReadAllText(Path.Combine(store.Root, "rebuild.log"));
         Assert.Contains("synthetic diagnostic", log); Assert.Contains("at Setpiece.Tests.StorageTests", log);
     }
+    [Fact] public void ConnectionsAreReusedUntilTheFileChanges()
+    {
+        var store = new Storage(TestData.Root()); store.UpdateConnections(new JsonObject { ["TwitchChannel"] = "first" });
+        var read = store.Connections(); read["TwitchChannel"] = "changed by a caller";
+        Assert.Equal("first", store.Connections()["TwitchChannel"]!.GetValue<string>());
+        store.UpdateConnections(new JsonObject { ["TwitchChannel"] = "second" });
+        Assert.Equal("second", store.Connections()["TwitchChannel"]!.GetValue<string>());
+        // Another writer (a second Setpiece over the same data) replaces the file: the next read decrypts it again.
+        var other = new Storage(store.Root); other.UpdateConnections(new JsonObject { ["TwitchChannel"] = "third" });
+        Assert.Equal("third", store.Connections()["TwitchChannel"]!.GetValue<string>());
+    }
     [Fact] public void RebuildLogIsBounded()
     {
         var store = new Storage(TestData.Root());

@@ -183,10 +183,11 @@
 .ibtn:active { transform: scale(.9); }
 .ibtn .ic { width: 24px; height: 24px; }
 
-/* Odometer: every number rolls into place, rightmost digit first. */
+/* Odometer: every number rolls into place, rightmost digit first. The strips are not kept on layers of their own
+   (will-change): a desk has dozens, each a GPU texture ten digits tall, and they move only when a number changes. */
 .odo { display: inline-flex; align-items: flex-start; line-height: 1; font-variant-numeric: tabular-nums lining-nums; }
 .odo-d { display: inline-block; height: 1em; overflow: hidden; }
-.odo-s { display: flex; flex-direction: column; transition: transform .95s var(--roll); will-change: transform; }
+.odo-s { display: flex; flex-direction: column; transition: transform .95s var(--roll); }
 .odo-s i { display: block; height: 1em; line-height: 1em; font-style: normal; text-align: center; }
 .odo-x { display: inline-block; height: 1em; line-height: 1em; }
 
@@ -915,9 +916,9 @@
    ========================================================================== */
 /* Concept widgets that are not live yet wear the ink tone. */
 .wg.preview { --c: var(--t-ink); --on: var(--t-ink-on); --hi: var(--t-ink-hi); --v: var(--t-ink-v); border-radius: 28px; }
-/* On the desk and in the browser card, glass frosts a still, pre-blurred copy of the wallpaper (see
-   surfaces.ts): a live backdrop blur is redone whenever anything in the card moves. */
-.glass sp-workspace-backdrop .wg, .glass sp-browser-toolbar .wg { -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* On the desk, in Studio's board and in the browser card, glass frosts a still, pre-blurred copy of the
+   wallpaper (see surfaces.ts): a live backdrop blur is redone whenever anything in the card moves. */
+.glass sp-workspace-backdrop .wg, .glass sp-board-canvas .wg, .glass sp-browser-toolbar .wg { -webkit-backdrop-filter: none; backdrop-filter: none; }
 /* The volume meter shows the live signal: when nothing is playing, it rests. */
 .vo.silent .vo-meter i { animation: none; transform: scaleY(.1); }
 /* Setpiece's Reduce motion setting: no event motion, no ambient loops. Windows' "Animation effects" is not

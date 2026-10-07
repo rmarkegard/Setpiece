@@ -38,10 +38,21 @@ export class WidgetWindow {
 /** How often looping ambient motion on the desk moves (see WorkspaceBackdrop). */
 const deskFps=30;
 
+/** The wallpaper, decoded once for every card that frosts it: a desk has a card per widget, Studio its own. */
+let decoded:{id:string;image:Promise<HTMLImageElement>}|null=null;
+function wallpaperImage(id:string){
+  if(decoded?.id!==id){
+    const image=new Image();image.src=wallpaperUrl(id);
+    const entry={id,image:image.decode().then(()=>image)};decoded=entry;
+    entry.image.catch(()=>{if(decoded===entry)decoded=null;});
+  }
+  return decoded!.image;
+}
+
 /**
  * The wallpaper behind one card, blurred and saturated once into a small canvas: glass that costs
- * nothing per frame. It follows the wallpaper's cover fit and the middle of its drift, so it lines
- * up with the live wallpaper around the card. The ambient wallpaper is already soft and is shown as is.
+ * nothing per frame. It follows the wallpaper's cover fit, so it lines up with the wallpaper around
+ * the card. The ambient wallpaper is already soft and is shown as is.
  */
 @Component({
   selector:'sp-frost',
@@ -59,22 +70,22 @@ export class FrostComponent {
   /** The card's place on the display, in percent (tilePercentBounds). */
   readonly area=input.required<{left:number;top:number;width:number;height:number}>();
   readonly screen=input.required<{width:number;height:number}>();
-  readonly zoom=input(1);
+  /** Canvas pixels per display pixel: half is plenty under a 26px blur, and a scaled-down preview needs fewer. */
+  readonly detail=input(.5);
   private readonly canvas=viewChild<ElementRef<HTMLCanvasElement>>('canvas');
   readonly slice=computed(()=>{const b=this.area();return {left:-100*b.left/b.width+'%',top:-100*b.top/b.height+'%',width:10000/b.width+'%',height:10000/b.height+'%',right:'auto',bottom:'auto'};});
   private drawn='';
   constructor(){
     effect(()=>{
-      const canvas=this.canvas()?.nativeElement,id=this.wallpaper(),b=this.area(),s=this.screen(),zoom=this.zoom();
-      const key=JSON.stringify([id,b,s,zoom]);if(!canvas||key===this.drawn)return;this.drawn=key;
-      const image=new Image();image.src=wallpaperUrl(id);
-      image.decode().then(()=>{
+      const canvas=this.canvas()?.nativeElement,id=this.wallpaper(),b=this.area(),s=this.screen(),k=this.detail();
+      const key=JSON.stringify([id,b,s,k]);if(!canvas||key===this.drawn)return;this.drawn=key;
+      wallpaperImage(id).then(image=>{
         if(this.drawn!==key)return;
-        // Half resolution is plenty for a 26px blur, and keeps the eight or so canvases small.
-        const x=b.left/100*s.width,y=b.top/100*s.height,w=b.width/100*s.width,h=b.height/100*s.height,k=.5;
+        // A low resolution is plenty under the blur, and keeps the eight or so canvases small.
+        const x=b.left/100*s.width,y=b.top/100*s.height,w=b.width/100*s.width,h=b.height/100*s.height;
         canvas.width=Math.max(1,Math.ceil(w*k));canvas.height=Math.max(1,Math.ceil(h*k));
         const g=canvas.getContext('2d')!;
-        const fit=Math.max(s.width/image.naturalWidth,s.height/image.naturalHeight)*zoom,iw=image.naturalWidth*fit,ih=image.naturalHeight*fit;
+        const fit=Math.max(s.width/image.naturalWidth,s.height/image.naturalHeight),iw=image.naturalWidth*fit,ih=image.naturalHeight*fit;
         g.filter='blur('+26*k+'px) saturate(1.8)';
         g.drawImage(image,((s.width-iw)/2-x)*k,((s.height-ih)/2-y)*k,iw*k,ih*k);
       }).catch(()=>{this.drawn='';});
@@ -98,12 +109,12 @@ export class FrostComponent {
   changeDetection:ChangeDetectionStrategy.OnPush,
   imports:[NgStyle,IconComponent,WallpaperComponent,WidgetFrame,FrostComponent],
   template:`
-    <sp-wallpaper [id]="store.profile().WallpaperId" [moving]="store.profile().AnimatedWallpaper&&!store.appearance().reducedMotion"/>
+    <sp-wallpaper [id]="store.profile().WallpaperId"/>
     @for(tile of store.board().Zones;track tile.Id){
       <div class="tile" [attr.data-kind]="tile.ContentKind" [class.waiting]="tile.ContentKind==='Application'&&!tile.AssignedProcessName" [ngStyle]="bounds(tile)">
         @if(tile.ContentKind==='Widget'){
-          @if(glass()){<sp-frost [wallpaper]="store.profile().WallpaperId" [area]="percent(tile)" [screen]="screen()" [zoom]="drifting()?1.045:1"/>}
-          <sp-widget [id]="tile.WidgetId" [scale]="store.board().WidgetScale||1" (expand)="store.expandWidget(tile.WidgetId)" (manage)="store.manageWidget(tile.WidgetId)"/>
+          @if(glass()){<sp-frost [wallpaper]="store.profile().WallpaperId" [area]="percent(tile)" [screen]="screen()"/>}
+          <sp-widget [id]="tile.WidgetId" [scale]="store.board().WidgetScale||1" [resting]="store.coveredTiles().has(tile.Id)" (expand)="store.expandWidget(tile.WidgetId)" (manage)="store.manageWidget(tile.WidgetId)"/>
         } @else if(tile.ContentKind==='Web'||tile.ContentKind==='Application'&&!tile.AssignedProcessName){
           <span class="label label-large"><sp-icon [name]="icon(tile)"/>{{label(tile,$index)}}</span>
         }
@@ -127,8 +138,6 @@ export class WorkspaceBackdrop {
     const stop=paceAmbientMotion(deskFps);inject(DestroyRef).onDestroy(stop);
   }
   readonly glass=computed(()=>this.store.appearance().surface==='glass');
-  /** The live wallpaper drifts between 1.025× and 1.065×; the frosted copies hold the middle of that. */
-  readonly drifting=computed(()=>this.store.profile().AnimatedWallpaper&&!this.store.appearance().reducedMotion);
   readonly screen=computed(()=>{const d=this.store.displays().find(d=>d.index===this.store.board().MonitorIndex);return {width:d?.width??1920,height:d?.height??1080};});
   percent(tile:Tile){const s=this.screen(),p=this.store.profile();return tilePercentBounds(tile,this.store.board().Zones,s.width,s.height,p.OuterMargin,p.Gap);}
   bounds(tile:Tile){const b=this.percent(tile);return {left:b.left+'%',top:b.top+'%',width:b.width+'%',height:b.height+'%'};}

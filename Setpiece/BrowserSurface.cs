@@ -35,6 +35,13 @@ internal sealed class BrowserSurface : Form
     private bool placing;
     private readonly PageCorners corners;
     private readonly System.Windows.Forms.Timer cornerTimer=new(){Interval=60};
+    /**
+     * Saving waits for a quiet second. Pages change their address as you use them (a video site does with every
+     * click), and each save rewrote the file to disk and had Studio's browser list read every workspace again.
+     */
+    private readonly System.Windows.Forms.Timer persistTimer=new(){Interval=1000};
+    /** What this browser last saved, so an unchanged state is not even compared against the file. */
+    private JsonObject? persisted;
     /** Set when the corner windows cannot draw; the page then keeps only its hard-edged rounded region. */
     private bool cornersFailed;
     /** What the page's shape was last cut for, so an unchanged layout does not re-clip the playing page. */
@@ -46,7 +53,8 @@ internal sealed class BrowserSurface : Form
         FormBorderStyle=FormBorderStyle.None;StartPosition=FormStartPosition.Manual;MinimumSize=new Size(280,160);BackColor=Color.Black;Put(bounds);
         Controls.Add(pages);Controls.Add(chrome);
         corners=new PageCorners(this);cornerTimer.Tick+=async(_,_)=>{cornerTimer.Stop();await RefreshCorners();};
-        VisibleChanged+=(_,_)=>{if(Visible)ScheduleCorners();else corners.Hide();};
+        persistTimer.Tick+=(_,_)=>{persistTimer.Stop();PersistNow();};
+        VisibleChanged+=(_,_)=>{if(Visible)ScheduleCorners();else corners.Hide();ApplyMemoryTargets();};
         // Per-pixel transparency, as for widget windows: the card's own rounded, anti-aliased edge is the window's shape.
         HandleCreated+=(_,_)=>{Windows.ApplyRoundedCorners(Handle,false);Windows.ExtendGlass(Handle);};
         Resize+=(_,_)=>{ApplyPin();Windows.ExtendGlass(Handle);UpdateViewport();};Move+=(_,_)=>{UpdateViewport();ScheduleCorners();};
@@ -97,7 +105,7 @@ internal sealed class BrowserSurface : Form
     private async Task Add(string url,string? id=null,bool select=true)
     {
         var address=Address(url);var tab=await CreateTab(id);
-        tab.View.CoreWebView2.Navigate(address);if(select)Select(tab);else EmitState();Persist();
+        tab.View.CoreWebView2.Navigate(address);if(select)Select(tab);else{ApplyMemoryTargets();EmitState();}Persist();
     }
     /** A new, not yet navigated tab. A page's popup (a sign-in window, say) is handed one of these, so it keeps its opener. */
     private async Task<Tab> CreateTab(string? id=null)
@@ -146,7 +154,13 @@ internal sealed class BrowserSurface : Form
         if(tabs.Count==0)await Add("https://www.google.com/");else if(wasSelected)Select(tabs[Math.Max(0,index-1)]);
         Persist();EmitState();
     }
-    private void Select(Tab tab){selected=tab;foreach(var item in tabs)item.View.Visible=item==tab;tab.View.BringToFront();SetFullscreen(tab.View.CoreWebView2.ContainsFullScreenElement);EmitState();}
+    private void Select(Tab tab){selected=tab;foreach(var item in tabs)item.View.Visible=item==tab;tab.View.BringToFront();ApplyMemoryTargets();SetFullscreen(tab.View.CoreWebView2.ContainsFullScreenElement);EmitState();}
+    /** Tabs in the background, and a browser put away, keep less memory; the tab in front keeps all it needs. */
+    private void ApplyMemoryTargets()
+    {
+        foreach(var item in tabs)if(item.View.CoreWebView2 is { } core)Host.SetMemoryTarget(core,Visible&&item==selected);
+        if(chrome.CoreWebView2 is { } toolbar)Host.SetMemoryTarget(toolbar,Visible);
+    }
     private void ApplyPin()
     {
         chrome.Visible=!fullscreen||diagnostics;pages.Visible=!diagnostics;
@@ -262,20 +276,23 @@ internal sealed class BrowserSurface : Form
     private Tab? Find(JsonObject payload){var id=payload["id"]?.GetValue<string>();return tabs.FirstOrDefault(t=>t.Id==id);}
     private static readonly Lazy<string> runtime=new(()=>CoreWebView2Environment.GetAvailableBrowserVersionString());
     private JsonObject State()=>new(){["tabs"]=new JsonArray(tabs.Select(t=>(JsonNode)new JsonObject{["id"]=t.Id,["title"]=t.View.CoreWebView2.DocumentTitle??"New tab",["url"]=t.View.CoreWebView2.Source}).ToArray()),["selected"]=selected?.Id,["url"]=selected?.View.CoreWebView2.Source,["back"]=selected?.View.CoreWebView2.CanGoBack??false,["forward"]=selected?.View.CoreWebView2.CanGoForward??false,["pinned"]=pinned,["constrain"]=constrainFullscreen,["docked"]=Docked,["extension"]=extensionStatus,["error"]=selected?.Error,["runtime"]=runtime.Value};
+    private void Persist(){persistTimer.Stop();persistTimer.Start();}
     // Unchanged state is not rewritten or rebroadcast. An unreadable file is preserved and logged, not overwritten.
-    private void Persist()
+    private void PersistNow()
     {
         if(tabs.Count==0)return;
         try
         {
-            var document=storage.ReadOptional("browsers-v2.json");var state=State();if(JsonNode.DeepEquals(document[name],state))return;
-            document[name]=state;storage.SaveDocument("browsers-v2.json",document);
+            var state=State();if(JsonNode.DeepEquals(persisted,state))return;
+            var document=storage.ReadOptional("browsers-v2.json");if(JsonNode.DeepEquals(document[name],state)){persisted=state;return;}
+            document[name]=state;storage.SaveDocument("browsers-v2.json",document);persisted=(JsonObject)state.DeepClone();
         }
         catch(Exception error) when(error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException or InvalidOperationException){storage.Log("Browser state could not be saved",error);return;}
         host.NotifyBrowserCatalog();
     }
     internal void NotifyState()=>EmitState();
     private void EmitState(){if(chrome.CoreWebView2 is not null)Emit("browser",State());}
-    public void Emit(string name,JsonNode data){if(chrome.CoreWebView2 is not null&&!IsDisposed)chrome.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
-    protected override void Dispose(bool disposing){closing=true;if(disposing){cornerTimer.Dispose();corners.Dispose();}if(fullscreen&&!restoreBounds.IsEmpty)Put(restoreBounds);base.Dispose(disposing);}
+    public void Emit(string name,JsonNode data)=>Post(Host.PageMessage(name,data));
+    public void Post(string message){if(chrome.CoreWebView2 is not null&&!IsDisposed)chrome.CoreWebView2.PostWebMessageAsJson(message);}
+    protected override void Dispose(bool disposing){closing=true;if(disposing){if(persistTimer.Enabled){persistTimer.Stop();PersistNow();}persistTimer.Dispose();cornerTimer.Dispose();corners.Dispose();}if(fullscreen&&!restoreBounds.IsEmpty)Put(restoreBounds);base.Dispose(disposing);}
 }

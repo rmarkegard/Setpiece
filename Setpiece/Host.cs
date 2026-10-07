@@ -24,11 +24,15 @@ internal sealed class Host : Form
     public Host(Storage storage)
     {
         this.storage = storage;providers = new Providers(storage);
-        providers.Pushed += service => { if(IsHandleCreated&&!IsDisposed)BeginInvoke(()=>{var name=JsonValue.Create(service);Emit("service",name);foreach(var surface in surfaces)surface.Emit("service",name);}); };
+        providers.Pushed += service => { if(IsHandleCreated&&!IsDisposed)BeginInvoke(()=>{var message=PageMessage("service",JsonValue.Create(service));Post(message);foreach(var surface in surfaces)surface.Post(message);}); };
         Text = "Setpiece";if(Windows.AppIcon.Value is { } icon)Icon=icon;Size = new Size(1440, 960);MinimumSize = new Size(1040, 680);StartPosition = FormStartPosition.CenterScreen;FormBorderStyle = FormBorderStyle.None;BackColor = SurfaceColor;
         Controls.Add(view);Shown += async (_, _) => await Initialize();
+        // WebView2 keeps drawing a minimized window unless it is told the page is hidden. Hidden, Studio stops
+        // drawing, its timers slow down, its widgets stop polling and it gives memory back until it is restored.
+        Resize += (_, _) => { ShowInterface(WindowState != FormWindowState.Minimized); WatchCover(); };
+        coverCheck.Tick += (_, _) => CheckCover();
         FormClosing+=(_,e)=>{if(!closingConfirmed&&AuditOutput is null&&view.CoreWebView2 is not null&&e.CloseReason==CloseReason.UserClosing){e.Cancel=true;Emit("request-close",null);}};
-        FormClosed += (_, _) => { foreach (var surface in surfaces) surface.Dispose();foreach (var browser in browsers.Values)browser.Dispose();windows?.Dispose();providers.Dispose(); };
+        FormClosed += (_, _) => { coverCheck.Dispose();coverWatch?.Dispose();foreach (var surface in surfaces) surface.Dispose();foreach (var browser in browsers.Values)browser.Dispose();windows?.Dispose();providers.Dispose(); };
         Microsoft.Win32.SystemEvents.DisplaySettingsChanged += DisplayChanged;
         Disposed += (_, _) => Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= DisplayChanged;
     }
@@ -64,6 +68,7 @@ internal sealed class Host : Form
             windows = new WindowCoordinator(this);
             windows.Detached += id => { if(active is not null) foreach(var tile in Tiles(active))if(tile["Id"]!.GetValue<string>()==id){tile["AssignedProcessName"]="";tile["AssignedWindowTitle"]="";}Emit("detached", JsonValue.Create(id)); };
             windows.MoveEnded += AutoAssignMovedWindow;
+            if(AuditOutput is null){coverWatch=new Cover.Watcher(CheckCover);WatchCover();}
             environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(storage.Root,"Browser-v2"), new CoreWebView2EnvironmentOptions { AreBrowserExtensionsEnabled = true });
             await Configure(view);
             view.CoreWebView2.Navigate("https://setpiece.local/index.html");
@@ -162,7 +167,7 @@ internal sealed class Host : Form
                 return active.DeepClone();
             case "release": windows!.Release(payload["id"]!.GetValue<string>());return null;
             case "launch": active = Storage.Normalize(payload["profile"]!.AsObject(),false);ResolveDisplays(active);StampDisplayNames(active);var key=storage.SaveProfile(payload["key"]?.GetValue<string>(),active);await Launch(true);Emit("workspace",JsonValue.Create(launched));return JsonValue.Create(key);
-            case "stop": launched=false;foreach(var s in surfaces)s.Dispose();surfaces.Clear();foreach(var b in browsers.Values)b.Hide();windows!.ReleaseAll();windows.RestoreTaskbars();Emit("workspace",JsonValue.Create(false));return null;
+            case "stop": launched=false;foreach(var s in surfaces)s.Dispose();surfaces.Clear();foreach(var b in browsers.Values)b.Hide();windows!.ReleaseAll();windows.RestoreTaskbars();WatchCover();Emit("workspace",JsonValue.Create(false));return null;
             case "volume": return providers.SetVolume(payload);
             case "discord-voice":return await providers.VoiceControl(payload);
             case "twitch-say":return await providers.TwitchSay(payload);
@@ -332,6 +337,7 @@ internal sealed class Host : Form
         // Browser cards frost the wallpaper behind them: they hear about a new one like the desks do.
         foreach(var browser in browsers.Values)browser.Emit("profile",active);
         windows!.HideTaskbars(selected);PlaceActive();if(restore)NotifyUnrestored(unrestored);
+        WatchCover();CheckCover();
     }
     private async Task EnsureSurface(string key,Rectangle bounds,string query,HashSet<string> kept)
     {
@@ -345,7 +351,46 @@ internal sealed class Host : Form
         if(browsers.TryGetValue(name,out var existing)){existing.Docked=docked;existing.Place(bounds,constrainFullscreen);existing.Show();existing.NotifyState();return;}
         var browser=new BrowserSurface(this,storage,name,bounds,constrainFullscreen){Docked=docked};browsers[name]=browser;await browser.Start(url,initial);
     }
-    internal void Emit(string name,JsonNode? data) { if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data?.DeepClone()}.ToJsonString()); }
+    internal void Emit(string name,JsonNode? data)=>Post(PageMessage(name,data));
+    private void Post(string message){if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(message);}
+    /** An event for a page, serialized once however many pages hear it. */
+    internal static string PageMessage(string name,JsonNode? data)=>"{\"event\":"+JsonSerializer.Serialize(name)+",\"data\":"+(data?.ToJsonString()??"null")+"}";
+    private Cover.Watcher? coverWatch;
+    private readonly System.Windows.Forms.Timer coverCheck = new() { Interval = 1000 };
+    private bool studioCovered;
+    /** Looks for covered windows while there is something to rest: Studio on screen, or a launched workspace's desks. */
+    private void WatchCover()=>coverCheck.Enabled=coverWatch is not null&&(WindowState!=FormWindowState.Minimized||surfaces.Count>0);
+    /**
+     * Rests what nobody can see (see Cover): Studio while other windows hide all of it, and on each desk the
+     * widgets under applications. Runs each second and right after windows come forward, minimize or stop moving.
+     */
+    private void CheckCover()
+    {
+        if(coverWatch is null||IsDisposed||!coverCheck.Enabled)return;
+        var stack=Cover.Stack();
+        var studio=WindowState!=FormWindowState.Minimized&&Cover.Showing(stack,Handle,Bounds).Count==0;
+        if(studio!=studioCovered){studioCovered=studio;Emit("page-covered",JsonValue.Create(studio));}
+        if(active is null||!launched)return;
+        foreach(var board in active["MonitorBoards"]!.AsArray().OfType<JsonObject>())
+        {
+            var index=board["MonitorIndex"]!.GetValue<int>();
+            if(index>=Screen.AllScreens.Length||surfaces.FirstOrDefault(s=>s.Key=="workspace-"+index) is not { IsDisposed: false } desk)continue;
+            var showing=Cover.Showing(stack,desk.Handle,desk.Bounds);
+            desk.Cover(board["Zones"]!.AsArray().OfType<JsonObject>().Where(t=>t["ContentKind"]?.GetValue<string>()=="Widget"&&!Cover.Shows(showing,WindowCoordinator.TileBounds(active,board,t))).Select(t=>t["Id"]!.GetValue<string>()).ToArray());
+        }
+    }
+    private void ShowInterface(bool shown)
+    {
+        if(view.Visible==shown)return;
+        view.Visible=shown;if(view.CoreWebView2 is { } core)SetMemoryTarget(core,shown);
+    }
+    /** Asks a page that is out of sight to keep less memory (caches and the like); it works as before when shown. */
+    internal static void SetMemoryTarget(CoreWebView2 core,bool active)
+    {
+        try{core.MemoryUsageTargetLevel=active?CoreWebView2MemoryUsageTargetLevel.Normal:CoreWebView2MemoryUsageTargetLevel.Low;}
+        // An older WebView2 Runtime lacks the setting; the page then keeps its memory, as before.
+        catch(Exception error) when(error is NotImplementedException or InvalidCastException or System.Runtime.InteropServices.COMException){}
+    }
     internal void NotifyBrowserCatalog()=>Emit("browsers",BrowserCatalog());
     /** The desk window under a place on screen, while a workspace is launched. */
     internal Surface? DeskAt(Rectangle bounds)=>surfaces.FirstOrDefault(s=>!s.IsDisposed&&s.Visible&&s.Bounds.Contains(bounds));
@@ -362,7 +407,7 @@ internal sealed class Host : Form
     }
     // Matches the UI's Material 3 surface role, so the window never flashes another color before the page paints.
     private Color SurfaceColor=>storage.Preferences()["mode"]?.GetValue<string>()=="light"?Color.FromArgb(252,248,255):Color.FromArgb(19,19,24);
-    private void Broadcast(string name,JsonNode data){Emit(name,data);foreach(var surface in surfaces)surface.Emit(name,data);foreach(var browser in browsers.Values)browser.Emit(name,data);}
+    private void Broadcast(string name,JsonNode data){var message=PageMessage(name,data);Post(message);foreach(var surface in surfaces)surface.Post(message);foreach(var browser in browsers.Values)browser.Post(message);}
     internal static void OpenExternal(string url){if(!Uri.TryCreate(url,UriKind.Absolute,out var uri)||uri.Scheme is not ("https" or "http"))throw new InvalidOperationException("Use an HTTP or HTTPS address.");Process.Start(new ProcessStartInfo(uri.AbsoluteUri){UseShellExecute=true});}
     protected override void WndProc(ref Message message)
     {
@@ -385,6 +430,8 @@ internal sealed class Surface : Form
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     internal string Key {get;init;}="";
     private bool settling;
+    /** The widget tiles on this desk that other windows hide, as last told to the page. */
+    private string[] coveredTiles=[];
     private readonly Host host;private readonly WebView2 view=new(){Dock=DockStyle.Fill};
     public Surface(Host host,Rectangle bounds){this.host=host;Bounds=bounds;FormBorderStyle=FormBorderStyle.None;ShowInTaskbar=false;StartPosition=FormStartPosition.Manual;BackColor=Color.FromArgb(19,19,24);Controls.Add(view);Text="Setpiece workspace";}
     protected override bool ShowWithoutActivation=>true;
@@ -393,9 +440,13 @@ internal sealed class Surface : Form
     public async Task Start(string query)
     {
         Show();Settle();
-        await host.Configure(view);
+        await host.Configure(view,true,Command);
         view.CoreWebView2.Navigate("https://setpiece.local/index.html?"+query);
     }
+    /** The desk page asks which of its widgets are covered when it starts (or restarts after a failure). */
+    private Task<JsonNode?> Command(string command,JsonObject payload)=>command=="covered-tiles"?Task.FromResult<JsonNode?>(CoveredTiles()):host.HandleCommand(command,payload);
+    private JsonArray CoveredTiles()=>new(coveredTiles.Select(id=>(JsonNode)JsonValue.Create(id)).ToArray());
+    internal void Cover(string[] ids){if(ids.SequenceEqual(coveredTiles))return;coveredTiles=ids;Emit("tiles-covered",CoveredTiles());}
     /** Puts the desk in its layer: just above the Windows desktop, below every application. */
     internal void Settle()
     {
@@ -428,5 +479,6 @@ internal sealed class Surface : Form
         using var stream=new MemoryStream();await view.CoreWebView2.CapturePreviewAsync(Microsoft.Web.WebView2.Core.CoreWebView2CapturePreviewImageFormat.Png,stream);stream.Position=0;
         return new Bitmap(stream);
     }
-    public void Emit(string name,JsonNode data){if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(new JsonObject{["event"]=name,["data"]=data.DeepClone()}.ToJsonString());}
+    public void Emit(string name,JsonNode data)=>Post(Host.PageMessage(name,data));
+    public void Post(string message){if(view.CoreWebView2 is not null)view.CoreWebView2.PostWebMessageAsJson(message);}
 }

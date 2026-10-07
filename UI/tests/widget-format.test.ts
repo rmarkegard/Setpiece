@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {ago,clockTime,compact,eventStart,forecastCurve,isoWeek,lineKind,odoPlaces,outputName,pick,printStage,quotaSpan,shortChipName,siden,untilLabel,weatherSky} from '../src/widget-format.ts';
+import {ago,clockTime,compact,eventStart,forecastCurve,formatDate,isoWeek,lineKind,odoPlaces,outputName,pick,printStage,quotaSpan,shortChipName,siden,untilLabel,weatherSky} from '../src/widget-format.ts';
 
 test('odometer places roll digits and keep other characters fixed, rightmost first',()=>{
   const places=odoPlaces('16°');
@@ -63,4 +63,10 @@ test('numbers and times are formatted compactly',()=>{
   assert.equal(compact(4210),'4.2k');assert.equal(compact(860),'860');
   assert.equal(clockTime(new Date(2026,8,28,9,5)),'09:05');
   assert.equal(pick('2Z8WuEywRWYTKe1NybPQEW',4),0);assert.ok(pick('anything',4)<4);
+});
+
+test('reused date formats read exactly like a fresh toLocaleDateString',()=>{
+ const at=new Date(2026,9,7,21,5);
+ for(const options of [{weekday:'long',day:'numeric',month:'long'},{weekday:'long'},{month:'long',year:'numeric'},{month:'short'},{weekday:'short'}] as Intl.DateTimeFormatOptions[])
+  for(let i=0;i<2;i++)assert.equal(formatDate(at,options),at.toLocaleDateString('en-GB',options));
 });

@@ -1,4 +1,4 @@
-import {AfterViewInit,ChangeDetectionStrategy,Component,ElementRef,OnDestroy,OnInit,computed,effect,inject,input,output,signal,viewChild} from '@angular/core';
+import {AfterViewInit,ChangeDetectionStrategy,Component,ElementRef,OnDestroy,OnInit,computed,effect,inject,input,output,signal,untracked,viewChild} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {Bridge} from '../../bridge';
@@ -6,6 +6,7 @@ import {ServiceState,widgetDefinition} from '../../domain';
 import {widgetContentLimit} from '../../widget-layout';
 import {widgetFamily,widgetTone} from '../../theme';
 import {IconComponent} from '../ui/icon';
+import {everySecond,pageShown} from '../state/presence';
 import {WIDGET_BODIES} from './bodies';
 import {WidgetContext} from './context';
 
@@ -15,6 +16,9 @@ const refreshSeconds=(id:string)=>['system','volume','battery'].includes(id)?2:i
 const selfContained=['clock','notes'];
 // Widgets whose body is its own empty state (the inbox celebrates zero instead of saying so).
 const bodyWhenEmpty=['email'];
+// Bodies that count time from each reading (a history sample per reading, minutes since one arrived) take every
+// reading; the others skip one that changes nothing.
+const timedBodies=['system','ruter','bambu-lab','weather'];
 // The offline card counts down to its next attempt.
 const retrySeconds=12;
 
@@ -66,7 +70,7 @@ function contentRatio(container:HTMLElement,zoom:number){
   imports:[IconComponent,MatButtonModule,MatTooltipModule,...WIDGET_BODIES],
   template:`
     <section [class]="cardClasses()" [attr.aria-label]="definition().name" [attr.data-widget]="id()" [attr.data-category]="definition().category" [attr.data-state]="state().status"
-      [class.compact]="compact()" [class.short]="short()" [class.narrow]="narrow()" [class.spacious]="spacious()">
+      [class.compact]="compact()" [class.short]="short()" [class.narrow]="narrow()" [class.spacious]="spacious()" [class.resting]="resting()">
       <span class="state-label sr-only" aria-live="polite">{{statusLabel()}}</span>
       <div class="fit-container" #container>
         <div class="fit-content" [style.zoom]="fit()" [style.--body-height]="bodyHeight()+'px'">
@@ -151,6 +155,8 @@ export class WidgetFrame extends WidgetContext implements OnInit,AfterViewInit,O
   readonly scale=input(1);
   readonly canExpand=input(true);
   readonly canManage=input(true);
+  /** On a desk, the host reports the widget covered by an application: it rests until it shows again. */
+  readonly resting=input(false);
   readonly manage=output<void>();
   readonly expand=output<void>();
 
@@ -192,7 +198,7 @@ export class WidgetFrame extends WidgetContext implements OnInit,AfterViewInit,O
   readonly hasSettings=computed(()=>this.canManage()&&!this.definition().preview&&!this.definition().retired);
   readonly statusLabel=computed(()=>this.definition().preview?'Preview':this.definition().retired?'Retired':this.state().status==='ready'?'Live':this.state().status==='loading'&&!selfContained.includes(this.id())?'loading':this.state().status);
 
-  private timer?:ReturnType<typeof setInterval>;
+  private stopTicking?:()=>void;
   private fxTimers:ReturnType<typeof setTimeout>[]=[];
   private observer?:ResizeObserver;
   private ticks=0;
@@ -202,8 +208,13 @@ export class WidgetFrame extends WidgetContext implements OnInit,AfterViewInit,O
     if(e.event==='connections'&&this.live())void this.refresh();
     // A service can announce fresh data (the development bridge does), so events play right away.
     // A pushed update (chat) skips a beat rather than queue behind a read already in flight; the next one catches up.
-    if(e.event==='service'&&e.data===this.id()&&this.live()&&!this.polling)void this.poll();
+    if(e.event==='service'&&e.data===this.id()&&this.live()&&!this.polling&&this.active())void this.poll();
   });
+  /**
+   * A widget nobody can see (its page hidden or covered, or its tile under an application) neither ticks nor
+   * polls: the host is not asked for data no one sees. Seen again, it catches up at once.
+   */
+  readonly active=computed(()=>pageShown()&&!this.resting());
 
   constructor(){
     super();
@@ -212,18 +223,21 @@ export class WidgetFrame extends WidgetContext implements OnInit,AfterViewInit,O
     effect(()=>{this.view();requestAnimationFrame(()=>requestAnimationFrame(()=>this.measure()));});
     // A new body starts with a clean card.
     effect(()=>{this.id();this.cardClass.set('');});
+    let wasActive=true;
+    effect(()=>{const active=this.active();if(active&&!wasActive)untracked(()=>{this.now.set(new Date());if(this.live()&&this.id()!=='clock'&&!this.polling)void this.poll();});wasActive=active;});
   }
 
   ngOnInit(){
     if(this.live())void this.refresh();
     else if(!this.definition().retired&&!this.definition().preview)this.state.set({status:'ready',title:this.definition().name,detail:'Saved on this PC'});
-    this.timer=setInterval(()=>{
+    this.stopTicking=everySecond(()=>{
+      if(!this.active())return;
       this.now.set(new Date());this.ticks++;
       const view=this.view();
       if(view==='loading')this.loaderStep.update(n=>n+1);
       if(view==='offline'){if(this.retry()<=1){this.retry.set(retrySeconds);void this.poll();}else this.retry.update(n=>n-1);return;}
       if(this.live()&&this.id()!=='clock'&&!this.polling&&this.ticks%refreshSeconds(this.id())===0)void this.poll();
-    },1000);
+    });
   }
   /** Timed refreshes never overlap: a slow service skips a beat instead of queuing requests. */
   private async poll(){this.polling=true;try{await this.refresh();}finally{this.polling=false;}}
@@ -232,19 +246,23 @@ export class WidgetFrame extends WidgetContext implements OnInit,AfterViewInit,O
     // Text laid out in a fallback face can look taller than it is: fit again once the fonts are in.
     void document.fonts?.ready.then(()=>this.measure());
   }
-  ngOnDestroy(){this.unsubscribe();clearInterval(this.timer);this.fxTimers.forEach(clearTimeout);this.observer?.disconnect();}
+  ngOnDestroy(){this.unsubscribe();this.stopTicking?.();this.fxTimers.forEach(clearTimeout);this.observer?.disconnect();}
 
   async refresh(){
-    try{this.setState(await this.bridge.call<ServiceState>('service',{service:this.id()}));}
-    catch(e){this.setState({status:'error',title:'Could not refresh',detail:(e as Error).message});}
+    let changed:boolean;
+    try{changed=this.setState(await this.bridge.call<ServiceState>('service',{service:this.id()}));}
+    catch(e){changed=this.setState({status:'error',title:'Could not refresh',detail:(e as Error).message});}
     this.retry.set(retrySeconds);
-    if(this.id()!=='twitch')requestAnimationFrame(()=>this.measure());
+    if(changed&&this.id()!=='twitch')requestAnimationFrame(()=>this.measure());
   }
-  private chatSeen='';
+  private seen='';
+  /**
+   * Most readings repeat the last one (chat every couple of seconds, a battery that has not moved); one that
+   * changes nothing but its time stamp must not redraw or refit the card. Returns whether the state changed.
+   */
   private setState(state:ServiceState){
-    // Chat is polled every couple of seconds; a quiet poll changes nothing, so it must not repaint the desk.
-    if(this.id()==='twitch'){const seen=JSON.stringify(state);if(seen===this.chatSeen)return;this.chatSeen=seen;}
-    this.state.set(state);this.receivedAt.set(Date.now());
+    if(!timedBodies.includes(this.id())){const seen=JSON.stringify(state,(key,value)=>key==='updated'?undefined:value);if(seen===this.seen)return false;this.seen=seen;}
+    this.state.set(state);this.receivedAt.set(Date.now());return true;
   }
 
   /** Restarts the event: the class comes off, then back on a frame later, so a repeat plays again. */

@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy,Component,ElementRef,computed,effect,inject,signal,viewChild} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {ServiceItem} from '../../../domain';
-import {lineKind,siden} from '../../../widget-format';
+import {formatDate,lineKind,siden} from '../../../widget-format';
 import {WidgetContext} from '../context';
 import {StudioStore} from '../../state/studio-store';
 import {OdoComponent,ago,clockTime,compact,flashSet,onChange,slotList} from '../motion';
@@ -205,7 +205,7 @@ export class InboxBody {
   private readonly fits=computed(()=>Math.max(4,Math.floor((this.w.capacityHeight()-100)/52)+1));
   private readonly slots=slotList(()=>this.messages().slice(0,this.fits()),m=>m.key,{fresh:1400,gone:900});
   readonly rows=computed(()=>{const today=this.w.now().toDateString();return this.slots().map(s=>{
-    const m=s.item,d=new Date(m.at),time=!Number.isFinite(m.at)?'':d.toDateString()===today?clockTime(d):d.toLocaleDateString('en-GB',{weekday:'short'});
+    const m=s.item,d=new Date(m.at),time=!Number.isFinite(m.at)?'':d.toDateString()===today?clockTime(d):formatDate(d,{weekday:'short'});
     return {key:s.key,url:m.url,from:m.from,subject:m.subject,time,initial:m.from.charAt(0).toUpperCase(),y:Math.min(s.rank,this.fits()-1)*52,cls:['slot ib-row',m.unread?'unread':'',s.gone?'gone':'',s.fresh?'fresh':''].filter(Boolean).join(' ')};
   });});
   open(event:Event,url?:string){event.preventDefault();this.w.external(url);}

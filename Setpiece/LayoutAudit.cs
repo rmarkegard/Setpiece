@@ -9,7 +9,7 @@ internal static class LayoutAudit
 {
     public static async Task Run(Host host,Storage storage,string output)
     {
-        var profile=Storage.Normalize(new JsonObject{["Name"]="Free placement",["MonitorIndex"]=0,["SmartSnap"]=false,["AnimatedWallpaper"]=false,["Zones"]=new JsonArray(
+        var profile=Storage.Normalize(new JsonObject{["Name"]="Free placement",["MonitorIndex"]=0,["SmartSnap"]=false,["Zones"]=new JsonArray(
             new JsonObject{["Id"]="app",["X"]=0d,["Y"]=0d,["Width"]=.5,["Height"]=1d},
             new JsonObject{["Id"]="clock",["X"]=.5,["Y"]=0d,["Width"]=.5,["Height"]=1d,["ContentKind"]="Widget",["WidgetId"]="clock"})});
         storage.SaveProfile("layout-audit",profile);

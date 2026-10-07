@@ -14,7 +14,7 @@ export const displays:Display[]=[
 ];
 
 export function sampleProfile():Profile{
-  return {Name:'Setpiece Reveal',SchemaVersion:18,Gap:12,OuterMargin:16,MonitorIndex:0,MonitorIndices:[0,1],WallpaperId:'jade-synthesis',AnimatedWallpaper:false,SmartSnap:true,SnapStep:.05,
+  return {Name:'Setpiece Reveal',SchemaVersion:18,Gap:12,OuterMargin:16,MonitorIndex:0,MonitorIndices:[0,1],WallpaperId:'jade-synthesis',SmartSnap:true,SnapStep:.05,
     MonitorBoards:[
       {MonitorIndex:0,WidgetScale:1.6,Zones:[
         tile(0,0,.5,1,{AssignedProcessName:'Code',AssignedWindowTitle:'setpiece — Visual Studio Code'}),
@@ -31,7 +31,7 @@ export function sampleProfile():Profile{
 }
 
 export function focusProfile():Profile{
-  return {Name:'Deep focus',SchemaVersion:18,Gap:16,OuterMargin:24,MonitorIndex:0,MonitorIndices:[0],WallpaperId:'moss-geometry',AnimatedWallpaper:false,SmartSnap:true,SnapStep:.05,
+  return {Name:'Deep focus',SchemaVersion:18,Gap:16,OuterMargin:24,MonitorIndex:0,MonitorIndices:[0],WallpaperId:'moss-geometry',SmartSnap:true,SnapStep:.05,
     MonitorBoards:[{MonitorIndex:0,WidgetScale:1,Zones:[tile(0,0,.7,1),tile(.7,0,.3,.5,{ContentKind:'Widget',WidgetId:'notes'}),tile(.7,.5,.3,.5,{ContentKind:'Widget',WidgetId:'google-calendar'})]}]};
 }
 
