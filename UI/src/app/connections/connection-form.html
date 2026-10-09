@@ -52,7 +52,7 @@
     }
     @case('twitch'){
       <mat-form-field><mat-label>Channel</mat-label><span matTextPrefix>&#64;&nbsp;</span><input matInput [(ngModel)]="form['channel']" autocomplete="off"><mat-hint>The channel name from its address. You can also click it on the widget to switch.</mat-hint></mat-form-field>
-      <mat-slide-toggle [(ngModel)]="form['sync']">Follow the stream open in my Setpiece browser</mat-slide-toggle>
+      <mat-slide-toggle [(ngModel)]="form['streamSync']">Follow the stream open in my Setpiece browser</mat-slide-toggle>
       <p class="body-small on-surface-variant">Chat switches by itself to the Twitch channel you are watching, and waits while none is open. The channel above is used when this is off.</p>
       <h3 class="title-small">Chat as yourself</h3>
       @if(store.connections()['TwitchLogin']){<p class="body-medium">Signed in as <strong>{{store.connections()['TwitchLogin']}}</strong>. Type in the box at the bottom of the widget to chat.</p>}

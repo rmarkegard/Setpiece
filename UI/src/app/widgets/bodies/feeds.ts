@@ -368,7 +368,7 @@ export class TwitchBody {
   readonly login=computed(()=>String(this.w.state().data?.['login']||''));
   readonly authFailed=computed(()=>!!this.w.state().data?.['authFailed']);
   /** Chat follows the stream open in a Setpiece browser; while none is, it waits. */
-  readonly sync=computed(()=>!!this.w.state().data?.['sync']);
+  readonly sync=computed(()=>!!this.w.state().data?.['streamSync']);
   readonly waiting=computed(()=>!!this.w.state().data?.['waiting']);
   readonly editing=signal(false);
   readonly sending=signal(false);
@@ -394,9 +394,9 @@ export class TwitchBody {
     const channel=this.draftChannel.trim().replace(/^[@#]/,'');this.editing.set(false);
     if(!channel||channel.toLowerCase()===String(this.w.state().data?.['channel']||''))return;
     // Picking a channel by hand means keeping it: sync turns off.
-    await this.w.control('connect',{service:'twitch',channel,sync:false});
+    await this.w.control('connect',{service:'twitch',channel,streamSync:false});
   }
-  async toggleSync(){await this.w.control('connect',{service:'twitch',sync:!this.sync()});}
+  async toggleSync(){await this.w.control('connect',{service:'twitch',streamSync:!this.sync()});}
   async send(){
     const message=this.draft.trim();if(!message||this.sending())return;
     this.sending.set(true);this.w.controlError.set('');

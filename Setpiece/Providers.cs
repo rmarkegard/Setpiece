@@ -102,9 +102,9 @@ internal sealed class Providers : IDisposable
             case "reddit":var community=Text(request,"community");if(community.Length==0||!community.All(c=>char.IsAsciiLetterOrDigit(c)||c=='_'))throw new InvalidDataException("Enter a subreddit name using letters, numbers or underscores.");changes["RedditCommunity"]=community;if(Text(request,"clientId").Length>0){await OAuth.Connect(http,storage,"Reddit",Text(request,"clientId"),"");}break;
             case "twitch":
                 // Sync follows the stream open in your browser; a typed channel is the one to fall back on.
-                if(request["sync"] is JsonValue sync&&sync.TryGetValue<bool>(out var follow))changes["TwitchSync"]=follow;
+                if(request["streamSync"] is JsonValue sync&&sync.TryGetValue<bool>(out var follow))changes["TwitchSync"]=follow;
                 var channel=Text(request,"channel").Trim().TrimStart('#','@').ToLowerInvariant();
-                if(channel.Length>0||request["sync"] is null)
+                if(channel.Length>0||request["streamSync"] is null)
                 {
                     if(channel.Length is <3 or >25||!channel.All(c=>char.IsAsciiLetterOrDigit(c)||c=='_'))throw new InvalidDataException("Enter a Twitch channel name using letters, numbers or underscores.");
                     changes["TwitchChannel"]=channel;
@@ -161,10 +161,10 @@ internal sealed class Providers : IDisposable
         var account=Text(settings,"TwitchRefreshToken").Length>0?Text(settings,"TwitchLogin"):"";
         // In sync, chat follows whichever Twitch stream a Setpiece browser is showing, and waits while none is.
         var channel=sync?Watching(twitch.Following):saved;
-        if(sync&&channel is null)return State("ready","Waiting for a stream","Open a Twitch stream in your browser",new JsonArray(),new JsonObject{["sync"]=true,["waiting"]=true,["channel"]=saved,["login"]=account});
+        if(sync&&channel is null)return State("ready","Waiting for a stream","Open a Twitch stream in your browser",new JsonArray(),new JsonObject{["streamSync"]=true,["waiting"]=true,["channel"]=saved,["login"]=account});
         if(string.IsNullOrEmpty(channel))return State("disconnected","Join the conversation","Choose a Twitch channel to follow its chat.");
         twitch.Credentials??=TwitchCredentials;twitch.Follow(channel,account);
-        return State("ready","@"+channel,twitch.Connected?"Live chat":"Connecting to chat…",twitch.Snapshot(60),new JsonObject{["channel"]=channel,["connected"]=twitch.Connected,["login"]=account,["canSend"]=twitch.CanSend,["authFailed"]=twitch.AuthFailed,["sync"]=sync});
+        return State("ready","@"+channel,twitch.Connected?"Live chat":"Connecting to chat…",twitch.Snapshot(60),new JsonObject{["channel"]=channel,["connected"]=twitch.Connected,["login"]=account,["canSend"]=twitch.CanSend,["authFailed"]=twitch.AuthFailed,["streamSync"]=sync});
     }
     /**
      * The Twitch stream chat should follow: the one a browser is showing; failing that, the one chat already
