@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyName>Setpiece</AssemblyName>
-    <Version>2.0.3</Version>
+    <Version>2.0.4</Version>
     <RootNamespace>Setpiece.Rebuild</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- The Studio title bar's mark (Material Symbols "space_dashboard", filled, in the accent tone). -->

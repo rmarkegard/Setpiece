@@ -57,7 +57,7 @@ export function installMock(){
     assign:({profile}:{profile:Profile})=>profile,
     release:()=>null,stop:()=>null,external:()=>null,window:()=>null,'stop-search':({query}:{query:string})=>[{id:'1',name:query+' stasjon',label:query+' stasjon · Oslo'},{id:'2',name:query+' skole',label:query+' skole · Oslo'}],
     'timezone-search':({query}:{query:string})=>[{name:query,timezone:'Asia/Shanghai',label:query+', China'},{name:query+' Heights',timezone:'America/Chicago',label:query+' Heights, USA'}],
-    'check-update':()=>({current:'2.0.2',latest:'2.1.0'}),'install-update':()=>null,
+    'check-update':()=>({current:'2.0.4',latest:'2.1.0'}),'install-update':()=>null,
     connect:({service,channel,streamSync}:{service:string;channel?:string;streamSync?:boolean})=>{if(service==='twitch'&&streamSync!==undefined&&!channel){const chat=services['twitch'];chat.data={...chat.data,streamSync,waiting:streamSync};chat.title=streamSync?'Waiting for a stream':'@'+chat.data['channel'];return structuredClone(chat);}if(service==='twitch'&&channel){const chat=services['twitch'];chat.title='@'+channel;chat.data={...chat.data,channel};chat.items=[];return structuredClone(chat);}return {title:'Connected',detail:service+' is ready to use'};},disconnect:()=>null,
     'claude-sign-in':()=>null,'note-read':()=>({text:note}),'note-save':({text}:{text:string})=>{note=text;event('note',{text});return null;},
     volume:(change:{level?:number;muted?:boolean})=>{Object.assign(services['volume'].data!,change);return structuredClone(services['volume']);},
