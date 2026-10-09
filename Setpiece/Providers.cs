@@ -20,6 +20,8 @@ internal sealed class Providers : IDisposable
     private readonly TwitchChat twitch=new();
     /** A service has new data before its next poll (Twitch chat); the host tells the widgets to read it now. */
     public event Action<string>? Pushed;
+    /** The pages showing in Setpiece's browsers right now. */
+    public Func<BrowserPages> BrowserPages{get;set;}=()=>new([],[]);
     public Providers(Storage storage){this.storage=storage;twitch.Changed+=()=>Pushed?.Invoke("twitch");http.DefaultRequestHeaders.UserAgent.ParseAdd("Setpiece/2.0 (Windows workspace widget)");}
     private static string Text(JsonObject obj,string key)=>obj[key]?.GetValue<string>()??"";
     public JsonObject PublicSettings()
@@ -27,7 +29,7 @@ internal sealed class Providers : IDisposable
         try
         {
             var settings=storage.Connections();var result=new JsonObject();
-            foreach(var key in new[]{"WeatherLocation","WeatherLatitude","WeatherLongitude","RuterStopId","RuterStopName","NewsSource","NewsCategories","CalendarExcludedTitles","ClockTimeZones","ClockLocationLabels","DiscordServerId","DiscordClientId","BambuHost","BambuSerial","RedditCommunity","RedditClientId","TwitchChannel","TwitchClientId","TwitchLogin","GoogleClientId","SpotifyClientId","InboxProvider","CodexExecutable","AiHidden"})result[key]=settings[key]?.DeepClone();
+            foreach(var key in new[]{"WeatherLocation","WeatherLatitude","WeatherLongitude","RuterStopId","RuterStopName","NewsSource","NewsCategories","CalendarExcludedTitles","ClockTimeZones","ClockLocationLabels","DiscordServerId","DiscordClientId","BambuHost","BambuSerial","RedditCommunity","RedditClientId","TwitchChannel","TwitchClientId","TwitchLogin","TwitchSync","GoogleClientId","SpotifyClientId","InboxProvider","CodexExecutable","AiHidden"})result[key]=settings[key]?.DeepClone();
             foreach(var service in new[]{"Google","Spotify","Discord","Reddit"})result[service+"Connected"]=!string.IsNullOrEmpty(Text(settings,service=="Discord"?"DiscordServerId":service+"RefreshToken"));
             result["CalendarFeedConnected"]=!string.IsNullOrEmpty(Text(settings,"CalendarFeedUrl"));result["OpenCodeGoKeySaved"]=Text(settings,"OpenCodeGoKey").Length>0;result["DiscordCallConnected"]=Text(settings,"DiscordCallToken").Length>0;return result;
         }
@@ -99,9 +101,14 @@ internal sealed class Providers : IDisposable
             case "clock":changes["ClockTimeZones"]=request["zones"]?.DeepClone()??new JsonArray("UTC");changes["ClockLocationLabels"]=request["zoneLabels"]?.DeepClone()??new JsonArray("UTC");break;
             case "reddit":var community=Text(request,"community");if(community.Length==0||!community.All(c=>char.IsAsciiLetterOrDigit(c)||c=='_'))throw new InvalidDataException("Enter a subreddit name using letters, numbers or underscores.");changes["RedditCommunity"]=community;if(Text(request,"clientId").Length>0){await OAuth.Connect(http,storage,"Reddit",Text(request,"clientId"),"");}break;
             case "twitch":
+                // Sync follows the stream open in your browser; a typed channel is the one to fall back on.
+                if(request["streamSync"] is JsonValue sync&&sync.TryGetValue<bool>(out var follow))changes["TwitchSync"]=follow;
                 var channel=Text(request,"channel").Trim().TrimStart('#','@').ToLowerInvariant();
-                if(channel.Length is <3 or >25||!channel.All(c=>char.IsAsciiLetterOrDigit(c)||c=='_'))throw new InvalidDataException("Enter a Twitch channel name using letters, numbers or underscores.");
-                changes["TwitchChannel"]=channel;
+                if(channel.Length>0||request["streamSync"] is null)
+                {
+                    if(channel.Length is <3 or >25||!channel.All(c=>char.IsAsciiLetterOrDigit(c)||c=='_'))throw new InvalidDataException("Enter a Twitch channel name using letters, numbers or underscores.");
+                    changes["TwitchChannel"]=channel;
+                }
                 // Signing in to chat is its own step: the device code waits for you in the browser.
                 if(request["signIn"]?.GetValue<bool>()==true){using var wait=new CancellationTokenSource(TimeSpan.FromMinutes(10));foreach(var pair in await TwitchSignIn.Connect(http,Text(request,"clientId").Trim(),wait.Token))changes[pair.Key]=pair.Value?.DeepClone();}
                 break;
@@ -150,10 +157,31 @@ internal sealed class Providers : IDisposable
     }
     private JsonObject Twitch(JsonObject settings)
     {
-        var channel=Text(settings,"TwitchChannel");if(channel.Length==0)return State("disconnected","Join the conversation","Choose a Twitch channel to follow its chat.");
+        var sync=settings["TwitchSync"]?.GetValue<bool>()==true;var saved=Text(settings,"TwitchChannel");
         var account=Text(settings,"TwitchRefreshToken").Length>0?Text(settings,"TwitchLogin"):"";
+        // In sync, chat follows whichever Twitch stream a Setpiece browser is showing, and waits while none is.
+        var channel=sync?Watching(twitch.Following):saved;
+        if(sync&&channel is null)return State("ready","Waiting for a stream","Open a Twitch stream in your browser",new JsonArray(),new JsonObject{["streamSync"]=true,["waiting"]=true,["channel"]=saved,["login"]=account});
+        if(string.IsNullOrEmpty(channel))return State("disconnected","Join the conversation","Choose a Twitch channel to follow its chat.");
         twitch.Credentials??=TwitchCredentials;twitch.Follow(channel,account);
-        return State("ready","@"+channel,twitch.Connected?"Live chat":"Connecting to chat…",twitch.Snapshot(60),new JsonObject{["channel"]=channel,["connected"]=twitch.Connected,["login"]=account,["canSend"]=twitch.CanSend,["authFailed"]=twitch.AuthFailed});
+        return State("ready","@"+channel,twitch.Connected?"Live chat":"Connecting to chat…",twitch.Snapshot(60),new JsonObject{["channel"]=channel,["connected"]=twitch.Connected,["login"]=account,["canSend"]=twitch.CanSend,["authFailed"]=twitch.AuthFailed,["streamSync"]=sync});
+    }
+    /**
+     * The Twitch stream chat should follow: the one a browser is showing; failing that, the one chat already
+     * follows, as long as it is still open in some tab; failing that, any stream open in a tab.
+     */
+    private string? Watching(string current)=>FollowStream(BrowserPages(),current);
+    internal static string? FollowStream(BrowserPages pages,string current)
+    {
+        foreach(var page in pages.Shown)if(TwitchChat.ChannelFromUrl(page) is { } shown)return shown;
+        var open=pages.Open.Select(TwitchChat.ChannelFromUrl).OfType<string>().ToArray();
+        return current.Length>0&&open.Contains(current)?current:open.FirstOrDefault();
+    }
+    /** A browser changed page: a chat in sync re-reads at once instead of on its next poll. */
+    public void BrowserPagesChanged()
+    {
+        try{if(storage.Connections()["TwitchSync"]?.GetValue<bool>()==true){cache.TryRemove("twitch",out _);Pushed?.Invoke("twitch");}}
+        catch(Exception error) when(error is System.Security.Cryptography.CryptographicException or IOException or InvalidOperationException){}
     }
     /** The saved Twitch sign-in, refreshed when it is about to expire or Twitch just refused it. */
     private async Task<(string Login,string Token)?> TwitchCredentials(bool refused)
@@ -331,3 +359,5 @@ internal sealed class Providers : IDisposable
     }
     public void Dispose(){AiUsage.Shutdown();PrinterService.Shutdown();http.Dispose();devices.Dispose();twitch.Dispose();voice?.DisposeAsync().AsTask().Wait(500);foreach(var gate in gates.Values)gate.Dispose();}
 }
+/** The tab each visible browser shows, and every tab open in any browser. */
+internal sealed record BrowserPages(string[] Shown,string[] Open);

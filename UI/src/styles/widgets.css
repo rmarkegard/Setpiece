@@ -999,3 +999,21 @@
 .tw-error { margin: 0; font: 500 12px/1.3 var(--font-brand); color: var(--on); opacity: .85; }
 .tw-signin { flex: none; height: 34px; border: 0; border-radius: 17px; background: var(--inset); color: var(--muted); font: 600 12.5px/1 var(--font-brand); cursor: pointer; }
 .tw-signin:hover { background: var(--inset2); color: var(--on); }
+.tw-tools { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.tw-sync { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 13px; background: var(--inset); color: var(--muted); cursor: pointer; transition: background-color .3s var(--glide), color .3s var(--glide); }
+.tw-sync .ic { width: 15px; height: 15px; }
+.tw-sync:hover { background: var(--inset2); color: var(--on); }
+.tw-sync[aria-pressed=true] { background: var(--hi); color: var(--c); }
+/* Waiting for a stream: a little set with its signal dots taking turns, the antenna listening. */
+.tw-wait { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; border-radius: 18px; background: var(--inset); text-align: center; }
+.tw-wait strong { font: 650 15px/1.2 var(--font-brand); }
+.tw-wait span { max-width: 26ch; font: 500 12.5px/1.4 var(--font-brand); color: var(--muted); }
+.tw-tv { width: min(120px, 46%); height: auto; overflow: visible; margin-bottom: 4px; }
+.tw-tv .set { fill: none; stroke: var(--hi); stroke-width: 4; }
+.tw-tv .glass { fill: color-mix(in oklab, var(--hi) 16%, transparent); stroke: none; }
+.tw-tv .ant { fill: none; stroke: var(--hi); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; transform-origin: 60px 26px; animation: tw-listen 3.2s ease-in-out infinite; }
+.tw-tv .d { fill: var(--hi); animation: tw-signal 1.5s ease-in-out infinite; }
+.tw-tv .d2 { animation-delay: .2s; }
+.tw-tv .d3 { animation-delay: .4s; }
+@keyframes tw-signal { 0%, 70%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-6px); } }
+@keyframes tw-listen { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }

@@ -37,6 +37,8 @@ internal sealed class TwitchChat : IDisposable
     private Dictionary<string,string> self=[];
 
     public bool Connected=>connected;
+    /** The channel chat follows now ("" once it has gone idle). */
+    public string Following{get{lock(gate)return channel;}}
     /** Signed in and joined: messages can be sent. */
     public bool CanSend=>connected&&authenticated;
     /** Twitch refused the saved sign-in, even after a refresh: chat fell back to reading anonymously. */
@@ -186,10 +188,7 @@ internal sealed class TwitchChat : IDisposable
         catch(Exception error) when(error is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or InvalidOperationException){}
     }
 
-    /**
-     * A 7TV emote set as name → image. Animated emotes are shown still (their first frame): an animated
-     * image redraws the whole desk on every frame, which is what made browser video hitch.
-     */
+    /** A 7TV emote set as name → image. Animated emotes play (the 2x WebP keeps its frames). */
     internal static IReadOnlyDictionary<string,string> SevenTvSet(JsonNode? set)
     {
         var result=new Dictionary<string,string>(StringComparer.Ordinal);
@@ -197,13 +196,26 @@ internal sealed class TwitchChat : IDisposable
         {
             var name=emote["name"]?.GetValue<string>();var host=emote["data"]?["host"]?["url"]?.GetValue<string>();
             if(string.IsNullOrWhiteSpace(name)||string.IsNullOrWhiteSpace(host)||name.Any(char.IsWhiteSpace))continue;
-            if(!Uri.TryCreate("https:"+host+"/2x_static.webp",UriKind.Absolute,out var image)||image.Host!="cdn.7tv.app")continue;
+            if(!Uri.TryCreate("https:"+host+"/2x.webp",UriKind.Absolute,out var image)||image.Host!="cdn.7tv.app")continue;
             result[name]=image.AbsoluteUri;
         }
         return result;
     }
 
     internal readonly record struct Line(Dictionary<string,string> Tags,string Nick,string Command,string Rest);
+
+    /** Twitch's own pages that look like a channel address but are not one. */
+    private static readonly HashSet<string> NotChannels=new(StringComparer.OrdinalIgnoreCase){"directory","videos","downloads","settings","subscriptions","inventory","wallet","drops","search","following","friends","messages","turbo","prime","p","jobs","store","login","signup","logout","popout","moderator","embed","team","clip","clips","broadcast","dashboard","u","user","creatorcamp","bits","partner","privacy","legal"};
+    /** The channel a Twitch stream page shows (twitch.tv/name), or null for any other page. */
+    internal static string? ChannelFromUrl(string url)
+    {
+        if(!Uri.TryCreate(url,UriKind.Absolute,out var uri)||uri.Scheme is not ("https" or "http"))return null;
+        if(uri.Host is not ("twitch.tv" or "www.twitch.tv" or "m.twitch.tv"))return null;
+        var segments=uri.AbsolutePath.Split('/',StringSplitOptions.RemoveEmptyEntries);
+        if(segments.Length!=1)return null;
+        var name=segments[0].ToLowerInvariant();
+        return name.Length is >=3 and <=25&&name.All(c=>char.IsAsciiLetterOrDigit(c)||c=='_')&&!NotChannels.Contains(name)?name:null;
+    }
 
     /** One IRC line: optional @tags, optional :prefix, a command, then its parameters. */
     internal static Line? Parse(string line)

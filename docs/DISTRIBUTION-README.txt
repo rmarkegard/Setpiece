@@ -1,4 +1,4 @@
-Setpiece 2.0.3 — Windows x64
+Setpiece 2.0.4 — Windows x64
 
 REQUIREMENTS
 - Windows 11 x64

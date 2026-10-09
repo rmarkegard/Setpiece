@@ -55,11 +55,35 @@ public class TwitchChatTests
     }
 
     [Fact]
-    public void A_seven_tv_set_maps_names_to_still_images_on_7tv_only()
+    public void A_seven_tv_set_maps_names_to_images_on_7tv_only()
     {
         var set=System.Text.Json.Nodes.JsonNode.Parse("""{"emotes":[{"name":"Clap","data":{"host":{"url":"//cdn.7tv.app/emote/01ABC"}}},{"name":"bad","data":{"host":{"url":"//evil.example/emote/x"}}},{"name":"two words","data":{"host":{"url":"//cdn.7tv.app/emote/z"}}}]}""");
         var map=TwitchChat.SevenTvSet(set);
         Assert.Single(map);
-        Assert.Equal("https://cdn.7tv.app/emote/01ABC/2x_static.webp",map["Clap"]);
+        Assert.Equal("https://cdn.7tv.app/emote/01ABC/2x.webp",map["Clap"]);
+    }
+    [Theory]
+    [InlineData("https://www.twitch.tv/xQc","xqc")]
+    [InlineData("https://twitch.tv/marlon?referrer=raid","marlon")]
+    [InlineData("https://m.twitch.tv/clix/","clix")]
+    [InlineData("https://www.twitch.tv/directory/following",null)]
+    [InlineData("https://www.twitch.tv/videos/123",null)]
+    [InlineData("https://www.twitch.tv/clix/clip/abc",null)]
+    [InlineData("https://www.twitch.tv/settings",null)]
+    [InlineData("https://www.youtube.com/xqc",null)]
+    [InlineData("not a url",null)]
+    public void A_browser_page_names_the_stream_it_shows(string url,string? channel)=>Assert.Equal(channel,TwitchChat.ChannelFromUrl(url));
+    [Fact]
+    public void Sync_prefers_the_shown_stream_then_keeps_one_still_open_in_a_background_tab()
+    {
+        static BrowserPages Pages(string[] shown,string[] open)=>new(shown,open);
+        // The selected tab decides.
+        Assert.Equal("xqc",Providers.FollowStream(Pages(["https://www.twitch.tv/xqc"],["https://www.twitch.tv/xqc","https://www.twitch.tv/clix"]),"clix"));
+        // Switched to another page: chat stays with the stream still playing in its tab.
+        Assert.Equal("clix",Providers.FollowStream(Pages(["https://www.youtube.com/"],["https://www.youtube.com/","https://www.twitch.tv/xqc","https://www.twitch.tv/clix"]),"clix"));
+        // Its tab closed: another open stream takes over.
+        Assert.Equal("xqc",Providers.FollowStream(Pages(["https://www.youtube.com/"],["https://www.twitch.tv/xqc"]),"clix"));
+        // No stream anywhere: wait.
+        Assert.Null(Providers.FollowStream(Pages(["https://www.youtube.com/"],["https://www.youtube.com/"]),"clix"));
     }
 }
